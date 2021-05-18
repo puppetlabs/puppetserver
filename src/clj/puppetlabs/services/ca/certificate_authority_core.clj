@@ -97,12 +97,10 @@
 
 (schema/defn handle-put-certificate-revocation-list!
   [incoming-crl-pem :- InputStream
-   {:keys [cacrl cacert infra-crl-path enable-infra-crl]} :- ca/CaSettings]
+   {:keys [cacrl cacert ca-name]} :- ca/CaSettings]
   (locking crl-write-serializer
     (try
-      (ca/update-crls incoming-crl-pem cacrl cacert)
-      (when enable-infra-crl
-        (ca/update-crls incoming-crl-pem infra-crl-path cacert))
+      (ca/update-crls incoming-crl-pem cacrl cacert ca-name)
       (middleware-utils/plain-response 200 "Successfully updated CRLs.")
       (catch IllegalArgumentException e
         (let [error-msg (.getMessage e)]

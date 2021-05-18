@@ -132,6 +132,10 @@
 (def Extension
   (schema/pred utils/extension?))
 
+(def KeyIdExtension
+  {:key-identifier [Byte]
+   schema/Keyword schema/Any})
+
 (def CertificateRevocationList
   (schema/pred utils/certificate-revocation-list?))
 
@@ -1425,28 +1429,36 @@
   newest CRL with the key-id of the given CRL. Warn if the newest CRL
   is the given CRL."
   [crl :- CertificateRevocationList
-   key-crl-map :- {schema/Any [CertificateRevocationList]}]
-  (let [key-id (utils/get-extension-value crl utils/authority-key-identifier-oid)
-        maybe-new-crls (get key-crl-map key-id)]
-    (if maybe-new-crls
-      (let [new-crl (get-newest-crl (conj maybe-new-crls crl))
-            issuer (.getIssuerX500Principal crl)]
-        (if (.equals crl new-crl)
-          (log/warn (i18n/trs
-                     "Received CRLs for issuer {0} but none were newer than the existing CRL; keeping the existing CRL."
-                     issuer))
-          (log/info (i18n/trs
-                     "Updated CRL for issuer {0}." issuer)))
-        new-crl)
-      ;; no new CRLs found for this issuer, keep it
-      crl)))
+   key-crl-map :- {KeyIdExtension [CertificateRevocationList]}
+   ca-name :- schema/Str]
+  (if (= ca-name (utils/get-cn-from-x500-principal
+                  (.getIssuerX500Principal crl)))
+    (do
+      (log/debug (i18n/trs "Not replacing CRL for the Puppet CA cert."))
+      crl)
+
+    (let [key-id (utils/get-extension-value crl utils/authority-key-identifier-oid)
+          maybe-new-crls (get key-crl-map key-id)]
+      (if maybe-new-crls
+        (let [new-crl (get-newest-crl (conj maybe-new-crls crl))
+              issuer (.getIssuerX500Principal crl)]
+          (if (.equals crl new-crl)
+            (log/warn (i18n/trs
+                       "Received CRLs for issuer {0} but none were newer than the existing CRL; keeping the existing CRL."
+                       issuer))
+            (log/info (i18n/trs
+                       "Updated CRL for issuer {0}." issuer)))
+          new-crl)
+        ;; no new CRLs found for this issuer, keep it
+        crl))))
 
 (schema/defn ^:always-validate update-crls
   "Given a collection of CRLs, update the CRL chain and confirm that
   all CRLs are currently valid."
   [incoming-crl-pem :- InputStream
    crl-path :- schema/Str
-   cert-chain-path :- schema/Str]
+   cert-chain-path :- schema/Str
+   ca-name :- schema/Str]
   (log/info (i18n/trs "Updating CRL at {0}" crl-path))
   (let [incoming-crls (utils/pem->crls incoming-crl-pem)
         current-crls (utils/pem->crls crl-path)
@@ -1458,7 +1470,7 @@
                                      set
                                      (group-by #(utils/get-extension-value
                                                  % utils/authority-key-identifier-oid)))
-        new-crl-chain (map #(maybe-replace-crl % incoming-crls-by-key-id)
+        new-crl-chain (map #(maybe-replace-crl % incoming-crls-by-key-id ca-name)
                        current-crls)]
     (validate-certs-and-crls cert-chain new-crl-chain)
     (write-crls new-crl-chain crl-path)))
