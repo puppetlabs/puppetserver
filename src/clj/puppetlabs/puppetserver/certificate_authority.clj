@@ -1421,18 +1421,22 @@
               ^String (i18n/trs "Could not determine newest CRL."))))))
 
 (schema/defn ^:always-validate maybe-replace-crl :- CertificateRevocationList
-  "Given a CRL and a map of issuers to CRLs, determine the newest CRL for the
-  issuer of the given CRL. Warn if the newest CRL is the given CRL."
+  "Given a CRL and a map of key identifiers to CRLs, determine the
+  newest CRL with the key-id of the given CRL. Warn if the newest CRL
+  is the given CRL."
   [crl :- CertificateRevocationList
    key-crl-map :- {schema/Any [CertificateRevocationList]}]
   (let [key-id (utils/get-extension-value crl utils/authority-key-identifier-oid)
         maybe-new-crls (get key-crl-map key-id)]
     (if maybe-new-crls
-      (let [new-crl (get-newest-crl (conj maybe-new-crls crl))]
-        (when (.equals crl new-crl)
+      (let [new-crl (get-newest-crl (conj maybe-new-crls crl))
+            issuer (.getIssuerX500Principal crl)]
+        (if (.equals crl new-crl)
           (log/warn (i18n/trs
                      "Received CRLs for issuer {0} but none were newer than the existing CRL; keeping the existing CRL."
-                     (.getIssuerX500Principal crl))))
+                     issuer))
+          (log/info (i18n/trs
+                     "Updated CRL for issuer {0}." issuer)))
         new-crl)
       ;; no new CRLs found for this issuer, keep it
       crl)))
@@ -1453,7 +1457,7 @@
                                      ;; identify the newest CRL
                                      set
                                      (group-by #(utils/get-extension-value
-                                                % utils/authority-key-identifier-oid)))
+                                                 % utils/authority-key-identifier-oid)))
         new-crl-chain (map #(maybe-replace-crl % incoming-crls-by-key-id)
                        current-crls)]
     (validate-certs-and-crls cert-chain new-crl-chain)
