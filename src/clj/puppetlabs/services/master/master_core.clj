@@ -729,17 +729,16 @@
    content-version :- (schema/maybe schema/Int)]
   (let [body (json/encode info)
         tag (ks/utf8-string->sha256 body)]
+    (jruby-protocol/set-cache-info-tag!
+     jruby-service
+     env
+     svc-key
+     tag
+     content-version)
     (if (= tag request-tag)
       (not-modified-response tag)
-      (do
-        (jruby-protocol/set-cache-info-tag!
-         jruby-service
-         env
-         svc-key
-         tag
-         content-version)
-        (-> (response-with-etag body tag)
-            (rr/content-type "application/json"))))))
+      (-> (response-with-etag body tag)
+          (rr/content-type "application/json")))))
 
 (schema/defn ^:always-validate
   make-cacheable-handler :- IFn

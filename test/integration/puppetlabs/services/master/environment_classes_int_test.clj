@@ -5,6 +5,7 @@
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
             [puppetlabs.puppetserver.testutils :as testutils]
+            [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-bootstrap-testutils]
             [puppetlabs.trapperkeeper.testutils.webserver :as jetty9]
             [puppetlabs.services.master.master-core :as master-core]
@@ -83,6 +84,12 @@
     etag
     (str etag "--gzip")))
 
+(defn without-gzip-suffix
+  [etag]
+  (if (.endsWith etag "--gzip")
+    (str/replace etag "--gzip" "")
+    etag))
+
 (defn response->class-info-map
   [response]
   (-> response :body cheshire/parse-string))
@@ -124,6 +131,52 @@
        (testing "the expected response body is returned"
          (is (= expected-response
                 (response->class-info-map response))))))))
+
+(deftest ^:integration environment-classes-are-cached-after-eviction
+  (let [debug-log "./target/environment-classes-integration-cache-enabled.log"]
+    (fs/delete debug-log)
+    (bootstrap/with-puppetserver-running app
+     {:global {:logging-config
+               (str "./dev-resources/puppetlabs/services/"
+                    "master/environment_classes_int_test/"
+                    "logback-environment-classes-integration-cache-enabled-test.xml")}
+      :jruby-puppet {:gem-path gem-path
+                     :max-active-instances 1
+                     :environment-class-cache-enabled true}}
+     (try
+       (let [foo-file (testutils/write-pp-file
+                       "class foo (String $foo_1 = \"is foo\"){}"
+                       "foo")
+             bar-file (testutils/write-pp-file
+                       "class foo::bar (Integer $foo_2 = 3){}"
+                       "bar")
+             initial-response (get-env-classes "production")
+             initial-etag (-> initial-response response-etag without-gzip-suffix)]
+         (testing "initial fetch of environment_classes info is good"
+           (is (= 200 (:status initial-response))
+               (str
+                "unexpected status code for initial response, response: "
+                (ks/pprint-to-string initial-response)))
+           (is (not (nil? initial-etag))
+               "no etag found for initial response"))
+         (testing "ensure the env cache is purged"
+           (purge-env-cache "production")
+           (= nil
+             (jruby-protocol/get-cached-info-tag
+              (tk-app/get-service app :JRubyPuppetService)
+              "production"
+              :classes)))
+         (testing "Env cache is updated when given correct etag but cache was nil"
+           (let [next-response (get-env-classes "production" initial-etag)]
+             (is (= 304 (:status next-response))
+                 (str
+                  "unexpected status code for initial response, response: "
+                  (ks/pprint-to-string initial-response)))
+             (is (= initial-etag
+                    (jruby-protocol/get-cached-info-tag
+                     (tk-app/get-service app :JRubyPuppetService)
+                     "production"
+                     :classes))))))))))
 
 (deftest ^:integration environment-classes-integration-cache-enabled-test
   (let [debug-log "./target/environment-classes-integration-cache-enabled.log"]
