@@ -18,12 +18,12 @@
             [schema.core :as schema]
             [cheshire.core :as cheshire]
             [liberator.core :refer [defresource]]
-            ;[liberator.dev :as liberator-dev]
             [liberator.representation :as representation]
             [ring.util.request :as request]
             [ring.util.response :as rr]
             [puppetlabs.trapperkeeper.services.status.status-core :as status-core]
-            [puppetlabs.i18n.core :as i18n]))
+            [puppetlabs.i18n.core :as i18n]
+            [puppetlabs.ssl-utils.core :as utils]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
@@ -97,10 +97,13 @@
 
 (schema/defn handle-put-certificate-revocation-list!
   [incoming-crl-pem :- InputStream
-   {:keys [cacrl cacert ca-name]} :- ca/CaSettings]
+   {:keys [cacrl cacert enable-infra-crl infra-crl-path]} :- ca/CaSettings]
   (locking crl-write-serializer
     (try
-      (ca/update-crls incoming-crl-pem cacrl cacert)
+      (let [incoming-crls (utils/pem->crls incoming-crl-pem)]
+        (ca/update-crls incoming-crls cacrl cacert)
+        (when enable-infra-crl
+          (ca/update-crls incoming-crls infra-crl-path cacert)))
       (middleware-utils/plain-response 200 "Successfully updated CRLs.")
       (catch IllegalArgumentException e
         (let [error-msg (.getMessage e)]

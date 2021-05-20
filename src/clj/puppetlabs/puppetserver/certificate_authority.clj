@@ -1455,12 +1455,11 @@
 (schema/defn ^:always-validate update-crls
   "Given a collection of CRLs, update the CRL chain and confirm that
   all CRLs are currently valid."
-  [incoming-crl-pem :- InputStream
+  [incoming-crls :- [X509CRL]
    crl-path :- schema/Str
    cert-chain-path :- schema/Str]
   (log/info (i18n/trs "Updating CRL at {0}" crl-path))
-  (let [incoming-crls (utils/pem->crls incoming-crl-pem)
-        current-crls (utils/pem->crls crl-path)
+  (let [current-crls (utils/pem->crls crl-path)
         cert-chain (utils/pem->certs cert-chain-path)
         ca-cert-key (utils/get-extension-value (first cert-chain)
                                                utils/subject-key-identifier-oid)
