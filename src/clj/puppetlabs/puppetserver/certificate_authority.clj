@@ -1427,18 +1427,18 @@
 (schema/defn ^:always-validate maybe-replace-crl :- CertificateRevocationList
   "Given a CRL and a map of key identifiers to CRLs, determine the
   newest CRL with the key-id of the given CRL. Warn if the newest CRL
-  is the given CRL."
+  is the given CRL. Never replaces the CRL corresponding to the Puppet
+  CA signing cert."
   [crl :- CertificateRevocationList
    key-crl-map :- {KeyIdExtension [CertificateRevocationList]}
-   ca-name :- schema/Str]
-  (if (= ca-name (utils/get-cn-from-x500-principal
-                  (.getIssuerX500Principal crl)))
-    (do
-      (log/debug (i18n/trs "Not replacing CRL for the Puppet CA cert."))
-      crl)
+   ca-cert-key-id :- [Byte]]
+  (let [key-id-ext (utils/get-extension-value crl utils/authority-key-identifier-oid)
+        maybe-new-crls (get key-crl-map key-id-ext)]
+    (if (= (:key-identifier key-id-ext) ca-cert-key-id)
+      (do
+        (log/info (i18n/trs "Not replacing CRL for the Puppet CA cert."))
+        crl)
 
-    (let [key-id (utils/get-extension-value crl utils/authority-key-identifier-oid)
-          maybe-new-crls (get key-crl-map key-id)]
       (if maybe-new-crls
         (let [new-crl (get-newest-crl (conj maybe-new-crls crl))
               issuer (.getIssuerX500Principal crl)]
@@ -1457,12 +1457,13 @@
   all CRLs are currently valid."
   [incoming-crl-pem :- InputStream
    crl-path :- schema/Str
-   cert-chain-path :- schema/Str
-   ca-name :- schema/Str]
+   cert-chain-path :- schema/Str]
   (log/info (i18n/trs "Updating CRL at {0}" crl-path))
   (let [incoming-crls (utils/pem->crls incoming-crl-pem)
         current-crls (utils/pem->crls crl-path)
         cert-chain (utils/pem->certs cert-chain-path)
+        ca-cert-key (utils/get-extension-value (first cert-chain)
+                                               utils/subject-key-identifier-oid)
         incoming-crls-by-key-id (->> incoming-crls
                                      ;; just in case we're given multiple copies
                                      ;; of the same CRL, deduplicate so we can
@@ -1470,7 +1471,7 @@
                                      set
                                      (group-by #(utils/get-extension-value
                                                  % utils/authority-key-identifier-oid)))
-        new-crl-chain (map #(maybe-replace-crl % incoming-crls-by-key-id ca-name)
+        new-crl-chain (map #(maybe-replace-crl % incoming-crls-by-key-id ca-cert-key)
                        current-crls)]
     (validate-certs-and-crls cert-chain new-crl-chain)
     (write-crls new-crl-chain crl-path)))

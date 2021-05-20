@@ -100,7 +100,7 @@
    {:keys [cacrl cacert ca-name]} :- ca/CaSettings]
   (locking crl-write-serializer
     (try
-      (ca/update-crls incoming-crl-pem cacrl cacert ca-name)
+      (ca/update-crls incoming-crl-pem cacrl cacert)
       (middleware-utils/plain-response 200 "Successfully updated CRLs.")
       (catch IllegalArgumentException e
         (let [error-msg (.getMessage e)]

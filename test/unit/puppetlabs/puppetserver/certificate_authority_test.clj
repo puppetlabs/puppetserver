@@ -511,34 +511,26 @@
       (testutils/assert-issuer crl "CN=Puppet CA: localhost"))))
 
 (deftest update-crls-test
-  (let [cert-chain-path (str test-resources-dir "/update_crls/ca_crt.pem")
-        crl-path (str test-resources-dir "/update_crls/ca_crl.pem")
-        crl-backup-path (str test-resources-dir "/update_crls/ca_crl.pem.bak")
-        new-crl-path (str test-resources-dir "/update_crls/new_root_crl.pem")
-        multiple-new-crls-path (str test-resources-dir "/update_crls/multiple_new_root_crls.pem")
-        multiple-newest-crls-path (str test-resources-dir "/update_crls/multiple_newest_root_crls.pem")
-        new-crls-for-multiple-certs-path (str test-resources-dir "/update_crls/new_crls_for_multiple_certs.pem")
-        new-and-unrelated-crls-path (str test-resources-dir "/update_crls/new_crls_and_unrelated_crls.pem")
-        unrelated-crls-path (str test-resources-dir "/update_crls/unrelated_crls.pem")
-        new-root-crl-chain-path (str test-resources-dir "/update_crls/chain_with_new_root.pem")
-        old-root-crl-path (str test-resources-dir "/update_crls/old_root_crl.pem")
-        delta-crl-path (str test-resources-dir "/update_crls/delta_crl.pem")
-        bad-inputs-and-error-msgs {multiple-newest-crls-path #"Could not determine newest CRL."
-                                   delta-crl-path #"Cannot support delta CRL."}]
+  (let [update-crl-fixture-dir (str test-resources-dir "/update_crls/")
+        cert-chain-path (str update-crl-fixture-dir "ca_crt.pem")
+        crl-path (str update-crl-fixture-dir "ca_crl.pem")
+        crl-backup-path (str update-crl-fixture-dir "ca_crl.pem.bak")]
     (logutils/with-test-logging
      (testing "a single newer CRL is used"
-       (let [incoming-crl-stream (testutils/pem-to-stream new-crl-path)]
+       (let [new-crl-path (str update-crl-fixture-dir "new_root_crl.pem")
+             incoming-crl-stream (testutils/pem-to-stream new-crl-path)]
          (testutils/with-backed-up-crl crl-path crl-backup-path
-           (update-crls incoming-crl-stream crl-path cert-chain-path "foo")
+           (update-crls incoming-crl-stream crl-path cert-chain-path)
            (let [old-crls (utils/pem->crls crl-backup-path)
                  new-crls (utils/pem->crls crl-path)
                  old-number (utils/get-crl-number (last old-crls))
                  new-number (utils/get-crl-number (last new-crls))]
              (is (> new-number old-number))))))
      (testing "the newest CRL given is used"
-       (let [incoming-crl-stream (testutils/pem-to-stream multiple-new-crls-path)]
+       (let [multiple-new-crls-path (str update-crl-fixture-dir "multiple_new_root_crls.pem")
+             incoming-crl-stream (testutils/pem-to-stream multiple-new-crls-path)]
          (testutils/with-backed-up-crl crl-path crl-backup-path
-           (update-crls incoming-crl-stream crl-path cert-chain-path "foo")
+           (update-crls incoming-crl-stream crl-path cert-chain-path)
            (let [old-crls (utils/pem->crls crl-backup-path)
                  new-crls (utils/pem->crls crl-path)
                  old-number (utils/get-crl-number (last old-crls))
@@ -546,60 +538,69 @@
              (is (> new-number old-number))
              (is (= 10 new-number))))))
      (testing "multiple newer CRLs are used"
-       (let [incoming-crl-stream (testutils/pem-to-stream new-crls-for-multiple-certs-path)]
+       (let [three-cert-path (str update-crl-fixture-dir "three_cert_chain.pem")
+             three-crl-path (str update-crl-fixture-dir "three_crl.pem")
+             three-newer-crls-path (str update-crl-fixture-dir "three_newer_crl_chain.pem")
+             incoming-crl-stream (testutils/pem-to-stream three-newer-crls-path)]
+         (testutils/with-backed-up-crl three-crl-path crl-backup-path
+           (update-crls incoming-crl-stream three-crl-path three-cert-path)
+           (let [old-crls (utils/pem->crls crl-backup-path)
+                 new-crls (utils/pem->crls three-crl-path)]
+             (is (> (utils/get-crl-number (.get new-crls 2))
+                    (utils/get-crl-number (.get old-crls 2))))
+             (is (> (utils/get-crl-number (.get new-crls 1))
+                    (utils/get-crl-number (.get old-crls 1))))
+             ;; Leaf CRL is never replaced
+             (is (= (utils/get-crl-number (.get new-crls 0))
+                    (utils/get-crl-number (.get old-crls 0))))))))
+     (testing "unrelated CRLs are ignored while newer relevant CRLs are used"
+       (let [new-and-unrelated-crls-path (str update-crl-fixture-dir "new_crls_and_unrelated_crls.pem")
+             incoming-crl-stream (testutils/pem-to-stream new-and-unrelated-crls-path)]
          (testutils/with-backed-up-crl crl-path crl-backup-path
-           (update-crls incoming-crl-stream crl-path cert-chain-path "foo")
+           (update-crls incoming-crl-stream crl-path cert-chain-path)
            (let [old-crls (utils/pem->crls crl-backup-path)
                  new-crls (utils/pem->crls crl-path)]
-             (doseq [new-crl new-crls
-                     old-crl old-crls]
-               (is (> (utils/get-crl-number new-crl)
-                      (utils/get-crl-number old-crl))))))))
-     (testing "unrelated CRLs are ignored while newer relevant CRLs are used"
-       (let [incoming-crl-stream (testutils/pem-to-stream new-and-unrelated-crls-path)]
-         (testutils/with-backed-up-crl crl-path crl-backup-path
-           (update-crls incoming-crl-stream crl-path cert-chain-path "foo")
-           (let [old-crls (utils/pem->crls crl-backup-path)
-                 new-crls (utils/pem->crls crl-path)
-                 crl-pairs (map vector new-crls old-crls)]
-             (doseq [[new-crl old-crl] crl-pairs]
-               (is (> (utils/get-crl-number new-crl)
-                      (utils/get-crl-number old-crl)))
-               (is (= (utils/get-extension-value new-crl utils/authority-key-identifier-oid)
-                      (utils/get-extension-value old-crl utils/authority-key-identifier-oid))))))))
+               (is (> (utils/get-crl-number (last new-crls))
+                      (utils/get-crl-number (last old-crls))))
+               ;; Leaf CRL is never replaced
+               (is (= (utils/get-crl-number (first new-crls))
+                      (utils/get-crl-number (first old-crls))))
+               (testing "CRLs with same issuer name but different auth keys are not used"
+                 (is (= (utils/get-extension-value (last new-crls) utils/authority-key-identifier-oid)
+                        (utils/get-extension-value (last old-crls) utils/authority-key-identifier-oid)))
+                 (is (= (utils/get-extension-value (first new-crls) utils/authority-key-identifier-oid)
+                        (utils/get-extension-value (first old-crls) utils/authority-key-identifier-oid))))))))
      (testing "all unrelated CRLs are ignored entirely"
-       (let [incoming-crl-stream (testutils/pem-to-stream unrelated-crls-path)]
+       (let [unrelated-crls-path (str update-crl-fixture-dir "unrelated_crls.pem")
+             incoming-crl-stream (testutils/pem-to-stream unrelated-crls-path)]
          (testutils/with-backed-up-crl crl-path crl-backup-path
-           (update-crls incoming-crl-stream crl-path cert-chain-path "foo")
+           (update-crls incoming-crl-stream crl-path cert-chain-path)
            (let [old-crls (utils/pem->crls crl-backup-path)
                  new-crls (utils/pem->crls crl-path)]
              (is (= (count old-crls) (count new-crls)))
              (is (= (set old-crls) (set new-crls)))))))
      (testing "older CRLs are ignored"
-       (let [incoming-crl-stream (testutils/pem-to-stream old-root-crl-path)]
+       (let [new-root-crl-chain-path (str update-crl-fixture-dir "chain_with_new_root.pem")
+             old-root-crl-path (str update-crl-fixture-dir "old_root_crl.pem")
+             incoming-crl-stream (testutils/pem-to-stream old-root-crl-path)]
          (testutils/with-backed-up-crl new-root-crl-chain-path crl-backup-path
-           (update-crls incoming-crl-stream new-root-crl-chain-path cert-chain-path "foo")
+           (update-crls incoming-crl-stream new-root-crl-chain-path cert-chain-path)
            (let [old-crls (utils/pem->crls crl-backup-path)
                  new-crls (utils/pem->crls new-root-crl-chain-path)]
                (is (= (set new-crls) (set old-crls)))))))
-     (testing "does not replace a CRL with the given CA name"
-       (let [incoming-crl-stream (testutils/pem-to-stream new-crls-for-multiple-certs-path)]
-         (testutils/with-backed-up-crl crl-path crl-backup-path
-           (update-crls incoming-crl-stream crl-path cert-chain-path "Intermediate CA 1")
-           (let [old-crls (utils/pem->crls crl-backup-path)
-                 new-crls (utils/pem->crls crl-path)]
-             (is (= (first old-crls) (first new-crls)))
-             (is (> (utils/get-crl-number (last new-crls))
-                    (utils/get-crl-number (last old-crls))))))))
-     (doseq [[path error-message] bad-inputs-and-error-msgs]
-       (testing (str "CRLs from " path " are rejected")
-         (let [incoming-crl-stream (testutils/pem-to-stream path)]
-           (testutils/with-backed-up-crl crl-path crl-backup-path
-             (is (thrown-with-msg? IllegalArgumentException error-message
-                                   (update-crls incoming-crl-stream crl-path cert-chain-path "foo")))
-             (let [old-crls (utils/pem->crls crl-backup-path)
-                   new-crls (utils/pem->crls crl-path)]
-               (is (= (set old-crls) (set new-crls)))))))))))
+     (let [multiple-newest-crls-path (str update-crl-fixture-dir "multiple_newest_root_crls.pem")
+           delta-crl-path (str test-resources-dir "/update_crls/delta_crl.pem")
+           bad-inputs-and-error-msgs {multiple-newest-crls-path #"Could not determine newest CRL."
+                                      delta-crl-path #"Cannot support delta CRL."}]
+       (doseq [[path error-message] bad-inputs-and-error-msgs]
+         (testing (str "CRLs from " path " are rejected")
+           (let [incoming-crl-stream (testutils/pem-to-stream path)]
+             (testutils/with-backed-up-crl crl-path crl-backup-path
+               (is (thrown-with-msg? IllegalArgumentException error-message
+                                     (update-crls incoming-crl-stream crl-path cert-chain-path)))
+               (let [old-crls (utils/pem->crls crl-backup-path)
+                     new-crls (utils/pem->crls crl-path)]
+                 (is (= (set old-crls) (set new-crls))))))))))))
 
 (deftest initialize!-test
   (let [settings (testutils/ca-settings (ks/temp-dir))]
