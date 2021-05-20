@@ -95,6 +95,18 @@
           (rr/status 304)
           (rr/content-type "text/plain")))))
 
+(schema/defn handle-put-certificate-revocation-list!
+  [incoming-crl-pem :- InputStream
+   {:keys [cacrl cacert ca-name]} :- ca/CaSettings]
+  (locking crl-write-serializer
+    (try
+      (ca/update-crls incoming-crl-pem cacrl cacert)
+      (middleware-utils/plain-response 200 "Successfully updated CRLs.")
+      (catch IllegalArgumentException e
+        (let [error-msg (.getMessage e)]
+          (log/error error-msg)
+          (middleware-utils/plain-response 400 error-msg))))))
+
 (schema/defn handle-delete-certificate-request!
   [subject :- String
    ca-settings :- ca/CaSettings]
@@ -389,8 +401,11 @@
           (handle-put-certificate-request! subject body ca-settings))
         (DELETE [""] [subject]
           (handle-delete-certificate-request! subject ca-settings)))
-      (GET ["/certificate_revocation_list/" :ignored-node-name] request
-        (handle-get-certificate-revocation-list request ca-settings))
+      (comidi/context ["/certificate_revocation_list/"]
+        (GET [[#"[^/]+" :ignored-node-name]] request
+          (handle-get-certificate-revocation-list request ca-settings))
+        (PUT [""] request
+          (handle-put-certificate-revocation-list! (:body request) ca-settings)))
       (GET ["/expirations"] request
         (handle-get-ca-expirations ca-settings))
       (PUT ["/clean"] request
