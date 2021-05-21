@@ -407,11 +407,10 @@
           (handle-put-certificate-request! subject body ca-settings))
         (DELETE [""] [subject]
           (handle-delete-certificate-request! subject ca-settings)))
-      (comidi/context ["/certificate_revocation_list/"]
-        (GET [[#"[^/]+" :ignored-node-name]] request
-          (handle-get-certificate-revocation-list request ca-settings))
-        (PUT [""] request
-          (handle-put-certificate-revocation-list! (:body request) ca-settings)))
+      (GET ["/certificate_revocation_list/" :ignored-node-name] request
+        (handle-get-certificate-revocation-list request ca-settings))
+      (PUT ["/certificate_revocation_list"] request
+        (handle-put-certificate-revocation-list! (:body request) ca-settings))
       (GET ["/expirations"] request
         (handle-get-ca-expirations ca-settings))
       (PUT ["/clean"] request
