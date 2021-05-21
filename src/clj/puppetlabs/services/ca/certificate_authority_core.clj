@@ -1,5 +1,5 @@
 (ns puppetlabs.services.ca.certificate-authority-core
-  (:import [java.io InputStream]
+  (:import [java.io InputStream ByteArrayInputStream]
            (clojure.lang IFn)
            (org.joda.time DateTime))
   (:require [puppetlabs.puppetserver.certificate-authority :as ca]
@@ -100,7 +100,10 @@
    {:keys [cacrl cacert enable-infra-crl infra-crl-path]} :- ca/CaSettings]
   (locking crl-write-serializer
     (try
-      (let [incoming-crls (utils/pem->crls incoming-crl-pem)]
+      (let [byte-stream (-> incoming-crl-pem
+                            ca/input-stream->byte-array
+                            ByteArrayInputStream.)
+            incoming-crls (utils/pem->crls byte-stream)]
         (ca/update-crls incoming-crls cacrl cacert)
         (when enable-infra-crl
           (ca/update-crls incoming-crls infra-crl-path cacert)))
