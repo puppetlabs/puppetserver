@@ -104,10 +104,16 @@
                             ca/input-stream->byte-array
                             ByteArrayInputStream.)
             incoming-crls (utils/pem->crls byte-stream)]
-        (ca/update-crls incoming-crls cacrl cacert)
-        (when enable-infra-crl
-          (ca/update-crls incoming-crls infra-crl-path cacert)))
-      (middleware-utils/plain-response 200 "Successfully updated CRLs.")
+        (if (empty? incoming-crls)
+          (do
+            (log/info (i18n/trs "No valid CRLs submitted, nothing will be updated."))
+            (middleware-utils/plain-response 400 "No valid CRLs submitted."))
+
+          (do
+            (ca/update-crls incoming-crls cacrl cacert)
+            (when enable-infra-crl
+              (ca/update-crls incoming-crls infra-crl-path cacert))
+            (middleware-utils/plain-response 200 "Successfully updated CRLs."))))
       (catch IllegalArgumentException e
         (let [error-msg (.getMessage e)]
           (log/error error-msg)
