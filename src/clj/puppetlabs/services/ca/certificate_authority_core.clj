@@ -18,12 +18,12 @@
             [schema.core :as schema]
             [cheshire.core :as cheshire]
             [liberator.core :refer [defresource]]
-            ;[liberator.dev :as liberator-dev]
             [liberator.representation :as representation]
             [ring.util.request :as request]
             [ring.util.response :as rr]
             [puppetlabs.trapperkeeper.services.status.status-core :as status-core]
-            [puppetlabs.i18n.core :as i18n]))
+            [puppetlabs.i18n.core :as i18n]
+            [puppetlabs.ssl-utils.core :as utils]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
@@ -94,6 +94,21 @@
       (-> (rr/response nil)
           (rr/status 304)
           (rr/content-type "text/plain")))))
+
+(schema/defn handle-put-certificate-revocation-list!
+  [incoming-crl-pem :- InputStream
+   {:keys [cacrl cacert enable-infra-crl infra-crl-path]} :- ca/CaSettings]
+  (locking crl-write-serializer
+    (try
+      (let [incoming-crls (utils/pem->crls incoming-crl-pem)]
+        (ca/update-crls incoming-crls cacrl cacert)
+        (when enable-infra-crl
+          (ca/update-crls incoming-crls infra-crl-path cacert)))
+      (middleware-utils/plain-response 200 "Successfully updated CRLs.")
+      (catch IllegalArgumentException e
+        (let [error-msg (.getMessage e)]
+          (log/error error-msg)
+          (middleware-utils/plain-response 400 error-msg))))))
 
 (schema/defn handle-delete-certificate-request!
   [subject :- String
@@ -389,8 +404,11 @@
           (handle-put-certificate-request! subject body ca-settings))
         (DELETE [""] [subject]
           (handle-delete-certificate-request! subject ca-settings)))
-      (GET ["/certificate_revocation_list/" :ignored-node-name] request
-        (handle-get-certificate-revocation-list request ca-settings))
+      (comidi/context ["/certificate_revocation_list/"]
+        (GET [[#"[^/]+" :ignored-node-name]] request
+          (handle-get-certificate-revocation-list request ca-settings))
+        (PUT [""] request
+          (handle-put-certificate-revocation-list! (:body request) ca-settings)))
       (GET ["/expirations"] request
         (handle-get-ca-expirations ca-settings))
       (PUT ["/clean"] request
