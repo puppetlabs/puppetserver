@@ -632,3 +632,34 @@
              formatter (time-format/formatter "YYY-MM-dd'T'HH:mm:ssz")]
          (is (time/after? (time-format/parse formatter ca-exp) (time/now)))
          (is (time/after? (time-format/parse formatter crl-exp) (time/now))))))))
+
+(deftest update-crl-endpoint-test
+  (bootstrap/with-puppetserver-running-with-mock-jrubies
+   "JRuby mocking is safe here because all of the requests are to the CA
+     endpoints, which are implemented in Clojure."
+   app
+   {:jruby-puppet
+    {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
+    :webserver
+    {:ssl-cert (str bootstrap/master-conf-dir "/ssl/certs/localhost.pem")
+     :ssl-key (str bootstrap/master-conf-dir "/ssl/private_keys/localhost.pem")
+     :ssl-ca-cert (str bootstrap/master-conf-dir "/ssl/ca/ca_crt.pem")
+     :ssl-crl-path (str bootstrap/master-conf-dir "/ssl/crl.pem")}}
+   (testing "valid CRL returns 200"
+     (let [response (http-client/put
+                     "https://localhost:8140/puppet-ca/v1/certificate_revocation_list"
+                     {:ssl-cert (str bootstrap/master-conf-dir "/ssl/ca/ca_crt.pem")
+                      :ssl-key (str bootstrap/master-conf-dir "/ssl/ca/ca_key.pem")
+                      :ssl-ca-cert (str bootstrap/master-conf-dir "/ssl/ca/ca_crt.pem")
+                      :as :text
+                      :body (slurp (str bootstrap/master-conf-dir "/ssl/crl.pem"))})]
+       (is (= 200 (:status response)))))
+   (testing "bad data returns 400"
+     (let [response (http-client/put
+                     "https://localhost:8140/puppet-ca/v1/certificate_revocation_list"
+                     {:ssl-cert (str bootstrap/master-conf-dir "/ssl/ca/ca_crt.pem")
+                      :ssl-key (str bootstrap/master-conf-dir "/ssl/ca/ca_key.pem")
+                      :ssl-ca-cert (str bootstrap/master-conf-dir "/ssl/ca/ca_crt.pem")
+                      :as :text
+                      :body "Bad data"})]
+       (is (= 400 (:status response)))))))

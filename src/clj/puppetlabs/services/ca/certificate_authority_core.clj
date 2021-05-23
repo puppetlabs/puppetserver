@@ -1,5 +1,5 @@
 (ns puppetlabs.services.ca.certificate-authority-core
-  (:import [java.io InputStream]
+  (:import [java.io InputStream ByteArrayInputStream]
            (clojure.lang IFn)
            (org.joda.time DateTime))
   (:require [puppetlabs.puppetserver.certificate-authority :as ca]
@@ -100,11 +100,20 @@
    {:keys [cacrl cacert enable-infra-crl infra-crl-path]} :- ca/CaSettings]
   (locking crl-write-serializer
     (try
-      (let [incoming-crls (utils/pem->crls incoming-crl-pem)]
-        (ca/update-crls incoming-crls cacrl cacert)
-        (when enable-infra-crl
-          (ca/update-crls incoming-crls infra-crl-path cacert)))
-      (middleware-utils/plain-response 200 "Successfully updated CRLs.")
+      (let [byte-stream (-> incoming-crl-pem
+                            ca/input-stream->byte-array
+                            ByteArrayInputStream.)
+            incoming-crls (utils/pem->crls byte-stream)]
+        (if (empty? incoming-crls)
+          (do
+            (log/info (i18n/trs "No valid CRLs submitted, nothing will be updated."))
+            (middleware-utils/plain-response 400 "No valid CRLs submitted."))
+
+          (do
+            (ca/update-crls incoming-crls cacrl cacert)
+            (when enable-infra-crl
+              (ca/update-crls incoming-crls infra-crl-path cacert))
+            (middleware-utils/plain-response 200 "Successfully updated CRLs."))))
       (catch IllegalArgumentException e
         (let [error-msg (.getMessage e)]
           (log/error error-msg)
@@ -404,11 +413,10 @@
           (handle-put-certificate-request! subject body ca-settings))
         (DELETE [""] [subject]
           (handle-delete-certificate-request! subject ca-settings)))
-      (comidi/context ["/certificate_revocation_list/"]
-        (GET [[#"[^/]+" :ignored-node-name]] request
-          (handle-get-certificate-revocation-list request ca-settings))
-        (PUT [""] request
-          (handle-put-certificate-revocation-list! (:body request) ca-settings)))
+      (GET ["/certificate_revocation_list/" :ignored-node-name] request
+        (handle-get-certificate-revocation-list request ca-settings))
+      (PUT ["/certificate_revocation_list"] request
+        (handle-put-certificate-revocation-list! (:body request) ca-settings))
       (GET ["/expirations"] request
         (handle-get-ca-expirations ca-settings))
       (PUT ["/clean"] request
