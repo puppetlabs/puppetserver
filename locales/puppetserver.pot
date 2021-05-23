@@ -247,10 +247,6 @@ msgid "Could not determine newest CRL."
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
-msgid "Not replacing CRL for the Puppet CA cert."
-msgstr ""
-
-#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 msgid ""
 "Received CRLs for issuer {0} but none were newer than the existing CRL; "
 "keeping the existing CRL."
@@ -360,6 +356,10 @@ msgstr ""
 
 #: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
 msgid "Could not find certificate_request {0}"
+msgstr ""
+
+#: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
+msgid "No valid CRLs submitted, nothing will be updated."
 msgstr ""
 
 #: src/clj/puppetlabs/services/ca/certificate_authority_core.clj

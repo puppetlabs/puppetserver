@@ -1453,27 +1453,21 @@
   is the given CRL. Never replaces the CRL corresponding to the Puppet
   CA signing cert."
   [crl :- CertificateRevocationList
-   key-crl-map :- {KeyIdExtension [CertificateRevocationList]}
-   ca-cert-key-id :- [Byte]]
+   key-crl-map :- {KeyIdExtension [CertificateRevocationList]}]
   (let [key-id-ext (utils/get-extension-value crl utils/authority-key-identifier-oid)
         maybe-new-crls (get key-crl-map key-id-ext)]
-    (if (= (:key-identifier key-id-ext) ca-cert-key-id)
-      (do
-        (log/info (i18n/trs "Not replacing CRL for the Puppet CA cert."))
-        crl)
-
-      (if maybe-new-crls
-        (let [new-crl (get-newest-crl (conj maybe-new-crls crl))
-              issuer (.getIssuerX500Principal crl)]
-          (if (.equals crl new-crl)
-            (log/warn (i18n/trs
-                       "Received CRLs for issuer {0} but none were newer than the existing CRL; keeping the existing CRL."
-                       issuer))
-            (log/info (i18n/trs
-                       "Updated CRL for issuer {0}." issuer)))
-          new-crl)
-        ;; no new CRLs found for this issuer, keep it
-        crl))))
+    (if maybe-new-crls
+      (let [new-crl (get-newest-crl (conj maybe-new-crls crl))
+            issuer (.getIssuerX500Principal crl)]
+        (if (.equals crl new-crl)
+          (log/warn (i18n/trs
+                     "Received CRLs for issuer {0} but none were newer than the existing CRL; keeping the existing CRL."
+                     issuer))
+          (log/info (i18n/trs
+                     "Updated CRL for issuer {0}." issuer)))
+        new-crl)
+      ;; no new CRLs found for this issuer, keep it
+      crl)))
 
 (schema/defn ^:always-validate update-crls
   "Given a collection of CRLs, update the CRL chain and confirm that
@@ -1486,6 +1480,13 @@
         cert-chain (utils/pem->certs cert-chain-path)
         ca-cert-key (utils/get-extension-value (first cert-chain)
                                                utils/subject-key-identifier-oid)
+        external-crl-chain (remove #(= ca-cert-key
+                                       (:key-identifier (utils/get-extension-value % utils/authority-key-identifier-oid)))
+                                   current-crls)
+        ca-crl (first (filter
+                       #(= ca-cert-key
+                           (:key-identifier (utils/get-extension-value % utils/authority-key-identifier-oid)))
+                       current-crls))
         incoming-crls-by-key-id (->> incoming-crls
                                      ;; just in case we're given multiple copies
                                      ;; of the same CRL, deduplicate so we can
@@ -1493,10 +1494,10 @@
                                      set
                                      (group-by #(utils/get-extension-value
                                                  % utils/authority-key-identifier-oid)))
-        new-crl-chain (map #(maybe-replace-crl % incoming-crls-by-key-id ca-cert-key)
-                       current-crls)]
-    (validate-certs-and-crls cert-chain new-crl-chain)
-    (write-crls new-crl-chain crl-path)))
+        new-ext-crl-chain (cons ca-crl (map #(maybe-replace-crl % incoming-crls-by-key-id)
+                                            external-crl-chain))]
+    (validate-certs-and-crls cert-chain new-ext-crl-chain)
+    (write-crls new-ext-crl-chain crl-path)))
 
 (schema/defn ensure-directories-exist!
   "Create any directories used by the CA if they don't already exist."

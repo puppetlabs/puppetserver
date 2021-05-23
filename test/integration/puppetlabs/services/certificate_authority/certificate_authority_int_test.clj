@@ -473,33 +473,33 @@
              cert1 (utils/pem->cert cert1-path)
              cert2-path (ca/path-to-cert (str bootstrap/server-conf-dir "/ca/signed") subject2)
              cert2 (utils/pem->cert cert2-path)]
-       (testing "should update infrastructure CRL with multiple certs"
-         (let [ca-cert (ssl-utils/pem->ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
-                                               (str bootstrap/server-conf-dir "/ca/ca_key.pem"))
-               options {:ssl-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
-                        :ssl-key (str bootstrap/server-conf-dir "/ca/ca_key.pem")
-                        :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
-                        :as :text}]
-           (testing "Infra CRL should contain the revoked compiler's certificate"
-             (let [revoke-response (http-client/put
-                                     "https://localhost:8140/puppet-ca/v1/clean"
-                                     (merge options
+         (testing "should update infrastructure CRL with multiple certs"
+           (let [ca-cert (ssl-utils/pem->ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                                                 (str bootstrap/server-conf-dir "/ca/ca_key.pem"))
+                 options {:ssl-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                          :ssl-key (str bootstrap/server-conf-dir "/ca/ca_key.pem")
+                          :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                          :as :text}]
+             (testing "Infra CRL should contain the revoked compiler's certificate"
+               (let [revoke-response (http-client/put
+                                      "https://localhost:8140/puppet-ca/v1/clean"
+                                      (merge options
                                              {:body (format "{\"certnames\":[\"%s\",\"%s\"]}"
                                                             subject1 subject2)
                                               :headers {"content-type"
                                                         "application/json"}}))]
-               ;; If the revocation was successful infra CRL should contain above revoked compiler's cert
-               (is (= 200 (:status revoke-response)))
-               (is (utils/revoked? (utils/pem->ca-crl
-                                    (str bootstrap/server-conf-dir "/ca/infra_crl.pem")
-                                    ca-cert)
-                                   cert1))
-               (is (utils/revoked? (utils/pem->ca-crl
-                                    (str bootstrap/server-conf-dir "/ca/infra_crl.pem")
-                                    ca-cert)
-                                   cert2))
-               (is (false? (fs/exists? cert1-path)))
-               (is (false? (fs/exists? cert2-path))))))))))))
+                 ;; If the revocation was successful infra CRL should contain above revoked compiler's cert
+                 (is (= 200 (:status revoke-response)))
+                 (is (utils/revoked? (utils/pem->ca-crl
+                                      (str bootstrap/server-conf-dir "/ca/infra_crl.pem")
+                                      ca-cert)
+                                     cert1))
+                 (is (utils/revoked? (utils/pem->ca-crl
+                                      (str bootstrap/server-conf-dir "/ca/infra_crl.pem")
+                                      ca-cert)
+                                     cert2))
+                 (is (false? (fs/exists? cert1-path)))
+                 (is (false? (fs/exists? cert2-path))))))))))))
 
 
 (deftest ^:integration certificate-status-returns-auth-ext-info
@@ -632,3 +632,34 @@
              formatter (time-format/formatter "YYY-MM-dd'T'HH:mm:ssz")]
          (is (time/after? (time-format/parse formatter ca-exp) (time/now)))
          (is (time/after? (time-format/parse formatter crl-exp) (time/now))))))))
+
+(deftest update-crl-endpoint-test
+  (bootstrap/with-puppetserver-running-with-mock-jrubies
+   "JRuby mocking is safe here because all of the requests are to the CA
+     endpoints, which are implemented in Clojure."
+   app
+   {:jruby-puppet
+    {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
+    :webserver
+    {:ssl-cert (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")
+     :ssl-key (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
+     :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+     :ssl-crl-path (str bootstrap/server-conf-dir "/ssl/crl.pem")}}
+   (testing "valid CRL returns 200"
+     (let [response (http-client/put
+                     "https://localhost:8140/puppet-ca/v1/certificate_revocation_list"
+                     {:ssl-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                      :ssl-key (str bootstrap/server-conf-dir "/ca/ca_key.pem")
+                      :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                      :as :text
+                      :body (slurp (str bootstrap/server-conf-dir "/ssl/crl.pem"))})]
+       (is (= 200 (:status response)))))
+   (testing "bad data returns 400"
+     (let [response (http-client/put
+                     "https://localhost:8140/puppet-ca/v1/certificate_revocation_list"
+                     {:ssl-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                      :ssl-key (str bootstrap/server-conf-dir "/ca/ca_key.pem")
+                      :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                      :as :text
+                      :body "Bad data"})]
+       (is (= 400 (:status response)))))))
