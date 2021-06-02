@@ -132,7 +132,7 @@
                     {:dependencies [[org.bouncycastle/bcpkix-fips]
                                     [org.bouncycastle/bc-fips]
                                     [org.bouncycastle/bctls-fips]]
-                     :jvm-opts ~(let [version (System/getProperty "java.version")
+                     :jvm-opts ~(let [version (System/getProperty "java.specification.version")
                                       [major minor _] (clojure.string/split version #"\.")
                                       unsupported-ex (ex-info "Unsupported major Java version. Expects 8 or 11."
                                                        {:major major
