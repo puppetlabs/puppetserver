@@ -26,7 +26,7 @@
             [puppetlabs.metrics :as metrics]
             [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.comidi :as comidi]
-            [cemerick.url :as url]
+            [lambdaisland.uri :as uri]
             [puppetlabs.testutils.task-coordinator :as coordinator]
             [puppetlabs.services.jruby.jruby-metrics-core :as jruby-metrics-core]
             [clojure.string :as str]
@@ -78,9 +78,9 @@
   ([coordinator request-id uri phase]
     ;; add the request id into the url as a query param
     ;; for use with the coordinator
-   (let [orig-url (url/url (str "http://localhost:8140" uri))
-         query (assoc (:query orig-url) "request-id" request-id)
-         url (assoc orig-url :query query)
+   (let [url (-> (str "http://localhost:8140" uri)
+                 uri/uri
+                 (uri/assoc-query :request-id request-id))
          ;; our request function to pass to the coordinator
          ;; is just a simple HTTP GET.
          req-fn (fn [] (http-get (str url)))]
@@ -140,8 +140,8 @@
                                   ;; the comidi handler can interact with the
                                   ;; test request coordinator
                                   (let [request-id (-> (:query-string request)
-                                                     url/query->map
-                                                     (get "request-id"))]
+                                                     uri/query-string->map
+                                                     (get :request-id))]
                                     ;; notify the coordinator that we've begun to handle the request
                                     (coordinator/notify-task-progress coordinator request-id :http-handler-invoked)
                                     ;; delegate to the jruby request handler
