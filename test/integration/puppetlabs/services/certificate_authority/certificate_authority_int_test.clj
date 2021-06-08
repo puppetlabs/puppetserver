@@ -193,8 +193,6 @@
           req-dir (str server-conf-dir "/ca/requests")
           key-pair (ssl-utils/generate-key-pair)
           subjectDN (ssl-utils/cn "test_cert_ca_true")
-          serial 1
-          public-key (ssl-utils/get-public-key key-pair)
           ca-ext [(ssl-utils/basic-constraints-for-ca)]
           csr (ssl-utils/generate-certificate-request key-pair
                                                       subjectDN
