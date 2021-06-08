@@ -91,6 +91,8 @@
                                            org.slf4j/jcl-over-slf4j
                                            org.slf4j/slf4j-api]]]
 
+  :nvd {:suppression-file "ext/travisci/suppression.xml"}
+
   :uberjar-name "puppet-server-release.jar"
   :lein-ezbake {:vars {:user "puppet"
                        :group "puppet"
