@@ -122,7 +122,11 @@
                                         [beckon]
                                         [lambdaisland/uri "1.4.70"]]}
              :dev [:defaults
-                   {:dependencies [[org.bouncycastle/bcpkix-jdk15on]]}]
+                   {:dependencies [[org.bouncycastle/bcpkix-jdk15on]]
+                    :plugins [[lein-nvd "1.4.1" :exclusions [org.apache.commons/commons-lang3
+                                                             org.clojure/clojure
+                                                             org.slf4j/jcl-over-slf4j
+                                                             org.slf4j/slf4j-api]]]}]
              :fips [:defaults
                     {:dependencies [[org.bouncycastle/bcpkix-fips]
                                     [org.bouncycastle/bc-fips]
@@ -235,6 +239,8 @@
                ~(str "-Xms" (heap-size "1G"))
                ~(str "-Xmx" (heap-size "2G"))
                "-XX:+IgnoreUnrecognizedVMOptions"]
+
+  :nvd {:suppression-file "ext/travisci/suppression.xml"}
 
   :repl-options {:init-ns dev-tools}
 
