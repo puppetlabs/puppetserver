@@ -21,6 +21,9 @@ jobs:
     - jdk: openjdk11
       env: MULTITHREADED=true
       name: "Java 11 w/ multithreaded"
+    - stage: puppetserver vulnerability scan
+      script:
+        - lein nvd check
     - stage: puppetserver container tests
       dist: focal
       language: ruby
