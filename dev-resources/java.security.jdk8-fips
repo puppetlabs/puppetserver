@@ -288,7 +288,7 @@ security.overridePropertiesFile=true
 # Determines the default key and trust manager factory algorithms for
 # the javax.net.ssl package.
 #
-ssl.KeyManagerFactory.algorithm=PKIX
+ssl.KeyManagerFactory.algorithm=BCFKS
 ssl.TrustManagerFactory.algorithm=PKIX
 
 #
