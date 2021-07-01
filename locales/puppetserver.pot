@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: 6d5cc9f9883b1a7465a48811f64070dfe7bbf95e\n"
+"X-Git-Ref: a7008e7c8c662ed5c15a596140c12fd5a80b74d0\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -213,7 +213,8 @@ msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 msgid ""
-"CSR ''{0}'' contains subject alternative names ({1}), which are disallowed."
+"CSR ''{0}'' contains extra subject alternative names ({1}), which are "
+"disallowed."
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
