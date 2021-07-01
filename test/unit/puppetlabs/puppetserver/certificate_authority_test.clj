@@ -1160,7 +1160,7 @@
             (doseq [[policy subject csr-file expected]
                     [["subject alt name extension exists" "hostwithaltnames" "hostwithaltnames.pem"
                       #(= {:kind :disallowed-extension
-                           :msg (str "CSR 'hostwithaltnames' contains subject alternative names "
+                           :msg (str "CSR 'hostwithaltnames' contains extra subject alternative names "
                                    "(DNS:altname1, DNS:altname2, DNS:altname3), which are disallowed. "
                                    "To allow subject alternative names, set allow-subject-alt-names to "
                                    "true in your ca.conf file. Then restart the puppetserver "
@@ -1482,6 +1482,44 @@
 (deftest netscape-comment-value-test
   (testing "Netscape comment constant has expected value"
     (is (= "Puppet Server Internal Certificate" netscape-comment-value))))
+
+(deftest ensure-alt-names-allowed-test
+  (let [subject-keys (utils/generate-key-pair 512)
+        subject "new-cert"
+        subject-dn (utils/cn subject)]
+    (logutils/with-test-logging
+     (testing "when allow-subject-alt-names is false"
+       (testing "rejects alt names that don't match the subject"
+         (let [alt-name-ext {:oid utils/subject-alt-name-oid
+                             :value {:dns-name ["bad-name"]}
+                             :critical false}
+               csr (utils/generate-certificate-request subject-keys subject-dn [alt-name-ext])]
+           (is (thrown+-with-msg?
+                [:kind :disallowed-extension]
+                #".*new-cert.*subject alternative names.*bad-name.*"
+                (ensure-subject-alt-names-allowed! csr false))))
+         (let [alt-name-ext {:oid utils/subject-alt-name-oid
+                             :value {:dns-name ["bad-name" subject]}
+                             :critical false}
+               csr (utils/generate-certificate-request subject-keys subject-dn [alt-name-ext])]
+           (is (thrown+-with-msg?
+                [:kind :disallowed-extension]
+                #".*new-cert.*subject alternative names.*bad-name.*"
+                (ensure-subject-alt-names-allowed! csr false)))))
+       (testing "allows a single alt name matching the subject"
+         (let [alt-name-ext {:oid utils/subject-alt-name-oid
+                             :value {:dns-name [subject]}
+                             :critical false}
+               csr (utils/generate-certificate-request subject-keys subject-dn [alt-name-ext])]
+           (is (nil? (ensure-subject-alt-names-allowed! csr false)))
+           (is (logutils/logged? #"Allowing subject alt name" :debug))))))
+    (testing "when allow-subject-alt-names is true"
+      (testing "allows all alt names"
+        (let [alt-name-ext {:oid utils/subject-alt-name-oid
+                            :value {:dns-name [subject "another-name"]}
+                            :critical false}
+              csr (utils/generate-certificate-request subject-keys subject-dn [alt-name-ext])]
+          (is (nil? (ensure-subject-alt-names-allowed! csr true))))))))
 
 (deftest ensure-no-authorization-extensions!-test
   (testing "when checking a csr for authorization extensions"

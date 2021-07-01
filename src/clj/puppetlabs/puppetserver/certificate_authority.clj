@@ -1337,18 +1337,27 @@
 (schema/defn ensure-subject-alt-names-allowed!
   "Throws an exception if the CSR contains subject-alt-names AND the user has
    chosen to disallow subject-alt-names. Subject alt names can be allowed by
-   setting allow-subject-alt-names to true in the ca.conf file."
+   setting allow-subject-alt-names to true in the ca.conf file. Always allows
+   a single subject alt name that matches the CSR subject, which may be
+   present to comply with RFC 2818 (see SERVER-2338)."
   [csr :- CertificateRequest
    allow-subject-alt-names :- schema/Bool]
   (when-let [subject-alt-names (not-empty (subject-alt-names csr))]
     (if (false? allow-subject-alt-names)
-      (let [subject (get-csr-subject csr)]
-        (sling/throw+
-          {:kind :disallowed-extension
-           :msg (format "%s %s %s"
-                        (i18n/tru "CSR ''{0}'' contains subject alternative names ({1}), which are disallowed." subject (str/join ", " subject-alt-names))
-                        (i18n/tru "To allow subject alternative names, set allow-subject-alt-names to true in your ca.conf file.")
-                        (i18n/tru "Then restart the puppetserver and try signing this certificate again."))})))))
+      (let [subject (get-csr-subject csr)
+            cn-alt-name (str "DNS:" subject)]
+        (if (and (= 1 (count subject-alt-names))
+                 (= (first subject-alt-names) cn-alt-name))
+          (log/debug "Allowing subject alt name that matches CSR subject.")
+          (let [disallowed-alt-names (filter #(not (= cn-alt-name %))
+                                             subject-alt-names)]
+            (sling/throw+
+             {:kind :disallowed-extension
+              :msg (format "%s %s %s"
+                           (i18n/tru "CSR ''{0}'' contains extra subject alternative names ({1}), which are disallowed."
+                                     subject (str/join ", " disallowed-alt-names))
+                           (i18n/tru "To allow subject alternative names, set allow-subject-alt-names to true in your ca.conf file.")
+                           (i18n/tru "Then restart the puppetserver and try signing this certificate again."))})))))))
 
 (schema/defn ^:always-validate process-csr-submission!
   "Given a CSR for a subject (typically from the HTTP endpoint),

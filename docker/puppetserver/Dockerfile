@@ -93,6 +93,11 @@ RUN apt-get update && \
 
 COPY . /puppetserver
 WORKDIR /puppetserver
+
+# Fixes a linux 5.6 - 5.10 kernel bug around copy_file_range syscall
+# https://github.com/docker/for-linux/issues/1015
+ENV RUBYOPT=-r/puppetserver/docker/ruby-docker-copy-patch
+
 RUN lein clean && \
     lein install && \
     EZBAKE_ALLOW_UNREPRODUCIBLE_BUILDS=true EZBAKE_NODEPLOY=true COW=base-bionic-amd64.cow MOCK='' GEM_SOURCE=https://rubygems.org lein with-profile ezbake ezbake local-build && \
