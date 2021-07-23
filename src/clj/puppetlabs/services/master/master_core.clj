@@ -340,7 +340,7 @@
         size (fs/size file)
         sha256 (ks/file->sha256 (io/file file))
         ;; we trust the file path from Puppet, so extract the subpath from file
-        static-path (re-find (re-pattern (str #"[^/]+/[a-z][a-z0-9_]*/(?:tasks|files|lib)/.*" basename)) file)
+        static-path (re-find (re-pattern (str #"[^/]+/[a-z][a-z0-9_]*/(?:tasks|files|scripts|lib)/.*" basename)) file)
         [_ module-name mount rest] (str/split static-path #"/" 4)
         uri (try
               ;; if code content can be retrieved, then use static_file_content
@@ -352,8 +352,9 @@
                 (log/debug (i18n/trs "Static file unavailable for {0}: {1}" file e))
                 {:path (case mount
                          "files" (format "/puppet/v3/file_content/modules/%s/%s" module-name rest)
-                         "tasks" (format "/puppet/v3/file_content/tasks/%s/%s" module-name rest)
-                         "lib" (format "/puppet/v3/file_content/plugins/%s" rest))
+                         "lib" (format "/puppet/v3/file_content/plugins/%s" rest)
+                         "scripts" (format "/puppet/v3/file_content/scripts/%s/%s" module-name rest)
+                         "tasks" (format "/puppet/v3/file_content/tasks/%s/%s" module-name rest))
                  :params {:environment env-name}}))]
     {:filename subpath
      :sha256 sha256
@@ -834,8 +835,8 @@
   [path :- schema/Str]
   ;; Here, keywords represent a single element in the path. Anything between two '/' counts.
   ;; The second vector takes anything else that might be on the end of the path.
-  ;; Below, this corresponds to '*/*/files/**' or '*/*/tasks/**' in a filesystem glob.
-  (bidi/match-route [[#"[^/]+/" :module-name #"/(files|tasks|lib)/" [#".+" :rest]] :_]
+  ;; Below, this corresponds to '*/*/files/**' or '*/*/tasks/**' or '*/*/scripts/**' in a filesystem glob.
+  (bidi/match-route [[#"[^/]+/" :module-name #"/(files|tasks|scripts|lib)/" [#".+" :rest]] :_]
                          path))
 
 (defn static-file-content-request-handler
@@ -866,7 +867,7 @@
         (not (valid-static-file-path? file-path))
         {:status 403
          :headers {"Content-Type" "text/plain"}
-         :body (i18n/tru "Request Denied: A /static_file_content request must be a file within the files, lib, or tasks directory of a module.")}
+         :body (i18n/tru "Request Denied: A /static_file_content request must be a file within the files, lib, scripts, or tasks directory of a module.")}
 
         :else
         {:status 200

@@ -254,7 +254,7 @@
   because we have to do additional routing after branching on the query
   parameter, which is not natively supported in bidi."
 
-  ["" {[[#"tasks|modules" :mount-point] "/" :module "/" [#".+" :file-path]] :basic
+  ["" {[[#"modules|scripts|tasks" :mount-point] "/" :module "/" [#".+" :file-path]] :basic
        [[#"plugins|pluginfacts" :mount-point] #"/?" [#".*" :file-path]] :pluginsync}])
 
 (defn make-file-content-response
