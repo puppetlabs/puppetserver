@@ -524,6 +524,25 @@
       (is (true? (revoked? cert1)))
       (is (true? (revoked? cert2))))))
 
+(deftest filter-already-revoked-serials-test
+  (let [crl (-> (get-certificate-revocation-list cacrl)
+                  StringReader.
+                  utils/pem->crl)]
+  (testing "Return an empty vector when all supplied serials are already in CRL"
+    (let [test-serial (vec [4])
+          filtered-serial (filter-already-revoked-serials test-serial crl)]
+      (is (empty? filtered-serial))))
+
+  (testing "Return a vector of serials not yet in CRL"
+    (let [test-serial (vec [1 2 3 4])
+          filtered-serial (filter-already-revoked-serials test-serial crl)]
+      (is (true? (= (sort filtered-serial) [1 2 3])))))
+
+  (testing "Deduplicates the vector of serials to be revoked"
+    (let [test-serial (vec [1 1 2 2 3 3])
+          filtered-serial (filter-already-revoked-serials test-serial crl)]
+      (is (apply distinct? filtered-serial))))))
+
 (deftest get-certificate-revocation-list-test
   (testing "`get-certificate-revocation-list` returns a valid CRL file."
     (let [crl (-> (get-certificate-revocation-list cacrl)
