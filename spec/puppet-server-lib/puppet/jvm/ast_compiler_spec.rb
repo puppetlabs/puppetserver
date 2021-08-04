@@ -152,37 +152,21 @@ CODE
 
     context 'when running a project plan' do
       let(:boltlib_path) { [] }
-      context 'single threaded' do
-        it 'returns puppet settings back to normal' do
-          # TODO: This is a temporary stub of the Bolt requires to get this
-          # test to pass. We should figure out how to properly load Bolt code
-          # later for the tests.
-          allow(Puppet::Server::ASTCompiler).to receive(:load_bolt)
-          mock_apply_inventory_class = double('Bolt::ApplyInventory')
-          allow(mock_apply_inventory_class).to receive(:new).with(anything).and_return(double('mock'))
-          stub_const("Bolt::ApplyInventory", mock_apply_inventory_class)
+      it 'returns puppet settings back to normal' do
+        # TODO: This is a temporary stub of the Bolt requires to get this
+        # test to pass. We should figure out how to properly load Bolt code
+        # later for the tests.
+        allow(Puppet::Server::ASTCompiler).to receive(:load_bolt)
+        mock_apply_inventory_class = double('Bolt::ApplyInventory')
+        allow(mock_apply_inventory_class).to receive(:new).with(anything).and_return(double('mock'))
+        stub_const("Bolt::ApplyInventory", mock_apply_inventory_class)
 
-          original_settings = {
-            'vardir' => Puppet[:vardir],
-            'confdir' => Puppet[:confdir],
-            'logdir' => Puppet[:logdir],
-            'codedir' => Puppet[:codedir],
-            'basemodulepath' => Puppet[:basemodulepath],
-            'vendormoduledir' => Puppet[:vendormoduledir],
-            'hiera_config' => Puppet[:hiera_config]
-          }
-
-          # Use a simple resource, since we aren't testing the compilation itself
-          # but rather ensuring the compilation does not interfere with global state
-          response = Puppet::Server::ASTCompiler.compile(project_request("notify { 'my_notify': }"), boltlib_path)
-          notify = find_notify(response[:catalog])
-          expect(notify).not_to be_nil
-          expect(notify['title']).to eq("my_notify")
-
-          original_settings.each do |setting_name, original_setting|
-            expect(Puppet[setting_name]).to eq(original_setting)
-          end
-        end
+        # Use a simple resource, since we aren't testing the compilation itself
+        # but rather ensuring the compilation does not interfere with global state
+        response = Puppet::Server::ASTCompiler.compile(project_request("notify { 'my_notify': }"), boltlib_path)
+        notify = find_notify(response[:catalog])
+        expect(notify).not_to be_nil
+        expect(notify['title']).to eq("my_notify")
       end
     end
   end
