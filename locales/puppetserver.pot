@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: 96317955a69879b8de94ae102657d5f10b820322\n"
+"X-Git-Ref: 21f2ddbbe6177a71639b2750043f92e9ad31431e\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -280,10 +280,22 @@ msgid "Removed certificate request for {0} at ''{1}''"
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Certificate with serial {0} is already revoked."
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "No revoke action needed. The certs are already in the CRL."
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 msgid "Revoked 1 certificate: {1}"
 msgid_plural "Revoked {0} certificates: {1}"
 msgstr[0] ""
 msgstr[1] ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "No revoke action needed. The infra certs are already in the infra CRL"
+msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 msgid "Infra node certificate(s) being revoked; publishing updated infra CRL"
@@ -617,6 +629,18 @@ msgstr ""
 msgid ""
 "Request Denied: A /static_file_content request must be a file within the "
 "files, lib, or tasks directory of a module."
+msgstr ""
+
+#: src/clj/puppetlabs/services/master/master_core.clj
+msgid ""
+"A compile request cannot specify both `environment` and `versioned_project` "
+"parameters."
+msgstr ""
+
+#: src/clj/puppetlabs/services/master/master_core.clj
+msgid ""
+"A compile request must include an `environment` or `versioned_project` "
+"parameter."
 msgstr ""
 
 #: src/clj/puppetlabs/services/master/master_core.clj
