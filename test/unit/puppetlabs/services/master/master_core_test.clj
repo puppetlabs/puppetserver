@@ -403,7 +403,7 @@
                           (compile-ast [_ _ _ _] {:cool "catalog"}))
           handler (fn ([req] {:request req}))
           app (build-ring-handler handler "1.2.3" jruby-service)]
-      (testing "compile endpoint"
+      (testing "compile endpoint for environments"
         (let [response (app (-> {:request-method :post
                                  :uri "/v3/compile"
                                  :content-type "application/json"}
@@ -413,7 +413,43 @@
                                                               :facts {:values {}}
                                                               :trusted_facts {:values {}}
                                                               :variables {:values {}}}))))]
-          (is (= 200 (:status response))))))))
+          (is (= 200 (:status response)))))
+      (testing "compile endpoint for projects"
+        (let [response (app (-> {:request-method :post
+                                 :uri "/v3/compile"
+                                 :content-type "application/json"}
+                                (ring-mock/body (json/encode {:certname "foo"
+                                                              :versioned_project "fake_project"
+                                                              :code_ast "{\"__pcore_something\": \"Foo\"}"
+                                                              :facts {:values {}}
+                                                              :trusted_facts {:values {}}
+                                                              :variables {:values {}}
+                                                              :options {:compile_for_plan true}}))))]
+          (is (= 200 (:status response)))))
+      (testing "compile endpoint fails with no environment or versioned_project"
+        (let [response (app (-> {:request-method :post
+                                 :uri "/v3/compile"
+                                 :content-type "application/json"}
+                                (ring-mock/body (json/encode {:certname "foo"
+                                                              :code_ast "{\"__pcore_something\": \"Foo\"}"
+                                                              :facts {:values {}}
+                                                              :trusted_facts {:values {}}
+                                                              :variables {:values {}}
+                                                              :options {:compile_for_plan true}}))))]
+          (is (= 400 (:status response)))))
+      (testing "compile endpoint fails with both environment and versioned_project"
+        (let [response (app (-> {:request-method :post
+                                 :uri "/v3/compile"
+                                 :content-type "application/json"}
+                                (ring-mock/body (json/encode {:certname "foo"
+                                                              :environment "production"
+                                                              :versioned_project "fake_project"
+                                                              :code_ast "{\"__pcore_something\": \"Foo\"}"
+                                                              :facts {:values {}}
+                                                              :trusted_facts {:values {}}
+                                                              :variables {:values {}}
+                                                              :options {:compile_for_plan true}}))))]
+          (is (= 400 (:status response))))))))
 
 (deftest v4-routes-test
   (with-redefs [jruby-core/borrow-from-pool-with-timeout (fn [_ _ _] {:jruby-puppet (Object.)})
