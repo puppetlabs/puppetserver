@@ -892,11 +892,14 @@
 
 (def CompileRequest
   {(schema/required-key "certname") schema/Str
-   (schema/required-key "environment") schema/Str
    (schema/required-key "code_ast") schema/Str
    (schema/required-key "trusted_facts") {(schema/required-key "values") {schema/Str schema/Any}}
    (schema/required-key "facts") {(schema/required-key "values") {schema/Str schema/Any}}
    (schema/required-key "variables") {(schema/required-key "values") (schema/either [{schema/Str schema/Any}] {schema/Str schema/Any})}
+  ;;  Both environment and versioned project are technically listed in the schema as
+  ;;  "optional" but we will check later that exactly one of them is set.
+   (schema/optional-key "environment") schema/Str
+   (schema/optional-key "versioned_project") schema/Str
    (schema/optional-key "target_variables") {(schema/required-key "values") {schema/Str schema/Any}}
    (schema/optional-key "job_id") schema/Str
    (schema/optional-key "transaction_uuid") schema/Str
@@ -937,26 +940,62 @@
                                                      "code_id"
                                                      (current-code-id-fn (get request-options "environment")))))})))
 
+(defn parse-project-compile-data
+  "Parse data required to compile a catalog inside a project. Data required includes
+   * Root path to project
+   * modulepath
+   * hiera config
+   * project_name"
+  [request-options
+   versioned-project
+   bolt-projects-dir]
+  (let [project-root (file-serving/get-project-root bolt-projects-dir versioned-project)
+        project-config (file-serving/read-bolt-project-config project-root)]
+    (assoc request-options "project_root" project-root
+                           "modulepath" (map #(str project-root "/" %) (file-serving/get-project-modulepath project-config))
+                           "hiera_config" (str project-root "/" (get project-config :hiera-config "hiera.yaml"))
+                           "project_name" (:name project-config))))
+
 (schema/defn ^:always-validate compile-fn :- IFn
   [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
    current-code-id-fn :- IFn
-   boltlib-path :- (schema/maybe [schema/Str])]
+   boltlib-path :- (schema/maybe [schema/Str])
+   bolt-projects-dir :- (schema/maybe schema/Str)]
   (fn [request]
-    (let [env (jruby-request/get-environment-from-request request)
-          request-options (-> request
+    (let [request-options (-> request
                               :body
                               slurp
                               (validated-body CompileRequest))
-          compile-options (assoc request-options
-                                 "code_id"
-                                 (current-code-id-fn env))]
-      {:status 200
-       :headers {"Content-Type" "application/json"}
-       :body (json/encode
-               (jruby-protocol/compile-ast jruby-service
-                                           (:jruby-instance request)
-                                           compile-options
-                                           boltlib-path))})))
+          versioned-project (get request-options "versioned_project")
+          environment (get request-options "environment")]
+      ;; Check to ensure environment/versioned_project are mutually exlusive and
+      ;; at least one of them is set.
+      (cond
+        (and versioned-project environment)
+        {:status 400
+         :headers {"Content-Type" "text/plain"}
+         :body (i18n/tru "A compile request cannot specify both `environment` and `versioned_project` parameters.")}
+        
+        (and (nil? versioned-project) (nil? environment))
+        {:status 400
+         :headers {"Content-Type" "text/plain"}
+         :body (i18n/tru "A compile request must include an `environment` or `versioned_project` parameter.")}
+        
+        :else
+        (let [compile-options (if versioned-project
+                              ;; we need to parse some data from the project config for project compiles
+                                (parse-project-compile-data request-options versioned-project bolt-projects-dir)
+                              ;; environment compiles only need to set the code ID
+                                (assoc request-options
+                                       "code_id"
+                                       (current-code-id-fn environment)))]
+          {:status 200
+           :headers {"Content-Type" "application/json"}
+           :body (json/encode
+                  (jruby-protocol/compile-ast jruby-service
+                                              (:jruby-instance request)
+                                              compile-options
+                                              boltlib-path))})))))
 
 (schema/defn ^:always-validate
   v4-catalog-handler :- IFn
@@ -973,8 +1012,9 @@
   [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
    wrap-with-jruby-queue-limit :- IFn
    current-code-id-fn :- IFn
-   boltlib-path :- (schema/maybe [schema/Str])]
-  (-> (compile-fn jruby-service current-code-id-fn boltlib-path)
+   boltlib-path :- (schema/maybe [schema/Str])
+   bolt-projects-dir :- (schema/maybe schema/Str)]
+  (-> (compile-fn jruby-service current-code-id-fn boltlib-path bolt-projects-dir)
       (jruby-request/wrap-with-jruby-instance jruby-service)
       wrap-with-jruby-queue-limit
       jruby-request/wrap-with-error-handling))
@@ -1040,7 +1080,8 @@
    current-code-id-fn :- IFn
    cache-enabled :- schema/Bool
    wrap-with-jruby-queue-limit :- IFn
-   boltlib-path :- (schema/maybe [schema/Str])]
+   boltlib-path :- (schema/maybe [schema/Str])
+   bolt-projects-dir :- (schema/maybe schema/Str)]
   (let [class-handler (create-cacheable-info-handler-with-middleware
                         (fn [jruby env]
                           (some-> jruby-service
@@ -1075,7 +1116,8 @@
                           jruby-service
                           wrap-with-jruby-queue-limit
                           current-code-id-fn
-                          boltlib-path)]
+                          boltlib-path
+                          bolt-projects-dir)]
     (comidi/routes
       (comidi/POST "/compile" request
                    (compile-handler' request))
@@ -1137,7 +1179,8 @@
                                       current-code-id-fn
                                       environment-class-cache-enabled
                                       wrap-with-jruby-queue-limit
-                                      boltlib-path)
+                                      boltlib-path
+                                      bolt-projects-dir)
                    clojure-request-wrapper)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
