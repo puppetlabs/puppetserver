@@ -85,7 +85,7 @@
   :plugins [[lein-parent "0.3.7"]
             ;; We have to have this, and it needs to agree with clj-parent
             ;; until/unless you can have managed plugin dependencies.
-            [puppetlabs/i18n "0.8.0" :hooks false]]
+            [puppetlabs/i18n "0.9.2" :hooks false]]
 
   :uberjar-name "puppet-server-release.jar"
   :lein-ezbake {:vars {:user "puppet"
