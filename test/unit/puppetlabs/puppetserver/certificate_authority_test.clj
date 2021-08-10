@@ -1677,3 +1677,22 @@
           expiration-map (crl-expiration-dates (:cacrl settings))]
       (is (= "2016-10-11T06:42:52UTC" (get expiration-map "rootca.example.org")))
       (is (= "2016-10-11T06:40:47UTC" (get expiration-map "intermediateca.example.org"))))))
+
+(deftest get-cert-or-csr-statuses-test
+  (let [crl (-> (get-certificate-revocation-list cacrl)
+                  StringReader.
+                  utils/pem->crl)]
+    (testing "returns a collection of 'requested' statuses when queried for CSR"
+      (let [request-statuses (get-cert-or-csr-statuses csrdir crl false)
+            result-states (map :state request-statuses)]
+        (is (every? #(= "requested" %) result-states))))
+
+    (testing "returns a collection of 'signed' or 'revoked' statuses when queried for cert"
+      (let [cert-statuses (get-cert-or-csr-statuses signeddir crl true)
+            result-states (map :state cert-statuses)]
+        (is (every? #(or (= "signed" %) (= "revoked" %)) result-states))))
+
+    (testing "errors when given wrong directory path for querying CSR"
+      (is (thrown?
+           java.lang.ClassCastException
+           (get-cert-or-csr-statuses signeddir crl false))))))

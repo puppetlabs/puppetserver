@@ -1590,16 +1590,12 @@
    :serial_number (-> cert
                     (.getSerialNumber))})
 
-(schema/defn get-certificate-status*
-  [signeddir :- schema/Str
-   csrdir :- schema/Str
-   crl :- CertificateRevocationList
-   subject :- schema/Str]
-  (let [is-cert?            (fs/exists? (path-to-cert signeddir subject))
-        cert-or-csr         (if is-cert?
-                              (utils/pem->cert (path-to-cert signeddir subject))
-                              (utils/pem->csr (path-to-cert-request csrdir subject)))
-        default-fingerprint (fingerprint cert-or-csr "SHA-256")]
+(schema/defn get-cert-or-csr-status*
+  [crl :- CertificateRevocationList
+   is-cert? :- schema/Bool
+   subject :- schema/Str
+   cert-or-csr :- (schema/either Certificate CertificateRequest)]
+  (let [default-fingerprint (fingerprint cert-or-csr "SHA-256")]
     (merge
       {:name              subject
        :state             (certificate-state cert-or-csr crl)
@@ -1615,32 +1611,49 @@
       (if is-cert?
         (get-certificate-details cert-or-csr)))))
 
-(schema/defn ^:always-validate get-certificate-status :- CertificateStatusResult
+(schema/defn ^:always-validate get-cert-or-csr-status :- CertificateStatusResult
   "Get the status of the subject's certificate or certificate request.
    The status includes the state of the certificate (signed, revoked, requested),
    DNS alt names, and several different fingerprint hashes of the certificate."
   [{:keys [csrdir signeddir cacert cacrl cakey]} :- CaSettings
    subject :- schema/Str]
-  (let [crl (utils/pem->ca-crl cacrl (utils/pem->ca-cert cacert cakey))]
-    (get-certificate-status* signeddir csrdir crl subject)))
+  (let [crl (utils/pem->ca-crl cacrl (utils/pem->ca-cert cacert cakey))
+        cert-path (path-to-cert signeddir subject)
+        is-cert? (fs/exists? cert-path)
+        cert-or-csr (if is-cert?
+                      (utils/pem->cert cert-path)
+                      (utils/pem->csr (path-to-cert-request csrdir subject)))]
+    (get-cert-or-csr-status* crl is-cert? subject cert-or-csr)))
 
-(schema/defn ^:always-validate get-certificate-statuses :- [CertificateStatusResult]
+(schema/defn ^:always-validate get-cert-or-csr-statuses :- [CertificateStatusResult]
+  "Get the statuses of either all the CSR or all the certificate."
+  [dir :- schema/Str
+   crl :- CertificateRevocationList
+   fetch-cert? :- schema/Bool]
+  (let [pem-pattern #"^.+\.pem$"
+        all-subjects (map #(fs/base-name % ".pem") (fs/find-files dir pem-pattern))
+        all-certs-or-csr (if fetch-cert?
+                           (map #(utils/pem->cert (path-to-cert dir %)) all-subjects)
+                           (map #(utils/pem->csr (path-to-cert-request dir %)) all-subjects))]
+    (map (partial get-cert-or-csr-status* crl fetch-cert?) all-subjects all-certs-or-csr)))
+
+(schema/defn ^:always-validate get-cert-and-csr-statuses :- [CertificateStatusResult]
   "Get the status of all certificates and certificate requests."
   [{:keys [csrdir signeddir cacert cacrl cakey]} :- CaSettings]
-  (let [crl           (utils/pem->ca-crl cacrl (utils/pem->ca-cert cacert cakey))
-        pem-pattern   #"^.+\.pem$"
-        all-subjects  (map #(fs/base-name % ".pem")
-                           (concat (fs/find-files csrdir pem-pattern)
-                                   (fs/find-files signeddir pem-pattern)))]
-    (map (partial get-certificate-status* signeddir csrdir crl) all-subjects)))
+  (let [crl (utils/pem->ca-crl cacrl (utils/pem->ca-cert cacert cakey))
+        all-csr (get-cert-or-csr-statuses csrdir crl false)
+        all-certs (get-cert-or-csr-statuses signeddir crl true)]
+    (concat all-csr all-certs)))
 
 (schema/defn ^:always-validate filter-by-certificate-state :- [CertificateStatusResult]
   "Get the status of all certificates in the given state."
-  [settings :- CaSettings
+  [{:keys [csrdir signeddir cacert cacrl cakey]} :- CaSettings
    state :- schema/Str]
-  (->> settings
-       (get-certificate-statuses)
-       (filter (fn [cert-status] (= state (:state cert-status))))))
+  (let [crl (utils/pem->ca-crl cacrl (utils/pem->ca-cert cacert cakey))]
+    (if (= "requested" state)
+      (get-cert-or-csr-statuses csrdir crl false)
+      (->> (get-cert-or-csr-statuses signeddir crl true)
+           (filter (fn [cert-status] (= state (:state cert-status))))))))
 
 (schema/defn sign-existing-csr!
   "Sign the subject's certificate request."
