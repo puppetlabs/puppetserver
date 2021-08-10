@@ -324,7 +324,7 @@
 
   :handle-ok
   (fn [context]
-    (-> (ca/get-certificate-status settings subject)
+    (-> (ca/get-cert-or-csr-status settings subject)
         (as-json-or-pson context)))
 
   :malformed?
@@ -391,7 +391,7 @@
       (->
         (if (some #(= queried-state %) ["requested" "signed" "revoked"])
           (ca/filter-by-certificate-state settings queried-state)
-          (ca/get-certificate-statuses settings))
+          (ca/get-cert-and-csr-statuses settings))
         (as-json-or-pson context)))))
 
 (schema/defn ^:always-validate web-routes :- bidi-schema/RoutePair

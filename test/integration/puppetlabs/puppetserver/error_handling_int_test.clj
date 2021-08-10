@@ -51,7 +51,7 @@
                               (get-in response [:headers "content-type"]))))))
         (testing "the CA API - in particular, one of the endpoints implemented via liberator"
           ;; Yes, this is weird - see comment above.
-          (with-redefs [ca/get-certificate-status throw-npe]
+          (with-redefs [ca/get-cert-or-csr-status throw-npe]
             (let [response (testutils/http-get "puppet-ca/v1/certificate_status/localhost")]
               (is (= 500 (:status response)))
               (is (= "Internal Server Error: java.lang.NullPointerException"
