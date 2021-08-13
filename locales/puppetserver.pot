@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: e1bae1691852f37281409f1a2fa62d32da89437a\n"
+"X-Git-Ref: 777fd3eb0fe59c38c46790805a0d12b079a952f4\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -611,7 +611,7 @@ msgstr ""
 #: src/clj/puppetlabs/services/master/master_core.clj
 msgid ""
 "Request Denied: A /static_file_content request must be a file within the "
-"files, lib, or tasks directory of a module."
+"files, lib, scripts, or tasks directory of a module."
 msgstr ""
 
 #: src/clj/puppetlabs/services/master/master_core.clj
