@@ -244,6 +244,8 @@
                      "modules/foo/files/bar/baz.txt"
                      "modules/foo/files/bar/more/path/elements/baz.txt"
                      "modules/foo/files/bar/%2E%2E/baz.txt"
+                     "modules/foo/scripts/qux.sh"
+                     "modules/foo/tasks/task.sh"
                      "environments/production/files/~/.bash_profile"
                      "dist/foo/files/bar.txt"
                      "site/foo/files/bar.txt"]
@@ -264,7 +266,7 @@
         valid-path-results (map check-valid-path valid-paths)
         invalid-path-results (map check-valid-path invalid-paths)
         get-validity (fn [{:keys [valid?]}] valid?)]
-    (testing "Only files in 'modules/*/files/**' are valid"
+    (testing "Only files in 'modules/*/(files | scripts | tasks)/**' are valid"
       (is (every? get-validity valid-path-results) (ks/pprint-to-string valid-path-results))
       (is (every? (complement get-validity) invalid-path-results) (ks/pprint-to-string invalid-path-results)))))
 

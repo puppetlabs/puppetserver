@@ -23,6 +23,11 @@
         (is (= (fs/file (str bolt-projects-dir "/local_23/.modules/utilities/files/etc/greeting" ))
                (fs/file (find-project-file bolt-builtin-content-dir bolt-projects-dir "local_23" "modules" "utilities" "etc/greeting")))))
 
+    (testing "finding a script in a project"
+      (testing "in the scripts mount"
+        (is (= (fs/file (str bolt-projects-dir "/local_23/modules/helpers/scripts/yogurt.sh" ))
+               (fs/file (find-project-file bolt-builtin-content-dir bolt-projects-dir "local_23" "scripts" "helpers" "yogurt.sh"))))))
+
       (testing "returns nil when a component is not found"
         (is (= nil
                (find-project-file bolt-builtin-content-dir bolt-projects-dir "fake" "modules" "helpers" "marco.sh")))

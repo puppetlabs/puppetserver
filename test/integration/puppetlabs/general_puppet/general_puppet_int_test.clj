@@ -257,7 +257,7 @@
                              "environment=test&code_id=foobar"))]
           (is (= 403 (:status response)))
           (is (= (str "Request Denied: A /static_file_content request must be "
-                      "a file within the files, lib, or tasks directory of a module.")
+                      "a file within the files, lib, scripts, or tasks directory of a module.")
                  (:body response)))))
       (testing "the /static_file_content endpoint returns an error (400) for attempted traversals"
         (let [response (testutils/get-static-file-content "modules/foo/files/bar/../../../..?environment=test&code_id=foobar")]
