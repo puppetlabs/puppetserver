@@ -18,4 +18,11 @@
         <cve>CVE-2010-1330</cve>
         <cve>CVE-2011-4838</cve>
     </suppress>
+    <suppress>
+       <notes><![CDATA[
+       file name: core.cache-0.7.1.jar
+       ]]></notes>
+       <packageUrl regex="true">^pkg:maven/org\.clojure/core\.cache@.*$</packageUrl>
+       <cve>CVE-2020-36448</cve>
+    </suppress>
 </suppressions>
