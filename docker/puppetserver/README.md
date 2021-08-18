@@ -43,6 +43,7 @@ The following environment variables are supported:
 | **PUPPETSERVER_MAX_ACTIVE_INSTANCES**      | The maximum number of JRuby instances allowed<br><br>`1`                                                                                                                                |
 | **PUPPETSERVER_MAX_REQUESTS_PER_INSTANCE** | The maximum HTTP requests a JRuby instance will handle in its lifetime (disable instance flushing)<br><br>`0`                                                                           | 
 | **PUPPETSERVER_JAVA_ARGS**                 | Arguments passed directly to the JVM when starting the service<br><br>`-Xms512m -Xmx512m`                                                                                               |
+| **PUPPETSERVER_GEMS**                      | Space-separated list of Ruby gems to be installed before puppetserver starts<br><br>Defaults to unset.                                                                                  |
 | **PUPPERWARE_ANALYTICS_ENABLED**           | Set to `true` to enable Google Analytics<br><br>`false`                                                                                                                                 |
 
 ## Initialization Scripts

@@ -22,6 +22,7 @@ ENV PUPPERWARE_ANALYTICS_TRACKING_ID="UA-132486246-4" \
     PUPPERWARE_ANALYTICS_APP_NAME="puppetserver" \
     PUPPERWARE_ANALYTICS_ENABLED=false \
     PUPPETSERVER_JAVA_ARGS="-Xms512m -Xmx512m" \
+    PUPPETSERVER_GEMS="" \
     PATH=/opt/puppetlabs/server/bin:/opt/puppetlabs/puppet/bin:/opt/puppetlabs/bin:$PATH \
     SSLDIR=/etc/puppetlabs/puppet/ssl \
     LOGDIR=/var/log/puppetlabs/puppetserver \
