@@ -4,6 +4,8 @@ set -e
 
 echo "Total memory available: $(grep MemTotal /proc/meminfo | awk '{print $2}')"
 
+apt update
+apt install jq
 git submodule update --recursive --init
 lein clean
 rm -rf vendor
