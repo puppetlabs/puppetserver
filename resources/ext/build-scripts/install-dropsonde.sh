@@ -104,7 +104,7 @@ chmod +r $INSTALL_DROPSONDE_GEM_SCRIPT_DIR/install.pp
 cat <<EOF >> $INSTALL_DROPSONDE_GEM_SCRIPT_DIR/install.sh
 #!/usr/bin/env bash
 
-eval "/opt/puppetlabs/puppet/bin/puppet apply /opt/puppetlabs/server/data/puppetserver/install_dropsonde/install.pp"
+eval "/opt/puppetlabs/puppet/bin/puppet apply /opt/puppetlabs/server/data/puppetserver/install_dropsonde/install.pp --modulepath /opt/puppetlabs/server/data/puppetserver/puppetserver_modules"
 
 if test $? -eq 0; then
   echo "dropsonde was successfully installed!"
