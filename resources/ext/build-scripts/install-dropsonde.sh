@@ -76,6 +76,9 @@ mkdir $INSTALL_DIR
 tar -xvf $MODULE_SLUG-* -C $INSTALL_DIR
 mv $INSTALL_DIR/$MODULE_SLUG-* $INSTALL_DIR/$MODULE_NAME
 
+# fix in the module
+sed -i 's/if $use_cron {/if $use_cron == false {/g' $INSTALL_DIR/$MODULE_NAME/manifests/init.pp
+
 # remove the tarball
 rm -f $MODULE_SLUG-*
 
