@@ -36,11 +36,38 @@ MODULE_NAME="dropsonde"
 INSTALL_DIR=$DESTDIR/opt/puppetlabs/server/data/puppetserver/puppetserver_modules
 INSTALL_DROPSONDE_GEM_SCRIPT_DIR=$DESTDIR/opt/puppetlabs/server/data/puppetserver/install_dropsonde
 
+# generate parsing json script
+cat <<EOF >> parse_json.rb
+#!/usr/bin/env ruby
+
+require 'json'
+
+unless STDIN.tty?
+  begin
+    file_uri = JSON.parse(STDIN.read)['current_release']['file_uri']
+    puts file_uri
+  rescue JSON::ParserError
+    puts 'STDIN is not valid JSON'
+  end
+end
+EOF
+
+# set exec permissions to parse_json script
+chmod +x parse_json.rb
+
 # fetch dropsopnde module tarball link for download
-MODULE_FILE_URI=$(curl "https://${FORGE_API}/v3/modules/${MODULE_SLUG}" | jq '.current_release.file_uri' -r)
+MODULE_FILE_URI=$(curl "https://${FORGE_API}/v3/modules/${MODULE_SLUG}" | ./parse_json.rb)
+
+# remove the parse_json.rb script
+rm -f parse_json.rb
 
 # download dropsonde module
 run_cmd "curl -O https://${FORGE_API}${MODULE_FILE_URI}"
+
+# delete install directory if exists
+if test -d $INSTALL_DIR; then
+  rm -rf $INSTALL_DIR
+fi
 
 # create dropsonde module location
 mkdir $INSTALL_DIR
@@ -51,6 +78,11 @@ mv $INSTALL_DIR/$MODULE_SLUG-* $INSTALL_DIR/$MODULE_NAME
 
 # remove the tarball
 rm -f $MODULE_SLUG-*
+
+# remove install_dropsonde_gem_script directory if exists
+if test -d $INSTALL_DROPSONDE_GEM_SCRIPT_DIR; then
+  rm -rf $INSTALL_DROPSONDE_GEM_SCRIPT_DIR
+fi
 
 # create location for install dropsonde gem script
 mkdir $INSTALL_DROPSONDE_GEM_SCRIPT_DIR
@@ -69,7 +101,7 @@ chmod +r $INSTALL_DROPSONDE_GEM_SCRIPT_DIR/install.pp
 cat <<EOF >> $INSTALL_DROPSONDE_GEM_SCRIPT_DIR/install.sh
 #!/usr/bin/env bash
 
-eval "/opt/puppetlabs/puppet/bin/puppet apply ${INSTALL_DROPSONDE_GEM_SCRIPT_DIR}/install.pp"
+eval "/opt/puppetlabs/puppet/bin/puppet apply /opt/puppetlabs/server/data/puppetserver/install_dropsonde/install.pp"
 
 if test $? -eq 0; then
   echo "dropsonde was successfully installed!"
