@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: c2384826d0df834abd1967e4d2c28fc14e61e901\n"
+"X-Git-Ref: 8dcbf6c4707b9147d7adb4bb5d0fa014f01ca2d7\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -204,7 +204,7 @@ msgstr ""
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 msgid ""
 "To allow authorization extensions, set allow-authorization-extensions to "
-"true in your puppetserver.conf file."
+"true in your ca.conf file."
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
@@ -213,13 +213,14 @@ msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 msgid ""
-"CSR ''{0}'' contains subject alternative names ({1}), which are disallowed."
+"CSR ''{0}'' contains extra subject alternative names ({1}), which are "
+"disallowed."
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 msgid ""
 "To allow subject alternative names, set allow-subject-alt-names to true in "
-"your puppetserver.conf file."
+"your ca.conf file."
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
@@ -232,6 +233,32 @@ msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 msgid "No certificate request for {0} at expected path {1}"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Cannot support delta CRL."
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Invalid certs and/or CRLs: {0}"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Could not determine newest CRL."
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid ""
+"Received CRLs for issuer {0} but none were newer than the existing CRL; "
+"keeping the existing CRL."
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Updated CRL for issuer {0}."
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Updating CRL at {0}"
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
@@ -253,10 +280,22 @@ msgid "Removed certificate request for {0} at ''{1}''"
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Certificate with serial {0} is already revoked."
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "No revoke action needed. The certs are already in the CRL."
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 msgid "Revoked 1 certificate: {1}"
 msgid_plural "Revoked {0} certificates: {1}"
 msgstr[0] ""
 msgstr[1] ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "No revoke action needed. The infra certs are already in the infra CRL"
+msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 msgid "Infra node certificate(s) being revoked; publishing updated infra CRL"
@@ -330,6 +369,10 @@ msgstr ""
 
 #: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
 msgid "Could not find certificate_request {0}"
+msgstr ""
+
+#: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
+msgid "No valid CRLs submitted, nothing will be updated."
 msgstr ""
 
 #: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
@@ -585,7 +628,19 @@ msgstr ""
 #: src/clj/puppetlabs/services/master/master_core.clj
 msgid ""
 "Request Denied: A /static_file_content request must be a file within the "
-"files, lib, or tasks directory of a module."
+"files, lib, scripts, or tasks directory of a module."
+msgstr ""
+
+#: src/clj/puppetlabs/services/master/master_core.clj
+msgid ""
+"A compile request cannot specify both `environment` and `versioned_project` "
+"parameters."
+msgstr ""
+
+#: src/clj/puppetlabs/services/master/master_core.clj
+msgid ""
+"A compile request must include an `environment` or `versioned_project` "
+"parameter."
 msgstr ""
 
 #: src/clj/puppetlabs/services/master/master_core.clj

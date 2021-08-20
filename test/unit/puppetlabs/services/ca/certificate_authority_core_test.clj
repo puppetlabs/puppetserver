@@ -176,6 +176,84 @@
       (is (= 304 (:status response))
           (is (nil? (:body response)))))))
 
+(deftest handle-put-certificate-revocation-list!-test
+  (let [{:keys [cacrl cacert] :as settings} (testutils/ca-sandbox! cadir)
+        fixtures-dir (str test-resources-dir "/update_crls")]
+    (fs/copy (str fixtures-dir "/ca_crl.pem") cacrl)
+    (fs/copy (str fixtures-dir "/ca_crt.pem") cacert)
+    (logutils/with-test-logging
+     (testing "with a valid replacement CRL"
+       (let [incoming-crl (testutils/pem-to-stream (str fixtures-dir "/new_root_crl.pem"))
+             crl-backup-path (str test-resources-dir "/crl_backup.pem")]
+         (testutils/with-backed-up-crl
+          cacrl crl-backup-path
+          (let [response (handle-put-certificate-revocation-list! incoming-crl settings)
+                new-crl (utils/pem->crls cacrl)
+                old-crl (utils/pem->crls crl-backup-path)]
+            (is (= 200 (:status response)))
+            (is (> (utils/get-crl-number (last new-crl))
+                   (utils/get-crl-number (last old-crl))))))))
+     (testing "with an invalid replacement CRL"
+       (let [incoming-crl (testutils/pem-to-stream (str fixtures-dir "/multiple_newest_root_crls.pem"))
+             crl-backup-path (str test-resources-dir "/crl_backup.pem")]
+         (testutils/with-backed-up-crl
+          cacrl crl-backup-path
+          (let [response (handle-put-certificate-revocation-list! incoming-crl settings)
+                new-crl (utils/pem->crls cacrl)
+                old-crl (utils/pem->crls crl-backup-path)]
+            (is (= 400 (:status response)))
+            (is (= "Could not determine newest CRL." (:body response)))
+            (is (= new-crl old-crl))))))
+     (testing "with infra CRL enabled"
+       (let [settings-infra-enabled (assoc settings :enable-infra-crl true)
+             infra-crl-path (:infra-crl-path settings-infra-enabled)
+             crl-backup-path (str test-resources-dir "/crl_backup.pem")
+             infra-crl-backup-path (str test-resources-dir "/infra_crl_backup.pem")]
+         (fs/copy (str fixtures-dir "/ca_crl.pem")
+                  (:infra-crl-path settings-infra-enabled))
+         (testing "with a valid replacement CRL"
+           (testutils/with-backed-up-crl
+            cacrl crl-backup-path
+            (fs/copy infra-crl-path infra-crl-backup-path)
+            (try
+              (let [incoming-crl (testutils/pem-to-stream (str fixtures-dir "/new_root_crl.pem"))
+                    response (handle-put-certificate-revocation-list! incoming-crl
+                                                                      settings-infra-enabled)
+                    new-crl (utils/pem->crls cacrl)
+                    old-crl (utils/pem->crls crl-backup-path)
+                    new-infra-crl (utils/pem->crls infra-crl-path)
+                    old-infra-crl (utils/pem->crls infra-crl-backup-path)]
+                (is (= 200 (:status response)))
+                (is (> (utils/get-crl-number (last new-crl))
+                       (utils/get-crl-number (last old-crl))))
+                (is (> (utils/get-crl-number (last new-infra-crl))
+                       (utils/get-crl-number (last old-infra-crl))))
+                (is (= (first new-crl) (first old-crl)))
+                (is (= (first new-infra-crl) (first old-infra-crl))))
+              (finally
+                (fs/delete infra-crl-path)
+                (fs/move infra-crl-backup-path infra-crl-path)))))
+         (testing "with a invalid replacement CRL"
+           (testutils/with-backed-up-crl
+            cacrl crl-backup-path
+            (fs/copy infra-crl-path infra-crl-backup-path)
+            (try
+              (let [incoming-crls (testutils/pem-to-stream (str fixtures-dir "/multiple_newest_root_crls.pem"))
+                    response (handle-put-certificate-revocation-list! incoming-crls
+                                                                      settings-infra-enabled)
+                    new-crl (utils/pem->crls cacrl)
+                    old-crl (utils/pem->crls crl-backup-path)
+                    new-infra-crl (utils/pem->crls infra-crl-path)
+                    old-infra-crl (utils/pem->crls infra-crl-backup-path)]
+                (is (= 400 (:status response)))
+                (is (= "Could not determine newest CRL." (:body response)))
+                (is (= new-crl old-crl))
+                (is (= new-infra-crl old-infra-crl)))
+              (finally
+                (fs/delete infra-crl-path)
+                (fs/move infra-crl-backup-path infra-crl-path))))))))))
+
+
 (deftest puppet-version-header-test
   (testing "Responses contain a X-Puppet-Version header"
     (let [version-number "42.42.42"

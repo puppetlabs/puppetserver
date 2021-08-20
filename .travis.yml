@@ -21,12 +21,16 @@ jobs:
     - jdk: openjdk11
       env: MULTITHREADED=true
       name: "Java 11 w/ multithreaded"
+    - stage: puppetserver vulnerability scan
+      script:
+        - lein nvd check
     - stage: puppetserver container tests
       dist: focal
       language: ruby
       rvm: 2.6.5
       env:
-        - DOCKER_COMPOSE_VERSION=1.25.5
+        - DOCKER_COMPOSE_VERSION=1.28.6
+        - DOCKER_BUILDX_VERSION=0.5.1
         # necessary to prevent overwhelming TravisCI build output limits
         - DOCKER_BUILD_FLAGS="--progress plain"
       before_install:
@@ -34,12 +38,18 @@ jobs:
         - curl --location https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-`uname --kernel-name`-`uname --machine` > docker-compose
         - chmod +x docker-compose
         - sudo mv docker-compose /usr/local/bin
+        - mkdir -vp ~/.docker/cli-plugins
+        - curl --location https://github.com/docker/buildx/releases/download/v${DOCKER_BUILDX_VERSION}/buildx-v${DOCKER_BUILDX_VERSION}.linux-amd64 > ~/.docker/cli-plugins/docker-buildx
+        - chmod +x ~/.docker/cli-plugins/docker-buildx
+        - docker buildx create --name travis_builder --use
       script:
         - set -e
         - cd $TRAVIS_BUILD_DIR/docker
         - make lint
         - make build
         - make test
+      after_script:
+        - docker buildx rm travis_builder
 
 notifications:
   email: false

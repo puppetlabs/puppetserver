@@ -100,6 +100,7 @@
          certname (get-in config [:puppetserver :certname])
          localcacert (get-in config [:puppetserver :localcacert])
          puppet-version (get-in config [:puppetserver :puppet-version])
+         bolt-builtin-content-dir (get-in config [:bolt :builtin-content-dir] [])
          bolt-projects-dir (get-in config [:bolt :projects-dir])
          max-queued-requests (get-in config [:jruby-puppet :max-queued-requests] 0)
          max-retry-delay (get-in config [:jruby-puppet :max-retry-delay] 1800)
@@ -135,6 +136,7 @@
                                                wrap-with-jruby-queue-limit
                                                environment-class-cache-enabled
                                                boltlib-path
+                                               bolt-builtin-content-dir
                                                bolt-projects-dir))
          routes (comidi/context path ring-app)
          route-metadata (comidi/route-metadata routes)

@@ -47,6 +47,7 @@
                                                                  (constantly nil)
                                                                  false
                                                                  nil
+                                                                 nil
                                                                  nil))
           master-route-handler (comidi/routes->handler master-routes)
           master-mount (master-core/get-master-mount

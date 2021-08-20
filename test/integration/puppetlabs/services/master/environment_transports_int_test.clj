@@ -166,10 +166,6 @@ Puppet::ResourceApi.register_transport(
     etag
     (str etag "--gzip")))
 
-(defn etag-without-gzip-suffix
-  [etag]
-  (str/replace etag #"--gzip$" ""))
-
 (defn response->map
   [response]
   (-> response :body (json/parse-string true)))
@@ -240,11 +236,8 @@ Puppet::ResourceApi.register_transport(
            test-schema-dir (make-module "test")
            production-response-initial (get-env-transports "production")
            production-etag-initial (response-etag production-response-initial)
-           production-etag-initial-without-gzip-suffix (etag-without-gzip-suffix production-etag-initial)
            test-response-initial (get-env-transports "test")
-           test-etag-initial (response-etag test-response-initial)
-           test-etag-initial-without-gzip-suffix (etag-without-gzip-suffix
-                                                   (response-etag test-response-initial))]
+           test-etag-initial (response-etag test-response-initial)]
        (is (= 200 (:status production-response-initial))
            (str
             "unexpected status code for initial production response"
@@ -279,8 +272,7 @@ Puppet::ResourceApi.register_transport(
              (str
               "unexpected status code for prod response after code change "
               "but before flush"))
-         (is (= production-etag-initial-without-gzip-suffix (response-etag
-                                                              production-response-before-flush))
+         (is (= production-etag-initial (response-etag production-response-before-flush))
              "unexpected etag change when no production environment change")
          (is (empty? (:body production-response-before-flush))
              "unexpected body for production response")
@@ -288,8 +280,7 @@ Puppet::ResourceApi.register_transport(
              (str
               "unexpected status code for test response after code change "
               "but before flush"))
-         (is (= test-etag-initial-without-gzip-suffix (response-etag
-                                                        test-response-before-flush))
+         (is (= test-etag-initial (response-etag test-response-before-flush))
              "unexpected etag change when no test environment change")
          (is (empty? (:body test-response-before-flush))
              "unexpected body for test response"))
@@ -325,8 +316,7 @@ Puppet::ResourceApi.register_transport(
          expected-initial-response {:name "production" :transports [schema1-serialized]}
          initial-response (get-env-transports "production")
          initial-etag (response-etag initial-response)
-         initial-etag-with-gzip-suffix (etag-with-gzip-suffix initial-etag)
-         initial-etag-without-gzip-suffix (etag-without-gzip-suffix initial-etag)]
+         initial-etag-with-gzip-suffix (etag-with-gzip-suffix initial-etag)]
      (testing "initial fetch of environment_transports info is good"
        (is (= 200 (:status initial-response))
            (str
@@ -353,7 +343,7 @@ Puppet::ResourceApi.register_transport(
              (str
               "unexpected status code for response for no code change and "
               "original etag roundtripped"))
-         (is (= initial-etag-without-gzip-suffix (response-etag response))
+         (is (= initial-etag-with-gzip-suffix (response-etag response))
              "etag changed even though code did not")
          (is (empty? (:body response))
              "unexpected body for response")))
@@ -366,7 +356,7 @@ Puppet::ResourceApi.register_transport(
              (str
               "unexpected status code for response for no code change and "
               "etag with '--gzip' suffix roundtripped"))
-         (is (= initial-etag-without-gzip-suffix (response-etag response))
+         (is (= initial-etag-with-gzip-suffix (response-etag response))
              "etag changed even though code did not")
          (is (empty? (:body response))
              "unexpected body for response")))
@@ -524,7 +514,7 @@ Puppet::ResourceApi.register_transport(
                   "modified) status code"))
          (is (empty? (:body response-with-tag))
              "unexpected body for request with prior etag")
-         (is (= expected-etag (response-etag response-with-tag))
+         (is (= (str expected-etag "--gzip") (response-etag response-with-tag))
              "unexpected etag returned for request with prior etag"))))))
 
 (defn create-jruby-instance-with-mock-transports-info

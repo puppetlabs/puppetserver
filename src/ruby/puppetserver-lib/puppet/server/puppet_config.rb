@@ -86,7 +86,7 @@ class Puppet::Server::PuppetConfig
       Puppet.push_context(dummy_ssl_context)
     end
 
-    Puppet.settings.use :main, :master, :ssl, :metrics
+    Puppet.settings.use :main, :server, :ssl, :metrics
 
     if Puppet::Indirector::Indirection.method_defined?(:set_global_setting)
       Puppet::FileServing::Content.indirection.set_global_setting(:terminus_class, :file_server)

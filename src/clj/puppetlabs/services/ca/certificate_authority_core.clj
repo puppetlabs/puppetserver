@@ -1,5 +1,5 @@
 (ns puppetlabs.services.ca.certificate-authority-core
-  (:import [java.io InputStream]
+  (:import [java.io InputStream ByteArrayInputStream]
            (clojure.lang IFn)
            (org.joda.time DateTime))
   (:require [puppetlabs.puppetserver.certificate-authority :as ca]
@@ -18,12 +18,12 @@
             [schema.core :as schema]
             [cheshire.core :as cheshire]
             [liberator.core :refer [defresource]]
-            ;[liberator.dev :as liberator-dev]
             [liberator.representation :as representation]
             [ring.util.request :as request]
             [ring.util.response :as rr]
             [puppetlabs.trapperkeeper.services.status.status-core :as status-core]
-            [puppetlabs.i18n.core :as i18n]))
+            [puppetlabs.i18n.core :as i18n]
+            [puppetlabs.ssl-utils.core :as utils]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
@@ -94,6 +94,30 @@
       (-> (rr/response nil)
           (rr/status 304)
           (rr/content-type "text/plain")))))
+
+(schema/defn handle-put-certificate-revocation-list!
+  [incoming-crl-pem :- InputStream
+   {:keys [cacrl cacert enable-infra-crl infra-crl-path]} :- ca/CaSettings]
+  (locking crl-write-serializer
+    (try
+      (let [byte-stream (-> incoming-crl-pem
+                            ca/input-stream->byte-array
+                            ByteArrayInputStream.)
+            incoming-crls (utils/pem->crls byte-stream)]
+        (if (empty? incoming-crls)
+          (do
+            (log/info (i18n/trs "No valid CRLs submitted, nothing will be updated."))
+            (middleware-utils/plain-response 400 "No valid CRLs submitted."))
+
+          (do
+            (ca/update-crls incoming-crls cacrl cacert)
+            (when enable-infra-crl
+              (ca/update-crls incoming-crls infra-crl-path cacert))
+            (middleware-utils/plain-response 200 "Successfully updated CRLs."))))
+      (catch IllegalArgumentException e
+        (let [error-msg (.getMessage e)]
+          (log/error error-msg)
+          (middleware-utils/plain-response 400 error-msg))))))
 
 (schema/defn handle-delete-certificate-request!
   [subject :- String
@@ -300,7 +324,7 @@
 
   :handle-ok
   (fn [context]
-    (-> (ca/get-certificate-status settings subject)
+    (-> (ca/get-cert-or-csr-status settings subject)
         (as-json-or-pson context)))
 
   :malformed?
@@ -367,7 +391,7 @@
       (->
         (if (some #(= queried-state %) ["requested" "signed" "revoked"])
           (ca/filter-by-certificate-state settings queried-state)
-          (ca/get-certificate-statuses settings))
+          (ca/get-cert-and-csr-statuses settings))
         (as-json-or-pson context)))))
 
 (schema/defn ^:always-validate web-routes :- bidi-schema/RoutePair
@@ -391,6 +415,8 @@
           (handle-delete-certificate-request! subject ca-settings)))
       (GET ["/certificate_revocation_list/" :ignored-node-name] request
         (handle-get-certificate-revocation-list request ca-settings))
+      (PUT ["/certificate_revocation_list"] request
+        (handle-put-certificate-revocation-list! (:body request) ca-settings))
       (GET ["/expirations"] request
         (handle-get-ca-expirations ca-settings))
       (PUT ["/clean"] request

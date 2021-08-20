@@ -54,11 +54,11 @@ COPY docker/puppetserver/docker-entrypoint.sh \
       /
 COPY docker/puppetserver/docker-entrypoint.d /docker-entrypoint.d
 # k8s uses livenessProbe, startupProbe, readinessProbe and ignores HEALTHCHECK
-HEALTHCHECK --interval=10s --timeout=15s --retries=12 --start-period=3m CMD ["/healthcheck.sh"]
+HEALTHCHECK --interval=20s --timeout=15s --retries=12 --start-period=3m CMD ["/healthcheck.sh"]
 
 # no need to pin versions or clear apt cache as its still being used
 # hadolint ignore=DL3008,DL3009
-RUN chmod +x /docker-entrypoint.sh /healthcheck.sh && \
+RUN chmod +x /docker-entrypoint.sh /healthcheck.sh /docker-entrypoint.d/*.sh && \
     apt-get update && \
     apt-get install -y --no-install-recommends $PACKAGES && \
     dpkg -i dumb-init_"$DUMB_INIT_VERSION"_amd64.deb && \
@@ -93,6 +93,11 @@ RUN apt-get update && \
 
 COPY . /puppetserver
 WORKDIR /puppetserver
+
+# Fixes a linux 5.6 - 5.10 kernel bug around copy_file_range syscall
+# https://github.com/docker/for-linux/issues/1015
+ENV RUBYOPT=-r/puppetserver/docker/ruby-docker-copy-patch
+
 RUN lein clean && \
     lein install && \
     EZBAKE_ALLOW_UNREPRODUCIBLE_BUILDS=true EZBAKE_NODEPLOY=true COW=base-bionic-amd64.cow MOCK='' GEM_SOURCE=https://rubygems.org lein with-profile ezbake ezbake local-build && \

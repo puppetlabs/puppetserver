@@ -10,7 +10,7 @@ if test -n "${PUPPETSERVER_HOSTNAME}"; then
   certname=${PUPPETSERVER_HOSTNAME}.pem
 else
   echo "* PUPPETSERVER_HOSTNAME: unset"
-  certname=$(ls "${SSLDIR}/certs" | grep --invert-match ca.pem)
+  certname=$(cd "${SSLDIR}/certs" && ls *.pem | grep --invert-match ca.pem)
 fi
 echo "* PUPPET_MASTERPORT: '${PUPPET_MASTERPORT}'"
 echo "* Certname: '${certname}'"
@@ -25,6 +25,6 @@ if [ -f "${SSLDIR}/certs/ca.pem" ]; then
   openssl x509 -subject -issuer -text -noout -in "${SSLDIR}/certs/ca.pem" $altnames
 fi
 
-echo "Certificate:"
+echo "Certificate ${certname}:"
 # shellcheck disable=SC2086 # $altnames shouldn't be quoted
 openssl x509 -subject -issuer -text -noout -in "${SSLDIR}/certs/${certname}" $altnames

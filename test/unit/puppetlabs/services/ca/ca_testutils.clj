@@ -3,13 +3,28 @@
             [me.raynes.fs :as fs]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.puppetserver.certificate-authority :as ca]
-            [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]))
+            [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils])
+  (:import (java.io ByteArrayInputStream)))
 
 (defn assert-subject [o subject]
   (is (= subject (-> o .getSubjectX500Principal .getName))))
 
 (defn assert-issuer [o issuer]
   (is (= issuer (-> o .getIssuerX500Principal .getName))))
+
+(defn pem-to-stream
+  [pem-string]
+  (ByteArrayInputStream. (.getBytes (slurp pem-string))))
+
+(defmacro with-backed-up-crl
+  [crl-path crl-backup-path & body]
+  `(do
+     (fs/copy ~crl-path ~crl-backup-path)
+     (try
+       ~@body
+       (finally
+         (fs/delete ~crl-path)
+         (fs/move ~crl-backup-path ~crl-path)))))
 
 (defn master-settings
   "Master configuration settings with defaults appropriate for testing.

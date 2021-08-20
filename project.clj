@@ -1,4 +1,4 @@
-(def ps-version "6.15.0-SNAPSHOT")
+(def ps-version "6.17.0-SNAPSHOT")
 
 (defn deploy-info
   [url]
@@ -27,7 +27,7 @@
 
   :min-lein-version "2.9.1"
 
-  :parent-project {:coords [puppetlabs/clj-parent "4.6.10"]
+  :parent-project {:coords [puppetlabs/clj-parent "4.6.29"]
                    :inherit [:managed-dependencies]}
 
   :dependencies [[org.clojure/clojure]
@@ -45,7 +45,6 @@
                  [liberator]
                  [org.apache.commons/commons-exec]
                  [io.dropwizard.metrics/metrics-core]
-                 [com.fasterxml.jackson.module/jackson-module-afterburner]
 
                  ;; We do not currently use this dependency directly, but
                  ;; we have documentation that shows how users can use it to
@@ -86,7 +85,7 @@
   :plugins [[lein-parent "0.3.7"]
             ;; We have to have this, and it needs to agree with clj-parent
             ;; until/unless you can have managed plugin dependencies.
-            [puppetlabs/i18n "0.8.0" :hooks false]]
+            [puppetlabs/i18n "0.9.2" :hooks false]]
 
   :uberjar-name "puppet-server-release.jar"
   :lein-ezbake {:vars {:user "puppet"
@@ -121,14 +120,18 @@
                                         [ring-basic-authentication]
                                         [ring/ring-mock]
                                         [beckon]
-                                        [com.cemerick/url "0.1.1"]]}
+                                        [lambdaisland/uri "1.4.70"]]}
              :dev [:defaults
-                   {:dependencies [[org.bouncycastle/bcpkix-jdk15on]]}]
+                   {:dependencies [[org.bouncycastle/bcpkix-jdk15on]]
+                    :plugins [[lein-nvd "1.4.1" :exclusions [org.apache.commons/commons-lang3
+                                                             org.clojure/clojure
+                                                             org.slf4j/jcl-over-slf4j
+                                                             org.slf4j/slf4j-api]]]}]
              :fips [:defaults
                     {:dependencies [[org.bouncycastle/bcpkix-fips]
                                     [org.bouncycastle/bc-fips]
                                     [org.bouncycastle/bctls-fips]]
-                     :jvm-opts ~(let [version (System/getProperty "java.version")
+                     :jvm-opts ~(let [version (System/getProperty "java.specification.version")
                                       [major minor _] (clojure.string/split version #"\.")
                                       unsupported-ex (ex-info "Unsupported major Java version. Expects 8 or 11."
                                                        {:major major
@@ -162,7 +165,7 @@
                                                [puppetlabs/jruby-utils]
                                                [puppetlabs/puppetserver ~ps-version]
                                                [puppetlabs/trapperkeeper-webserver-jetty9]]
-                      :plugins [[puppetlabs/lein-ezbake "2.2.1"]]
+                      :plugins [[puppetlabs/lein-ezbake "2.2.4"]]
                       :name "puppetserver"}
              :uberjar {:dependencies [[org.bouncycastle/bcpkix-jdk15on]
                                       [puppetlabs/trapperkeeper-webserver-jetty9]]
@@ -236,6 +239,8 @@
                ~(str "-Xms" (heap-size "1G"))
                ~(str "-Xmx" (heap-size "2G"))
                "-XX:+IgnoreUnrecognizedVMOptions"]
+
+  :nvd {:suppression-file "ext/travisci/suppression.xml"}
 
   :repl-options {:init-ns dev-tools}
 

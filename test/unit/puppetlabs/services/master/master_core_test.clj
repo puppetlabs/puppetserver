@@ -39,6 +39,7 @@
                    (constantly nil)
                    true
                    nil
+                   ["./dev-resources/puppetlabs/services/master/master_core_test/builtin_bolt_content"]
                    "./dev-resources/puppetlabs/services/master/master_core_test/bolt_projects")
       (comidi/routes->handler)
       (wrap-middleware puppet-version)))
@@ -245,6 +246,8 @@
                      "modules/foo/files/bar/baz.txt"
                      "modules/foo/files/bar/more/path/elements/baz.txt"
                      "modules/foo/files/bar/%2E%2E/baz.txt"
+                     "modules/foo/scripts/qux.sh"
+                     "modules/foo/tasks/task.sh"
                      "environments/production/files/~/.bash_profile"
                      "dist/foo/files/bar.txt"
                      "site/foo/files/bar.txt"]
@@ -265,7 +268,7 @@
         valid-path-results (map check-valid-path valid-paths)
         invalid-path-results (map check-valid-path invalid-paths)
         get-validity (fn [{:keys [valid?]}] valid?)]
-    (testing "Only files in 'modules/*/files/**' are valid"
+    (testing "Only files in 'modules/*/(files | scripts | tasks)/**' are valid"
       (is (every? get-validity valid-path-results) (ks/pprint-to-string valid-path-results))
       (is (every? (complement get-validity) invalid-path-results) (ks/pprint-to-string invalid-path-results)))))
 
@@ -404,7 +407,7 @@
                           (compile-ast [_ _ _ _] {:cool "catalog"}))
           handler (fn ([req] {:request req}))
           app (build-ring-handler handler "1.2.3" jruby-service)]
-      (testing "compile endpoint"
+      (testing "compile endpoint for environments"
         (let [response (app (-> {:request-method :post
                                  :uri "/v3/compile"
                                  :content-type "application/json"}
@@ -414,7 +417,43 @@
                                                               :facts {:values {}}
                                                               :trusted_facts {:values {}}
                                                               :variables {:values {}}}))))]
-          (is (= 200 (:status response))))))))
+          (is (= 200 (:status response)))))
+      (testing "compile endpoint for projects"
+        (let [response (app (-> {:request-method :post
+                                 :uri "/v3/compile"
+                                 :content-type "application/json"}
+                                (ring-mock/body (json/encode {:certname "foo"
+                                                              :versioned_project "fake_project"
+                                                              :code_ast "{\"__pcore_something\": \"Foo\"}"
+                                                              :facts {:values {}}
+                                                              :trusted_facts {:values {}}
+                                                              :variables {:values {}}
+                                                              :options {:compile_for_plan true}}))))]
+          (is (= 200 (:status response)))))
+      (testing "compile endpoint fails with no environment or versioned_project"
+        (let [response (app (-> {:request-method :post
+                                 :uri "/v3/compile"
+                                 :content-type "application/json"}
+                                (ring-mock/body (json/encode {:certname "foo"
+                                                              :code_ast "{\"__pcore_something\": \"Foo\"}"
+                                                              :facts {:values {}}
+                                                              :trusted_facts {:values {}}
+                                                              :variables {:values {}}
+                                                              :options {:compile_for_plan true}}))))]
+          (is (= 400 (:status response)))))
+      (testing "compile endpoint fails with both environment and versioned_project"
+        (let [response (app (-> {:request-method :post
+                                 :uri "/v3/compile"
+                                 :content-type "application/json"}
+                                (ring-mock/body (json/encode {:certname "foo"
+                                                              :environment "production"
+                                                              :versioned_project "fake_project"
+                                                              :code_ast "{\"__pcore_something\": \"Foo\"}"
+                                                              :facts {:values {}}
+                                                              :trusted_facts {:values {}}
+                                                              :variables {:values {}}
+                                                              :options {:compile_for_plan true}}))))]
+          (is (= 400 (:status response))))))))
 
 (deftest v4-routes-test
   (with-redefs [jruby-core/borrow-from-pool-with-timeout (fn [_ _ _] {:jruby-puppet (Object.)})
@@ -428,7 +467,7 @@
                           (compile-ast [_ _ _ _] {:cool "catalog"}))
           handler (fn ([req] {:request req}))
           app (build-ring-handler handler "1.2.3" jruby-service)]
-      (testing "catalog endpoint"
+      (testing "catalog endpoint succeeds"
           (let [response (app (-> {:request-method :post
                                    :uri "/v4/catalog"
                                    :content-type "application/json"}
@@ -438,4 +477,15 @@
                                                                 {:catalog true
                                                                  :facts true}}))))]
             (is (= 200 (:status response)))
-            (is (= {:cool "catalog"} (json/decode (:body response) true))))))))
+            (is (= {:cool "catalog"} (json/decode (:body response) true)))))
+      (testing "catalog endpoint fails with invalid environment name"
+          (let [response (app (-> {:request-method :post
+                                   :uri "/v4/catalog"
+                                   :content-type "application/json"}
+                                  (ring-mock/body (json/encode {:certname "foo"
+                                                                :environment ""
+                                                                :persistence
+                                                                {:catalog true
+                                                                 :facts true}}))))]
+            (is (= 400 (:status response)))
+            (is (re-matches #".*Invalid input:.*\"\".*" (:body response))))))))

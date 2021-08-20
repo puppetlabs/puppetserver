@@ -6,7 +6,8 @@
            [java.nio.file.attribute FileAttribute PosixFilePermissions]
            (java.security PrivateKey PublicKey KeyPair)
            (org.joda.time DateTime)
-           (java.security.cert CRLException X509CRL)
+           (java.security.cert CRLException CertPathValidatorException X509CRL)
+           (javax.security.auth.x500 X500Principal)
            (sun.security.x509 X509CertImpl))
   (:require [me.raynes.fs :as fs]
             [schema.core :as schema]
@@ -130,6 +131,10 @@
 
 (def Extension
   (schema/pred utils/extension?))
+
+(def KeyIdExtension
+  {:key-identifier [Byte]
+   schema/Keyword schema/Any})
 
 (def CertificateRevocationList
   (schema/pred utils/certificate-revocation-list?))
@@ -618,6 +623,32 @@
                         (i18n/trs "Because the ''client-whitelist'' is empty and ''authorization-required'' is set to ''false'', the ''certificate-authority.certificate-status'' settings will be ignored and authorization for the ''certificate_status'' endpoints will be done per the authorization rules in the /etc/puppetlabs/puppetserver/conf.d/auth.conf file.")
                         (i18n/trs "To suppress this warning, remove the ''certificate-authority'' configuration settings."))))))
 
+(schema/defn ensure-cn-as-san :- utils/SSLExtension
+  "Given the SSLExtension for subject alt names and a common name, ensure that the CN is listed in the SAN dns name list."
+  [extension :- utils/SSLExtension
+   cn :- schema/Str]
+  (if (some #(= cn %) (get-in extension [:value :dns-name]))
+    extension
+    (update-in extension [:value :dns-name] conj cn)))
+
+(schema/defn is-san?
+  [extension]
+  (= utils/subject-alt-name-oid (:oid extension)))
+
+(schema/defn ensure-ext-list-has-cn-san
+  "Given a list of extensions to be signed onto a certificate, ensure that a CN is provided
+   as a subject alternative name; if no subject alternative name extension is found, generate a new
+   extension and add it to the list with the CN supplied"
+  [cn :- schema/Str
+   extensions :- (schema/pred utils/extension-list?)]
+  (let [[san] (filter is-san? extensions)
+        sans-san (filter (complement is-san?) extensions)
+        new-san (if san
+                  (ensure-cn-as-san san cn)
+                  (utils/subject-dns-alt-names [cn] false))]
+    (conj sans-san new-san)))
+
+
 (schema/defn create-ca-extensions :- (schema/pred utils/extension-list?)
   "Create a list of extensions to be added to the CA certificate."
   [ca-name :- (schema/pred utils/valid-x500-name?)
@@ -626,7 +657,8 @@
   (vec
     (cons (utils/netscape-comment
            netscape-comment-value)
-          (utils/create-ca-extensions ca-name ca-serial ca-public-key))))
+          (->> (utils/create-ca-extensions ca-name ca-serial ca-public-key)
+               (ensure-ext-list-has-cn-san (utils/x500-name->CN ca-name))))))
 
 (schema/defn read-infra-nodes
     "Returns a list of infra nodes or infra node serials from the specified file organized as one item per line."
@@ -1187,8 +1219,10 @@
                          #{:key-encipherment
                            :digital-signature} true)
                        (utils/subject-key-identifier
-                         subj-pub-key false)]]
-    (concat base-ext-list csr-ext-list)))
+                        subj-pub-key false)]
+        subject (get-csr-subject csr)
+        combined-list (vec (concat base-ext-list csr-ext-list))]
+    (ensure-ext-list-has-cn-san subject combined-list)))
 
 (schema/defn ^:always-validate
   autosign-certificate-request!
@@ -1274,24 +1308,33 @@
             {:kind :disallowed-extension
              :msg (format "%s %s %s"
                           (i18n/trs "CSR ''{0}'' contains an authorization extension, which is disallowed." (get-csr-subject csr))
-                          (i18n/trs "To allow authorization extensions, set allow-authorization-extensions to true in your puppetserver.conf file.")
+                          (i18n/trs "To allow authorization extensions, set allow-authorization-extensions to true in your ca.conf file.")
                           (i18n/trs "Then restart the puppetserver and try signing this certificate again."))}))))))
 
 (schema/defn ensure-subject-alt-names-allowed!
   "Throws an exception if the CSR contains subject-alt-names AND the user has
    chosen to disallow subject-alt-names. Subject alt names can be allowed by
-   setting allow-subject-alt-names to true in the puppetserver.conf file."
+   setting allow-subject-alt-names to true in the ca.conf file. Always allows
+   a single subject alt name that matches the CSR subject, which may be
+   present to comply with RFC 2818 (see SERVER-2338)."
   [csr :- CertificateRequest
    allow-subject-alt-names :- schema/Bool]
   (when-let [subject-alt-names (not-empty (subject-alt-names csr))]
     (if (false? allow-subject-alt-names)
-      (let [subject (get-csr-subject csr)]
-        (sling/throw+
-          {:kind :disallowed-extension
-           :msg (format "%s %s %s"
-                        (i18n/tru "CSR ''{0}'' contains subject alternative names ({1}), which are disallowed." subject (str/join ", " subject-alt-names))
-                        (i18n/tru "To allow subject alternative names, set allow-subject-alt-names to true in your puppetserver.conf file.")
-                        (i18n/tru "Then restart the puppetserver and try signing this certificate again."))})))))
+      (let [subject (get-csr-subject csr)
+            cn-alt-name (str "DNS:" subject)]
+        (if (and (= 1 (count subject-alt-names))
+                 (= (first subject-alt-names) cn-alt-name))
+          (log/debug "Allowing subject alt name that matches CSR subject.")
+          (let [disallowed-alt-names (filter #(not (= cn-alt-name %))
+                                             subject-alt-names)]
+            (sling/throw+
+             {:kind :disallowed-extension
+              :msg (format "%s %s %s"
+                           (i18n/tru "CSR ''{0}'' contains extra subject alternative names ({1}), which are disallowed."
+                                     subject (str/join ", " disallowed-alt-names))
+                           (i18n/tru "To allow subject alternative names, set allow-subject-alt-names to true in your ca.conf file.")
+                           (i18n/tru "Then restart the puppetserver and try signing this certificate again."))})))))))
 
 (schema/defn ^:always-validate process-csr-submission!
   "Given a CSR for a subject (typically from the HTTP endpoint),
@@ -1351,6 +1394,96 @@
   [cacrl :- schema/Str]
   (let [last-modified-milliseconds (.lastModified (io/file cacrl))]
        (time-coerce/from-long last-modified-milliseconds)))
+
+(schema/defn ^:always-validate reject-delta-crl
+  [crl :- CertificateRevocationList]
+  (when (utils/delta-crl? crl)
+    (throw (IllegalArgumentException.
+            ^String (i18n/trs "Cannot support delta CRL.")))))
+
+(schema/defn ^:always-validate validate-certs-and-crls
+  "Given a list of certificates and a list of CRLs, validate the certificate
+   chain, i.e. ensure that none of the certs have been revoked by checking the
+   appropriate CRL, which must be present and currently valid. Delta CRLs are
+   not supported. Returns nil if successful."
+  [cert-chain :- [Certificate]
+   crl-chain :- [CertificateRevocationList]]
+  (doseq [crl crl-chain]
+    (reject-delta-crl crl))
+  (try
+    (utils/validate-cert-chain cert-chain crl-chain)
+    ;; currently not distinguishing between invalid CRLs
+    ;; and a revoked cert in the CA chain
+    (catch CertPathValidatorException e
+      (throw (IllegalArgumentException.
+              ^String (i18n/trs "Invalid certs and/or CRLs: {0}" (.getMessage e)))))))
+
+(schema/defn ^:always-validate get-newest-crl :- CertificateRevocationList
+  "Determine the newest CRL by looking for the highest CRL Number. This assumes
+  all given CRLs have the same issuer. Fails if more than one CRL has the
+  highest CRL Number."
+  [crls :- [CertificateRevocationList]]
+  (let [newest-crl (->> crls
+                        (group-by utils/get-crl-number)
+                        (into (sorted-map))
+                        last
+                        last)]
+    (if (= 1 (count newest-crl))
+      (first newest-crl)
+      (throw (IllegalArgumentException.
+              ^String (i18n/trs "Could not determine newest CRL."))))))
+
+(schema/defn ^:always-validate maybe-replace-crl :- CertificateRevocationList
+  "Given a CRL and a map of key identifiers to CRLs, determine the
+  newest CRL with the key-id of the given CRL. Warn if the newest CRL
+  is the given CRL. Never replaces the CRL corresponding to the Puppet
+  CA signing cert."
+  [crl :- CertificateRevocationList
+   key-crl-map :- {KeyIdExtension [CertificateRevocationList]}]
+  (let [key-id-ext (utils/get-extension-value crl utils/authority-key-identifier-oid)
+        maybe-new-crls (get key-crl-map key-id-ext)]
+    (if maybe-new-crls
+      (let [new-crl (get-newest-crl (conj maybe-new-crls crl))
+            issuer (.getIssuerX500Principal crl)]
+        (if (.equals crl new-crl)
+          (log/warn (i18n/trs
+                     "Received CRLs for issuer {0} but none were newer than the existing CRL; keeping the existing CRL."
+                     issuer))
+          (log/info (i18n/trs
+                     "Updated CRL for issuer {0}." issuer)))
+        new-crl)
+      ;; no new CRLs found for this issuer, keep it
+      crl)))
+
+(schema/defn ^:always-validate update-crls
+  "Given a collection of CRLs, update the CRL chain and confirm that
+  all CRLs are currently valid."
+  [incoming-crls :- [X509CRL]
+   crl-path :- schema/Str
+   cert-chain-path :- schema/Str]
+  (log/info (i18n/trs "Updating CRL at {0}" crl-path))
+  (let [current-crls (utils/pem->crls crl-path)
+        cert-chain (utils/pem->certs cert-chain-path)
+        ca-cert-key (utils/get-extension-value (first cert-chain)
+                                               utils/subject-key-identifier-oid)
+        external-crl-chain (remove #(= ca-cert-key
+                                       (:key-identifier (utils/get-extension-value % utils/authority-key-identifier-oid)))
+                                   current-crls)
+        ca-crl (first (filter
+                       #(= ca-cert-key
+                           (:key-identifier (utils/get-extension-value % utils/authority-key-identifier-oid)))
+                       current-crls))
+        incoming-crls-by-key-id (->> incoming-crls
+                                     ;; just in case we're given multiple copies
+                                     ;; of the same CRL, deduplicate so we can
+                                     ;; identify the newest CRL
+                                     set
+                                     (group-by #(utils/get-extension-value
+                                                 % utils/authority-key-identifier-oid)))
+        new-ext-crl-chain (cons ca-crl (map #(maybe-replace-crl % incoming-crls-by-key-id)
+                                            external-crl-chain))]
+    (validate-certs-and-crls cert-chain new-ext-crl-chain)
+    (write-crls new-ext-crl-chain crl-path)))
 
 (schema/defn ensure-directories-exist!
   "Create any directories used by the CA if they don't already exist."
@@ -1434,16 +1567,12 @@
    :serial_number (-> cert
                     (.getSerialNumber))})
 
-(schema/defn get-certificate-status*
-  [signeddir :- schema/Str
-   csrdir :- schema/Str
-   crl :- CertificateRevocationList
-   subject :- schema/Str]
-  (let [is-cert?            (fs/exists? (path-to-cert signeddir subject))
-        cert-or-csr         (if is-cert?
-                              (utils/pem->cert (path-to-cert signeddir subject))
-                              (utils/pem->csr (path-to-cert-request csrdir subject)))
-        default-fingerprint (fingerprint cert-or-csr "SHA-256")]
+(schema/defn get-cert-or-csr-status*
+  [crl :- CertificateRevocationList
+   is-cert? :- schema/Bool
+   subject :- schema/Str
+   cert-or-csr :- (schema/either Certificate CertificateRequest)]
+  (let [default-fingerprint (fingerprint cert-or-csr "SHA-256")]
     (merge
       {:name              subject
        :state             (certificate-state cert-or-csr crl)
@@ -1459,32 +1588,49 @@
       (if is-cert?
         (get-certificate-details cert-or-csr)))))
 
-(schema/defn ^:always-validate get-certificate-status :- CertificateStatusResult
+(schema/defn ^:always-validate get-cert-or-csr-status :- CertificateStatusResult
   "Get the status of the subject's certificate or certificate request.
    The status includes the state of the certificate (signed, revoked, requested),
    DNS alt names, and several different fingerprint hashes of the certificate."
   [{:keys [csrdir signeddir cacert cacrl cakey]} :- CaSettings
    subject :- schema/Str]
-  (let [crl (utils/pem->ca-crl cacrl (utils/pem->ca-cert cacert cakey))]
-    (get-certificate-status* signeddir csrdir crl subject)))
+  (let [crl (utils/pem->ca-crl cacrl (utils/pem->ca-cert cacert cakey))
+        cert-path (path-to-cert signeddir subject)
+        is-cert? (fs/exists? cert-path)
+        cert-or-csr (if is-cert?
+                      (utils/pem->cert cert-path)
+                      (utils/pem->csr (path-to-cert-request csrdir subject)))]
+    (get-cert-or-csr-status* crl is-cert? subject cert-or-csr)))
 
-(schema/defn ^:always-validate get-certificate-statuses :- [CertificateStatusResult]
+(schema/defn ^:always-validate get-cert-or-csr-statuses :- [CertificateStatusResult]
+  "Get the statuses of either all the CSR or all the certificate."
+  [dir :- schema/Str
+   crl :- CertificateRevocationList
+   fetch-cert? :- schema/Bool]
+  (let [pem-pattern #"^.+\.pem$"
+        all-subjects (map #(fs/base-name % ".pem") (fs/find-files dir pem-pattern))
+        all-certs-or-csr (if fetch-cert?
+                           (map #(utils/pem->cert (path-to-cert dir %)) all-subjects)
+                           (map #(utils/pem->csr (path-to-cert-request dir %)) all-subjects))]
+    (map (partial get-cert-or-csr-status* crl fetch-cert?) all-subjects all-certs-or-csr)))
+
+(schema/defn ^:always-validate get-cert-and-csr-statuses :- [CertificateStatusResult]
   "Get the status of all certificates and certificate requests."
   [{:keys [csrdir signeddir cacert cacrl cakey]} :- CaSettings]
-  (let [crl           (utils/pem->ca-crl cacrl (utils/pem->ca-cert cacert cakey))
-        pem-pattern   #"^.+\.pem$"
-        all-subjects  (map #(fs/base-name % ".pem")
-                           (concat (fs/find-files csrdir pem-pattern)
-                                   (fs/find-files signeddir pem-pattern)))]
-    (map (partial get-certificate-status* signeddir csrdir crl) all-subjects)))
+  (let [crl (utils/pem->ca-crl cacrl (utils/pem->ca-cert cacert cakey))
+        all-csr (get-cert-or-csr-statuses csrdir crl false)
+        all-certs (get-cert-or-csr-statuses signeddir crl true)]
+    (concat all-csr all-certs)))
 
 (schema/defn ^:always-validate filter-by-certificate-state :- [CertificateStatusResult]
   "Get the status of all certificates in the given state."
-  [settings :- CaSettings
+  [{:keys [csrdir signeddir cacert cacrl cakey]} :- CaSettings
    state :- schema/Str]
-  (->> settings
-       (get-certificate-statuses)
-       (filter (fn [cert-status] (= state (:state cert-status))))))
+  (let [crl (utils/pem->ca-crl cacrl (utils/pem->ca-cert cacert cakey))]
+    (if (= "requested" state)
+      (get-cert-or-csr-statuses csrdir crl false)
+      (->> (get-cert-or-csr-statuses signeddir crl true)
+           (filter (fn [cert-status] (= state (:state cert-status))))))))
 
 (schema/defn sign-existing-csr!
   "Sign the subject's certificate request."
@@ -1495,28 +1641,45 @@
     (fs/delete csr-path)
     (log/debug (i18n/trs "Removed certificate request for {0} at ''{1}''" subject csr-path))))
 
+(schema/defn filter-already-revoked-serials :- [schema/Int]
+  "Given a list of serials and Puppet's CA CRL, returns vector of serials with
+   any already-revoked serials removed."
+  [serials :- [schema/Int]
+   crl :- X509CRL]
+  (let [crl-revoked-list (.getRevokedCertificates crl)
+        existed-serials (set (map #(.getSerialNumber %) crl-revoked-list))
+        duplicate-serials (set/intersection (set serials) existed-serials)]
+        (when (> (count duplicate-serials) 0)
+          (doseq [serial duplicate-serials]
+            (log/debug (i18n/trs "Certificate with serial {0} is already revoked." serial))))
+        (vec (set/difference (set serials) existed-serials))))
+
 (schema/defn revoke-existing-certs!
   "Revoke the subjects' certificates. Note this does not destroy the certificates.
    The certificates will remain in the signed directory despite being revoked."
   [{:keys [signeddir cacert cacrl cakey infra-crl-path
            infra-node-serials-path enable-infra-crl]} :- CaSettings
    subjects :- [schema/Str]]
-  (let [serials (map #(-> (path-to-cert signeddir %)
-                       (utils/pem->cert)
-                       (utils/get-serial))
-                  subjects)
-        serial-count (count serials)
-        [our-full-crl & rest-of-full-chain] (utils/pem->crls cacrl)
-        new-full-crl (utils/revoke-multiple our-full-crl
-                                            (utils/pem->private-key cakey)
-                                            (.getPublicKey (utils/pem->ca-cert cacert cakey))
-                                            serials)
-        new-full-chain (cons new-full-crl (vec rest-of-full-chain))]
-    (write-crls new-full-chain cacrl)
-    (log/info (i18n/trsn "Revoked 1 certificate: {1}"
-                         "Revoked {0} certificates: {1}"
-                         serial-count
-                         (str/join ", " subjects)))
+  (let [[our-full-crl & rest-of-full-chain] (utils/pem->crls cacrl)
+        serials (filter-already-revoked-serials (map #(-> (path-to-cert signeddir %)
+                                                          (utils/pem->cert)
+                                                          (utils/get-serial))
+                                                          subjects)
+                                                our-full-crl)
+        serial-count (count serials)]
+    (if (= 0 serial-count)
+      (log/info (i18n/trs "No revoke action needed. The certs are already in the CRL."))
+      (let [new-full-crl (utils/revoke-multiple our-full-crl
+                                                (utils/pem->private-key cakey)
+                                                (.getPublicKey (utils/pem->ca-cert cacert cakey))
+                                                serials)
+            new-full-chain (cons new-full-crl (vec rest-of-full-chain))]
+        (write-crls new-full-chain cacrl)
+        (log/info (i18n/trsn "Revoked 1 certificate: {1}"
+                             "Revoked {0} certificates: {1}"
+                             serial-count
+                             (str/join ", " subjects)))))
+
 
     ;; Publish infra-crl if an infra node is getting revoked.
     (when (and enable-infra-crl (fs/exists? infra-node-serials-path))
@@ -1524,13 +1687,16 @@
             infra-revocations (vec (set/intersection infra-nodes (set serials)))]
         (when (seq infra-revocations)
           (let [[our-infra-crl & rest-of-infra-chain] (utils/pem->crls infra-crl-path)
-                new-infra-crl (utils/revoke-multiple our-infra-crl
-                                                     (utils/pem->private-key cakey)
-                                                     (.getPublicKey (utils/pem->ca-cert cacert cakey))
-                                                     infra-revocations)
-                full-infra-chain (cons new-infra-crl (vec rest-of-infra-chain))]
-            (write-crls full-infra-chain infra-crl-path)
-            (log/info (i18n/trs "Infra node certificate(s) being revoked; publishing updated infra CRL"))))))))
+                new-infra-revocations (filter-already-revoked-serials infra-revocations our-infra-crl)]
+            (if (= 0 new-infra-revocations)
+              (log/info (i18n/trs "No revoke action needed. The infra certs are already in the infra CRL"))
+              (let [new-infra-crl (utils/revoke-multiple our-infra-crl
+                                                         (utils/pem->private-key cakey)
+                                                         (.getPublicKey (utils/pem->ca-cert cacert cakey))
+                                                         new-infra-revocations)
+                    full-infra-chain (cons new-infra-crl (vec rest-of-infra-chain))]
+                (write-crls full-infra-chain infra-crl-path)
+                (log/info (i18n/trs "Infra node certificate(s) being revoked; publishing updated infra CRL"))))))))))
 
 (schema/defn ^:always-validate set-certificate-status!
   "Sign or revoke the certificate for the given subject."
