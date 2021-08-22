@@ -33,8 +33,8 @@ run_cmd() {
 FORGE_API="forgeapi-cdn.puppet.com"
 MODULE_SLUG="puppetlabs-dropsonde"
 MODULE_NAME="dropsonde"
-INSTALL_DIR=$DESTDIR/opt/puppetlabs/server/data/puppetserver/puppetserver_modules
-INSTALL_DROPSONDE_GEM_SCRIPT_DIR=$DESTDIR/opt/puppetlabs/server/data/puppetserver/install_dropsonde
+INSTALL_DIR=$DESTDIR/opt/puppetlabs/puppetserver/dropsonde/modules
+INSTALL_DROPSONDE_GEM_SCRIPT_DIR=$DESTDIR/opt/puppetlabs/puppetserver/dropsonde/install_dropsonde
 
 # generate parsing json script
 cat <<EOF >> parse_json.rb
@@ -66,18 +66,15 @@ run_cmd "curl -O https://${FORGE_API}${MODULE_FILE_URI}"
 
 # delete install directory if exists
 if test -d $INSTALL_DIR; then
-  rm -rf $INSTALL_DIR
+  rm -rf $DESTDIR/opt/puppetlabs/puppetserver
 fi
 
 # create dropsonde module location
-mkdir $INSTALL_DIR
+mkdir -p $INSTALL_DIR
 
 # install the module
 tar -xvf $MODULE_SLUG-* -C $INSTALL_DIR
 mv $INSTALL_DIR/$MODULE_SLUG-* $INSTALL_DIR/$MODULE_NAME
-
-# fix in the module
-# sed -i 's/if $use_cron {/if $use_cron == false {/g' $INSTALL_DIR/$MODULE_NAME/manifests/init.pp
 
 # remove the tarball
 rm -f $MODULE_SLUG-*
@@ -88,7 +85,7 @@ if test -d $INSTALL_DROPSONDE_GEM_SCRIPT_DIR; then
 fi
 
 # create location for install dropsonde gem script
-mkdir $INSTALL_DROPSONDE_GEM_SCRIPT_DIR
+mkdir -p $INSTALL_DROPSONDE_GEM_SCRIPT_DIR
 
 # generate the install manifest
 cat <<EOF >> $INSTALL_DROPSONDE_GEM_SCRIPT_DIR/install.pp
@@ -104,7 +101,7 @@ chmod +r $INSTALL_DROPSONDE_GEM_SCRIPT_DIR/install.pp
 cat <<EOF >> $INSTALL_DROPSONDE_GEM_SCRIPT_DIR/install.sh
 #!/usr/bin/env bash
 
-eval "/opt/puppetlabs/puppet/bin/puppet apply /opt/puppetlabs/server/data/puppetserver/install_dropsonde/install.pp --modulepath /opt/puppetlabs/server/data/puppetserver/puppetserver_modules"
+eval "/opt/puppetlabs/puppet/bin/puppet apply /opt/puppetlabs/puppetserver/dropsonde/install_dropsonde/install.pp --modulepath /opt/puppetlabs/puppetserver/dropsonde/modules"
 
 if test $? -eq 0; then
   echo "dropsonde was successfully installed!"
