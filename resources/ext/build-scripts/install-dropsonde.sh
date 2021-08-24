@@ -33,8 +33,8 @@ run_cmd() {
 FORGE_API="forgeapi-cdn.puppet.com"
 MODULE_SLUG="puppetlabs-dropsonde"
 MODULE_NAME="dropsonde"
-INSTALL_DIR=$DESTDIR/opt/puppetlabs/puppetserver/dropsonde/modules
-INSTALL_DROPSONDE_GEM_SCRIPT_DIR=$DESTDIR/opt/puppetlabs/puppetserver/dropsonde/install_dropsonde
+INSTALL_DIR=$DESTDIR/etc/puppetlabs/dropsonde/modules
+INSTALL_DROPSONDE_GEM_SCRIPT_DIR=$DESTDIR/etc/puppetlabs/dropsonde/install_dropsonde
 
 # generate parsing json script
 cat <<EOF >> parse_json.rb
@@ -66,7 +66,7 @@ run_cmd "curl -O https://${FORGE_API}${MODULE_FILE_URI}"
 
 # delete install directory if exists
 if test -d $INSTALL_DIR; then
-  rm -rf $DESTDIR/opt/puppetlabs/puppetserver
+  rm -rf $DESTDIR/etc/puppetlabs/dropsonde
 fi
 
 # create dropsonde module location
@@ -101,7 +101,7 @@ chmod +r $INSTALL_DROPSONDE_GEM_SCRIPT_DIR/install.pp
 cat <<EOF >> $INSTALL_DROPSONDE_GEM_SCRIPT_DIR/install.sh
 #!/usr/bin/env bash
 
-eval "/opt/puppetlabs/puppet/bin/puppet apply /opt/puppetlabs/puppetserver/dropsonde/install_dropsonde/install.pp --modulepath /opt/puppetlabs/puppetserver/dropsonde/modules"
+eval "/opt/puppetlabs/puppet/bin/puppet apply /etc/puppetlabs/dropsonde/install_dropsonde/install.pp --modulepath /etc/puppetlabs/dropsonde/modules"
 
 if test $? -eq 0; then
   echo "dropsonde was successfully installed!"
