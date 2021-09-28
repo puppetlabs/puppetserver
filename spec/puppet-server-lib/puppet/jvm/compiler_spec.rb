@@ -93,11 +93,11 @@ describe Puppet::Server::Compiler do
 
         it 'requests facts from pdb after classifying and attempts to classify again' do
           allow(Puppet::Node::Facts.indirection.terminus).to receive(:name).and_return(:puppetdb)
-          expect(compiler).to receive(:get_facts_from_pdb)
+          expect(compiler).to receive(:get_facts_from_terminus)
                   .with(certname, 'fancy')
                   .ordered
                   .and_return(Puppet::Node::Facts.new(certname))
-          expect(compiler).to receive(:get_facts_from_pdb)
+          expect(compiler).to receive(:get_facts_from_terminus)
                   .with(certname, 'production')
                   .ordered
                   .and_return(Puppet::Node::Facts.new(certname))
@@ -114,7 +114,7 @@ describe Puppet::Server::Compiler do
           end
 
           allow(Puppet::Node::Facts.indirection.terminus).to receive(:name).and_return(:puppetdb)
-          allow(compiler).to receive(:get_facts_from_pdb).and_return(Puppet::Node::Facts.new(certname))
+          allow(compiler).to receive(:get_facts_from_terminus).and_return(Puppet::Node::Facts.new(certname))
 
           expect(Puppet::Node.indirection).to receive(:find).and_return(
             Puppet::Node.new(certname, environment: 'production')
