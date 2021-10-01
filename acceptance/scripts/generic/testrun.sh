@@ -8,7 +8,7 @@ do_init()
     exit -1;
   fi
 
-  bundle exec beaker-hostgenerator $GENCONFIG_LAYOUT > $BEAKER_CONFIG
+  bundle exec beaker-hostgenerator --hypervisor abs $GENCONFIG_LAYOUT > $BEAKER_CONFIG
 
   BEAKER_INIT="bundle exec beaker init --debug"
   BEAKER_INIT="$BEAKER_INIT --type aio"
