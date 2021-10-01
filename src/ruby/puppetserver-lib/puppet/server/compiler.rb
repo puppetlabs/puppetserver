@@ -208,8 +208,10 @@ module Puppet
       end
 
       def get_facts_from_terminus(nodename, environment)
+        # Ignore the cache terminus, which is not guaranteed to store trusted facts
         facts = Puppet::Node::Facts.indirection.find(nodename,
-                                                     {environment: environment})
+                                                     {environment: environment,
+                                                      ignore_cache: true})
 
         # If no facts have been stored for the node, the terminus will return nil
         if facts.nil?
