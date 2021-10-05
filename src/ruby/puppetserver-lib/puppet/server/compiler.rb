@@ -59,7 +59,7 @@ module Puppet
             end
 
             environment = node.environment
-            facts = get_facts_from_pdb(certname, environment.to_s)
+            facts = get_facts_from_terminus(certname, environment.to_s)
             node = Puppet.override(trusted_information: trusted_facts) do
               Puppet::Node.indirection.find(certname,
                                             environment: environment,
@@ -175,11 +175,9 @@ module Puppet
 
       def extract_facts(request_data)
         if request_data['facts'].nil?
-          if Puppet::Node::Facts.indirection.terminus.name.to_s == "puppetdb"
-            facts = get_facts_from_pdb(request_data['certname'], request_data['environment'])
-          else
-            raise(Puppet::Error, "PuppetDB not configured, please provide facts with your catalog request.")
-          end
+          Puppet.debug _("No facts submitted with request, retrieving from %{terminus_name}.") % { terminus_name: Puppet::Node::Facts.indirection.terminus.name.to_s }
+          facts = get_facts_from_terminus(request_data['certname'],
+                                          request_data['environment'])
         else
           facts_from_request = request_data['facts']
 
@@ -209,16 +207,13 @@ module Puppet
         trusted_facts ||= {}
       end
 
-      def get_facts_from_pdb(nodename, environment)
-        pdb_terminus = Puppet::Node::Facts::Puppetdb.new
-        request = Puppet::Indirector::Request.new(pdb_terminus.class.name,
-                                                  :find,
-                                                  nodename,
-                                                  nil,
-                                                  :environment => environment)
-        facts = pdb_terminus.find(request)
+      def get_facts_from_terminus(nodename, environment)
+        # Ignore the cache terminus, which is not guaranteed to store trusted facts
+        facts = Puppet::Node::Facts.indirection.find(nodename,
+                                                     {environment: environment,
+                                                      ignore_cache: true})
 
-        # If no facts have been stored for the node, PDB will return nil
+        # If no facts have been stored for the node, the terminus will return nil
         if facts.nil?
           # Create an empty facts object
           facts = Puppet::Node::Facts.new(nodename)
