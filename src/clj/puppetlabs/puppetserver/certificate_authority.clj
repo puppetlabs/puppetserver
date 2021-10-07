@@ -1450,7 +1450,7 @@
                      "Received CRLs for issuer {0} but none were newer than the existing CRL; keeping the existing CRL."
                      issuer))
           (log/info (i18n/trs
-                     "Updated CRL for issuer {0}." issuer)))
+                     "Updating CRL for issuer {0}." issuer)))
         new-crl)
       ;; no new CRLs found for this issuer, keep it
       crl)))
@@ -1461,7 +1461,7 @@
   [incoming-crls :- [X509CRL]
    crl-path :- schema/Str
    cert-chain-path :- schema/Str]
-  (log/info (i18n/trs "Updating CRL at {0}" crl-path))
+  (log/info (i18n/trs "Processing update to CRL at {0}" crl-path))
   (let [current-crls (utils/pem->crls crl-path)
         cert-chain (utils/pem->certs cert-chain-path)
         ca-cert-key (utils/get-extension-value (first cert-chain)
@@ -1483,7 +1483,8 @@
         new-ext-crl-chain (cons ca-crl (map #(maybe-replace-crl % incoming-crls-by-key-id)
                                             external-crl-chain))]
     (validate-certs-and-crls cert-chain new-ext-crl-chain)
-    (write-crls new-ext-crl-chain crl-path)))
+    (write-crls new-ext-crl-chain crl-path)
+    (log/info (i18n/trs "Successfully updated CRL at {0}" crl-path))))
 
 (schema/defn ensure-directories-exist!
   "Create any directories used by the CA if they don't already exist."
