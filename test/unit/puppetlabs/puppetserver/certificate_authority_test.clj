@@ -609,8 +609,10 @@
                (is (= (set new-crls) (set old-crls)))))))
      (let [multiple-newest-crls-path (str update-crl-fixture-dir "multiple_newest_root_crls.pem")
            delta-crl-path (str test-resources-dir "/update_crls/delta_crl.pem")
+           missing-auth-id-crl-path (str test-resources-dir "/update_crls/missing_auth_id_crl.pem")
            bad-inputs-and-error-msgs {multiple-newest-crls-path #"Could not determine newest CRL."
-                                      delta-crl-path #"Cannot support delta CRL."}]
+                                      delta-crl-path #"Cannot support delta CRL."
+                                      missing-auth-id-crl-path #"CRLs do not have an authority key"}]
        (doseq [[path error-message] bad-inputs-and-error-msgs]
          (testing (str "CRLs from " path " are rejected")
            (let [incoming-crls (utils/pem->crls path)]

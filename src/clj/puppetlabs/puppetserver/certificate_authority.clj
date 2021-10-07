@@ -1455,6 +1455,12 @@
       ;; no new CRLs found for this issuer, keep it
       crl)))
 
+(schema/defn get-auth-key-id
+  [crl :- X509CRL]
+  (if-let [key-id (utils/get-extension-value crl utils/authority-key-identifier-oid)]
+    key-id
+    (throw (IllegalArgumentException. ^String (i18n/trs "One or more submitted CRLs do not have an authority key identifier.")))))
+
 (schema/defn ^:always-validate update-crls
   "Given a collection of CRLs, update the CRL chain and confirm that
   all CRLs are currently valid."
@@ -1478,8 +1484,7 @@
                                      ;; of the same CRL, deduplicate so we can
                                      ;; identify the newest CRL
                                      set
-                                     (group-by #(utils/get-extension-value
-                                                 % utils/authority-key-identifier-oid)))
+                                     (group-by get-auth-key-id))
         new-ext-crl-chain (cons ca-crl (map #(maybe-replace-crl % incoming-crls-by-key-id)
                                             external-crl-chain))]
     (validate-certs-and-crls cert-chain new-ext-crl-chain)
