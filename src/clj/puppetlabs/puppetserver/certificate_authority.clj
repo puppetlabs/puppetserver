@@ -1649,10 +1649,10 @@
   (let [crl-revoked-list (.getRevokedCertificates crl)
         existed-serials (set (map #(.getSerialNumber %) crl-revoked-list))
         duplicate-serials (set/intersection (set serials) existed-serials)]
-        (when (> (count duplicate-serials) 0)
-          (doseq [serial duplicate-serials]
-            (log/debug (i18n/trs "Certificate with serial {0} is already revoked." serial))))
-        (vec (set/difference (set serials) existed-serials))))
+    (when (> (count duplicate-serials) 0)
+      (doseq [serial duplicate-serials]
+        (log/debug (i18n/trs "Certificate with serial {0} is already revoked." serial))))
+    (vec (set/difference (set serials) existed-serials))))
 
 (schema/defn revoke-existing-certs!
   "Revoke the subjects' certificates. Note this does not destroy the certificates.
@@ -1664,7 +1664,7 @@
         serials (filter-already-revoked-serials (map #(-> (path-to-cert signeddir %)
                                                           (utils/pem->cert)
                                                           (utils/get-serial))
-                                                          subjects)
+                                                     subjects)
                                                 our-full-crl)
         serial-count (count serials)]
     (if (= 0 serial-count)
