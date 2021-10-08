@@ -505,22 +505,22 @@
 
 (deftest filter-already-revoked-serials-test
   (let [crl (-> (get-certificate-revocation-list cacrl)
-                  StringReader.
-                  utils/pem->crl)]
-  (testing "Return an empty vector when all supplied serials are already in CRL"
-    (let [test-serial (vec [4])
-          filtered-serial (filter-already-revoked-serials test-serial crl)]
-      (is (empty? filtered-serial))))
+                StringReader.
+                utils/pem->crl)]
+   (testing "Return an empty vector when all supplied serials are already in CRL"
+     (let [test-serial (vec [4])
+           filtered-serial (filter-already-revoked-serials test-serial crl)]
+       (is (empty? filtered-serial))))
 
-  (testing "Return a vector of serials not yet in CRL"
-    (let [test-serial (vec [1 2 3 4])
-          filtered-serial (filter-already-revoked-serials test-serial crl)]
-      (is (true? (= (sort filtered-serial) [1 2 3])))))
+   (testing "Return a vector of serials not yet in CRL"
+     (let [test-serial (vec [1 2 3 4])
+           filtered-serial (filter-already-revoked-serials test-serial crl)]
+       (is (true? (= (sort filtered-serial) [1 2 3])))))
 
-  (testing "Deduplicates the vector of serials to be revoked"
-    (let [test-serial (vec [1 1 2 2 3 3])
-          filtered-serial (filter-already-revoked-serials test-serial crl)]
-      (is (apply distinct? filtered-serial))))))
+   (testing "Deduplicates the vector of serials to be revoked"
+     (let [test-serial (vec [1 1 2 2 3 3])
+           filtered-serial (filter-already-revoked-serials test-serial crl)]
+       (is (apply distinct? filtered-serial))))))
 
 (deftest get-certificate-revocation-list-test
   (testing "`get-certificate-revocation-list` returns a valid CRL file."
@@ -609,8 +609,10 @@
                (is (= (set new-crls) (set old-crls)))))))
      (let [multiple-newest-crls-path (str update-crl-fixture-dir "multiple_newest_root_crls.pem")
            delta-crl-path (str test-resources-dir "/update_crls/delta_crl.pem")
+           missing-auth-id-crl-path (str test-resources-dir "/update_crls/missing_auth_id_crl.pem")
            bad-inputs-and-error-msgs {multiple-newest-crls-path #"Could not determine newest CRL."
-                                      delta-crl-path #"Cannot support delta CRL."}]
+                                      delta-crl-path #"Cannot support delta CRL."
+                                      missing-auth-id-crl-path #"CRLs do not have an authority key"}]
        (doseq [[path error-message] bad-inputs-and-error-msgs]
          (testing (str "CRLs from " path " are rejected")
            (let [incoming-crls (utils/pem->crls path)]
@@ -1659,8 +1661,8 @@
 
 (deftest get-cert-or-csr-statuses-test
   (let [crl (-> (get-certificate-revocation-list cacrl)
-                  StringReader.
-                  utils/pem->crl)]
+                StringReader.
+                utils/pem->crl)]
     (testing "returns a collection of 'requested' statuses when queried for CSR"
       (let [request-statuses (get-cert-or-csr-statuses csrdir crl false)
             result-states (map :state request-statuses)]
