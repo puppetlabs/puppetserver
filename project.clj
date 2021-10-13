@@ -65,7 +65,7 @@
                  [puppetlabs/ssl-utils]
                  [puppetlabs/ring-middleware]
                  [puppetlabs/dujour-version-check]
-                 [puppetlabs/http-client]
+                 [puppetlabs/http-client "1.2.2"]
                  [puppetlabs/comidi]
                  [puppetlabs/i18n]]
 
