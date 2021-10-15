@@ -27,7 +27,7 @@
 
   :min-lein-version "2.9.1"
 
-  :parent-project {:coords [puppetlabs/clj-parent "4.8.1"]
+  :parent-project {:coords [puppetlabs/clj-parent "4.8.2"]
                    :inherit [:managed-dependencies]}
 
   :dependencies [[org.clojure/clojure]
@@ -65,7 +65,7 @@
                  [puppetlabs/ssl-utils]
                  [puppetlabs/ring-middleware]
                  [puppetlabs/dujour-version-check]
-                 [puppetlabs/http-client "1.2.2"]
+                 [puppetlabs/http-client]
                  [puppetlabs/comidi]
                  [puppetlabs/i18n]]
 
