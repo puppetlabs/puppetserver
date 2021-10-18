@@ -55,17 +55,19 @@
         (assoc-in [:jruby-puppet :multithreaded] multithreaded)
         (ks/deep-merge overrides))))
 
-(def services-from-dev-bootstrap
-  (tk-bootstrap/parse-bootstrap-config! dev-bootstrap-file))
+(defn services-from-dev-bootstrap
+  ([] (services-from-dev-bootstrap dev-bootstrap-file))
+  ([bootstrap-config-file]
+   (tk-bootstrap/parse-bootstrap-config! bootstrap-config-file)))
 
 (defn services-from-dev-bootstrap-plus-mock-jruby-pool-manager-service
   ([config]
    (jruby-puppet-testutils/add-mock-jruby-pool-manager-service
-    services-from-dev-bootstrap
+    (services-from-dev-bootstrap)
     config))
   ([config mock-jruby-puppet-fn]
    (jruby-puppet-testutils/add-mock-jruby-pool-manager-service
-    services-from-dev-bootstrap
+    (services-from-dev-bootstrap)
     config
     mock-jruby-puppet-fn)))
 
