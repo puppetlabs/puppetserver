@@ -1,7 +1,6 @@
 (ns puppetlabs.puppetserver.bootstrap-testutils
   (:require [puppetlabs.trapperkeeper.config :as tk-config]
             [puppetlabs.trapperkeeper.bootstrap :as tk-bootstrap]
-            [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
             [puppetlabs.kitchensink.core :as ks]
             [me.raynes.fs :as fs]
