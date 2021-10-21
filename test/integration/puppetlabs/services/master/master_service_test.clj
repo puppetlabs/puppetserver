@@ -604,7 +604,7 @@
     (testing "add-metric-ids-to-http-client-metrics-list-fn works"
       (bootstrap-testutils/with-puppetserver-running-with-services
        app
-       (conj bootstrap-testutils/services-from-dev-bootstrap
+       (conj (bootstrap-testutils/services-from-dev-bootstrap)
              test-service)
        {:jruby-puppet {:gem-path gem-path
                        :max-active-instances 1
