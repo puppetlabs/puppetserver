@@ -272,7 +272,7 @@
       (bootstrap/with-app-with-config
         app#
         (jruby-testutils/add-mock-jruby-pool-manager-service
-         (conj bootstrap-testutils/services-from-dev-bootstrap
+         (conj (bootstrap-testutils/services-from-dev-bootstrap)
                (comidi-handler-service coordinator#))
          ~config
          (partial coordinated-mock-jruby-instance coordinator#))

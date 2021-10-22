@@ -1473,10 +1473,16 @@
                      "Received CRLs for issuer {0} but none were newer than the existing CRL; keeping the existing CRL."
                      issuer))
           (log/info (i18n/trs
-                     "Updated CRL for issuer {0}." issuer)))
+                     "Updating CRL for issuer {0}." issuer)))
         new-crl)
       ;; no new CRLs found for this issuer, keep it
       crl)))
+
+(schema/defn get-auth-key-id
+  [crl :- X509CRL]
+  (if-let [key-id (utils/get-extension-value crl utils/authority-key-identifier-oid)]
+    key-id
+    (throw (IllegalArgumentException. ^String (i18n/trs "One or more submitted CRLs do not have an authority key identifier.")))))
 
 (schema/defn ^:always-validate update-crls
   "Given a collection of CRLs, update the CRL chain and confirm that
@@ -1484,7 +1490,7 @@
   [incoming-crls :- [X509CRL]
    crl-path :- schema/Str
    cert-chain-path :- schema/Str]
-  (log/info (i18n/trs "Updating CRL at {0}" crl-path))
+  (log/info (i18n/trs "Processing update to CRL at {0}" crl-path))
   (let [current-crls (utils/pem->crls crl-path)
         cert-chain (utils/pem->certs cert-chain-path)
         ca-cert-key (utils/get-extension-value (first cert-chain)
@@ -1501,12 +1507,12 @@
                                      ;; of the same CRL, deduplicate so we can
                                      ;; identify the newest CRL
                                      set
-                                     (group-by #(utils/get-extension-value
-                                                 % utils/authority-key-identifier-oid)))
+                                     (group-by get-auth-key-id))
         new-ext-crl-chain (cons ca-crl (map #(maybe-replace-crl % incoming-crls-by-key-id)
                                             external-crl-chain))]
     (validate-certs-and-crls cert-chain new-ext-crl-chain)
-    (write-crls new-ext-crl-chain crl-path)))
+    (write-crls new-ext-crl-chain crl-path)
+    (log/info (i18n/trs "Successfully updated CRL at {0}" crl-path))))
 
 (schema/defn ensure-directories-exist!
   "Create any directories used by the CA if they don't already exist."
@@ -1672,10 +1678,10 @@
   (let [crl-revoked-list (.getRevokedCertificates crl)
         existed-serials (set (map #(.getSerialNumber %) crl-revoked-list))
         duplicate-serials (set/intersection (set serials) existed-serials)]
-        (when (> (count duplicate-serials) 0)
-          (doseq [serial duplicate-serials]
-            (log/debug (i18n/trs "Certificate with serial {0} is already revoked." serial))))
-        (vec (set/difference (set serials) existed-serials))))
+    (when (> (count duplicate-serials) 0)
+      (doseq [serial duplicate-serials]
+        (log/debug (i18n/trs "Certificate with serial {0} is already revoked." serial))))
+    (vec (set/difference (set serials) existed-serials))))
 
 (schema/defn revoke-existing-certs!
   "Revoke the subjects' certificates. Note this does not destroy the certificates.
@@ -1687,7 +1693,7 @@
         serials (filter-already-revoked-serials (map #(-> (path-to-cert signeddir %)
                                                           (utils/pem->cert)
                                                           (utils/get-serial))
-                                                          subjects)
+                                                     subjects)
                                                 our-full-crl)
         serial-count (count serials)]
     (if (= 0 serial-count)
