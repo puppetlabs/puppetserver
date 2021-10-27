@@ -2,6 +2,7 @@
   (:require [clojure.java.shell :refer [sh]]
             [clojure.tools.logging :as log]
             [puppetlabs.i18n.core :as i18n]
+            [puppetlabs.puppetserver.shell-utils :as shell-utils]
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet]))
 
 (def puppet-agent-ruby "/opt/puppetlabs/puppet/bin/ruby")
@@ -18,15 +19,16 @@
                        jruby-puppet/default-master-var-dir)
         logdir (get-in config [:jruby-puppet :master-log-dir]
                        jruby-puppet/default-master-log-dir)
-        result (sh puppet-agent-ruby dropsonde-bin "submit"
-                   :env {"GEM_HOME" dropsonde-dir
-                         "GEM_PATH" dropsonde-dir
-                         "HOME" dropsonde-dir
-                         "PUPPET_CONFDIF" confdir
-                         "PUPPET_CODEDIR" codedir
-                         "PUPPET_VARDIR" vardir
-                         "PUPPET_LOGDIR" logdir})]
-    (if (= 0 (:exit result))
+        result (shell-utils/execute-command puppet-agent-ruby
+                                            {:args [dropsonde-bin "submit"]
+                                             :env {"GEM_HOME" dropsonde-dir
+                                                   "GEM_PATH" dropsonde-dir
+                                                   "HOME" dropsonde-dir
+                                                   "PUPPET_CONFDIF" confdir
+                                                   "PUPPET_CODEDIR" codedir
+                                                   "PUPPET_VARDIR" vardir
+                                                   "PUPPET_LOGDIR" logdir}})]
+    (if (= 0 (:exit-code result))
       (log/info (i18n/trs "Successfully submitted module metrics via Dropsonde."))
       (log/warn (i18n/trs "Failed to submit module metrics via Dropsonde. Error: {0}"
-                          (:err result))))))
+                          (:stderr result))))))
