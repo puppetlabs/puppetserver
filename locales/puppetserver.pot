@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: 777fd3eb0fe59c38c46790805a0d12b079a952f4\n"
+"X-Git-Ref: 805dd8eba7c15aab8fe4ef18a4383e1911f2c338\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -254,11 +254,19 @@ msgid ""
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
-msgid "Updated CRL for issuer {0}."
+msgid "Updating CRL for issuer {0}."
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
-msgid "Updating CRL at {0}"
+msgid "One or more submitted CRLs do not have an authority key identifier."
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Processing update to CRL at {0}"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Successfully updated CRL at {0}"
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
