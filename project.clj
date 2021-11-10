@@ -1,4 +1,4 @@
-(def ps-version "7.4.2-SNAPSHOT")
+(def ps-version "7.4.3-SNAPSHOT")
 
 (defn deploy-info
   [url]
@@ -27,7 +27,7 @@
 
   :min-lein-version "2.9.1"
 
-  :parent-project {:coords [puppetlabs/clj-parent "4.8.1"]
+  :parent-project {:coords [puppetlabs/clj-parent "4.8.2"]
                    :inherit [:managed-dependencies]}
 
   :dependencies [[org.clojure/clojure]
