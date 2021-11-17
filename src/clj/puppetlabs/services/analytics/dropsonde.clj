@@ -11,14 +11,15 @@
 
 (defn run-dropsonde
   [config]
-  (let [confdir (get-in config [:jruby-puppet :master-conf-dir]
-                        jruby-puppet/default-master-conf-dir)
-        codedir (get-in config [:jruby-puppet :master-code-dir]
-                        jruby-puppet/default-master-code-dir)
-        vardir (get-in config [:jruby-puppet :master-var-dir]
-                       jruby-puppet/default-master-var-dir)
-        logdir (get-in config [:jruby-puppet :master-log-dir]
-                       jruby-puppet/default-master-log-dir)
+  ;; process config to ensure default resolution of these settings
+  (let [puppet-config (jruby-puppet/initialize-puppet-config
+                       {}
+                       (jruby-puppet/extract-puppet-config (:jruby-puppet config))
+                       false)
+        confdir (:server-conf-dir puppet-config)
+        codedir (:server-code-dir puppet-config)
+        vardir (:server-var-dir puppet-config)
+        logdir (:server-log-dir puppet-config)
         result (shell-utils/execute-command puppet-agent-ruby
                                             {:args [dropsonde-bin "submit"]
                                              :env {"GEM_HOME" dropsonde-dir
