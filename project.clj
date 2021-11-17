@@ -219,6 +219,7 @@
                              puppetlabs.puppetserver.cli.irb
                              puppetlabs.puppetserver.cli.gem
                              puppetlabs.services.analytics.analytics-service
+                             puppetlabs.services.analytics.dropsonde
                              puppetlabs.services.protocols.legacy-routes]}
              :ci {:plugins [[lein-pprint "1.1.1"]
                             [lein-exec "0.3.7"]]}}
