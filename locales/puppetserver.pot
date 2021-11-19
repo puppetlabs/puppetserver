@@ -371,6 +371,14 @@ msgid ""
 "background"
 msgstr ""
 
+#: src/clj/puppetlabs/services/analytics/dropsonde.clj
+msgid "Successfully submitted module metrics via Dropsonde."
+msgstr ""
+
+#: src/clj/puppetlabs/services/analytics/dropsonde.clj
+msgid "Failed to submit module metrics via Dropsonde. Error: {0}"
+msgstr ""
+
 #: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
 msgid "Could not find certificate {0}"
 msgstr ""
