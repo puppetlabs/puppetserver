@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: 805dd8eba7c15aab8fe4ef18a4383e1911f2c338\n"
+"X-Git-Ref: b5a7d1789d51423af2b1bc332703636697ca7f66\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -369,6 +369,14 @@ msgstr ""
 msgid ""
 "Puppet Server Update Service has successfully started and will run in the "
 "background"
+msgstr ""
+
+#: src/clj/puppetlabs/services/analytics/dropsonde.clj
+msgid "Successfully submitted module metrics via Dropsonde."
+msgstr ""
+
+#: src/clj/puppetlabs/services/analytics/dropsonde.clj
+msgid "Failed to submit module metrics via Dropsonde. Error: {0}"
 msgstr ""
 
 #: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
