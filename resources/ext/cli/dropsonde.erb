@@ -9,7 +9,7 @@ export GEM_PATH=${DROPSONDE_DIR}
 
 if [[ -f "$DROPSONDE_BIN" && -x "$DROPSONDE_BIN" ]]
 then
-    $DROPSONDE_BIN "$@"
+    $PUPPET_AGENT_RUBY $DROPSONDE_BIN "$@"
 else
     echo "Dropsonde does not appear to be installed properly."
 fi
