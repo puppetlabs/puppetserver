@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+PUPPET_AGENT_RUBY="/opt/puppetlabs/puppet/bin/ruby"
+DROPSONDE_DIR="/opt/puppetlabs/server/data/puppetserver/dropsonde"
+DROPSONDE_BIN="${DROPSONDE_DIR}/bin/dropsonde"
+
+export GEM_HOME=${DROPSONDE_DIR}
+export GEM_PATH=${DROPSONDE_DIR}
+
+if [[ -f "$DROPSONDE_BIN" && -x "$DROPSONDE_BIN" ]]
+then
+    $PUPPET_AGENT_RUBY $DROPSONDE_BIN "$@"
+else
+    echo "Dropsonde does not appear to be installed properly."
+fi
+
