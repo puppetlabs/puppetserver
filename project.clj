@@ -27,7 +27,7 @@
 
   :min-lein-version "2.9.1"
 
-  :parent-project {:coords [puppetlabs/clj-parent "4.8.3"]
+  :parent-project {:coords [puppetlabs/clj-parent "4.8.4"]
                    :inherit [:managed-dependencies]}
 
   :dependencies [[org.clojure/clojure]
