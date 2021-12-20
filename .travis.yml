@@ -12,15 +12,31 @@ jobs:
   include:
     - stage: puppetserver tests
       name: "Java 8"
-      jdk: openjdk8
-    - jdk: openjdk11
-      name: "Java 11"
-    - jdk: openjdk11
+      before_install:
+        - sudo rm -rf /usr/local/lib/jvm/
+        - sudo rm -rf /usr/lib/jvm/openjdk-8
+        - sudo apt-get install -y openjdk-8-jdk-headless
+        - export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/
+    - name: "Java 11"
+      before_install:
+        - sudo rm -rf /usr/local/lib/jvm/
+        - sudo rm -rf /usr/lib/jvm/openjdk-11
+        - sudo apt-get install -y openjdk-11-jdk-headless
+        - export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64/
+    - name: "Java 11 w/ FIPS"
+      before_install:
+        - sudo rm -rf /usr/local/lib/jvm/
+        - sudo rm -rf /usr/lib/jvm/openjdk-11
+        - sudo apt-get install -y openjdk-11-jdk-headless
+        - export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64/
       env: ADDITIONAL_LEIN_ARGS="with-profile fips"
-      name: "Java 11 w/ FIPS"
-    - jdk: openjdk11
+    - name: "Java 11 w/ multithreaded"
+      before_install:
+        - sudo rm -rf /usr/local/lib/jvm/
+        - sudo rm -rf /usr/lib/jvm/openjdk-11
+        - sudo apt-get install -y openjdk-11-jdk-headless
+        - export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64/
       env: MULTITHREADED=true
-      name: "Java 11 w/ multithreaded"
     - stage: puppetserver vulnerability scan
       script:
         - lein nvd check
