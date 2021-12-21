@@ -273,25 +273,16 @@ jruby-config :- jruby-schemas/JRubyConfig
               (catch EvalFailedException e
                 (is (instance? ex-class (.getCause e)))))))))))
 
-  (when-not (SSLUtils/isFIPS)
-    (testing "Can connect via TLSv1 by default"
-      (with-webserver-with-protocols ["TLSv1"] ["TLS_RSA_WITH_AES_128_CBC_SHA"]
-        (with-scripting-container sc
-          (with-http-client sc 10080 {:use-ssl true}
-            (.runScriptlet sc "$response = $c.get('/', {})")
-            (is (= "200" (.runScriptlet sc "$response.code")))
-            (is (= "hi" (.runScriptlet sc "$response.body")))))))
-
-    (testing "Can connect via TLSv1.1 by default"
-      (with-webserver-with-protocols ["TLSv1.1"] ["TLS_RSA_WITH_AES_128_CBC_SHA"]
-        (with-scripting-container sc
-          (with-http-client sc 10080 {:use-ssl true}
-            (.runScriptlet sc "$response = $c.get('/', {})")
-            (is (= "200" (.runScriptlet sc "$response.code")))
-            (is (= "hi" (.runScriptlet sc "$response.body"))))))))
-
   (testing "Can connect via TLSv1.2 by default"
     (with-webserver-with-protocols ["TLSv1.2"] nil
+      (with-scripting-container sc
+        (with-http-client sc 10080 {:use-ssl true}
+          (.runScriptlet sc "$response = $c.get('/', {})")
+          (is (= "200" (.runScriptlet sc "$response.code")))
+          (is (= "hi" (.runScriptlet sc "$response.body")))))))
+
+  (testing "Can connect via TLSv1.3 by default"
+    (with-webserver-with-protocols ["TLSv1.3"] nil
       (with-scripting-container sc
         (with-http-client sc 10080 {:use-ssl true}
           (.runScriptlet sc "$response = $c.get('/', {})")
