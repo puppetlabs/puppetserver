@@ -667,7 +667,12 @@
         (testutils/assert-issuer cert "CN=test ca")
         (testing "has at least one expected extension - key usage"
           (let [key-usage (utils/get-extension-value cert "2.5.29.15")]
-            (is (= #{:key-cert-sign :crl-sign} key-usage))))))
+            (is (= #{:key-cert-sign :crl-sign} key-usage))))
+        (testing "authority key identifier is SHA of public key"
+          (let [ca-pub-key (-> settings :capub utils/pem->public-key)
+                pub-key-sha (pubkey-sha1 ca-pub-key)]
+            (is (= pub-key-sha
+                   (:key-identifier (utils/get-extension-value cert utils/authority-key-identifier-oid))))))))
 
     (testing "cakey"
       (let [key (-> settings :cakey utils/pem->private-key)]
@@ -1424,9 +1429,8 @@
                                                :dns-alt-names dns-alt-names))))))
 
     (testing "basic extensions are created for a CA"
-      (let [serial        42
-            exts          (create-ca-extensions subject-dn
-                                                serial
+      (let [exts          (create-ca-extensions subject-dn
+                                                subject-pub
                                                 subject-pub)
             exts-expected [{:oid      "2.16.840.1.113730.1.13"
                             :critical false
@@ -1436,9 +1440,9 @@
                             :value    {:dns-name [subject]}}
                            {:oid      "2.5.29.35"
                             :critical false
-                            :value    {:issuer-dn     (str "CN=" subject)
-                                       :public-key    nil
-                                       :serial-number (biginteger serial)}}
+                            :value    {:issuer-dn     nil
+                                       :public-key    subject-pub
+                                       :serial-number nil}}
                            {:oid      "2.5.29.19"
                             :critical true
                             :value    {:is-ca true}}

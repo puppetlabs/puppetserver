@@ -652,12 +652,12 @@
 (schema/defn create-ca-extensions :- (schema/pred utils/extension-list?)
   "Create a list of extensions to be added to the CA certificate."
   [ca-name :- (schema/pred utils/valid-x500-name?)
-   ca-serial :- (schema/pred number?)
+   issuer-public-key :- (schema/pred utils/public-key?)
    ca-public-key :- (schema/pred utils/public-key?)]
   (vec
     (cons (utils/netscape-comment
            netscape-comment-value)
-          (->> (utils/create-ca-extensions ca-name ca-serial ca-public-key)
+          (->> (utils/create-ca-extensions issuer-public-key ca-public-key)
                (ensure-ext-list-has-cn-san (utils/x500-name->CN ca-name))))))
 
 (schema/defn read-infra-nodes
@@ -716,8 +716,10 @@
         x500-name   (utils/cn (:ca-name ca-settings))
         validity    (cert-validity-dates (:ca-ttl ca-settings))
         serial      (next-serial-number! (:serial ca-settings))
+        ;; Since this is a self-signed cert, the issuer key and the
+        ;; key for this cert are the same
         ca-exts     (create-ca-extensions x500-name
-                                          serial
+                                          public-key
                                           public-key)
         cacert      (utils/sign-certificate
                      x500-name
