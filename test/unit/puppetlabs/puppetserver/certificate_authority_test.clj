@@ -668,6 +668,8 @@
         (testing "has at least one expected extension - key usage"
           (let [key-usage (utils/get-extension-value cert "2.5.29.15")]
             (is (= #{:key-cert-sign :crl-sign} key-usage))))
+        (testing "does not have any SANs"
+          (is (nil? (utils/get-extension-value cert subject-alt-names-oid))))
         (testing "authority key identifier is SHA of public key"
           (let [ca-pub-key (-> settings :capub utils/pem->public-key)
                 pub-key-sha (pubkey-sha1 ca-pub-key)]
@@ -1429,15 +1431,11 @@
                                                :dns-alt-names dns-alt-names))))))
 
     (testing "basic extensions are created for a CA"
-      (let [exts          (create-ca-extensions subject-dn
-                                                subject-pub
+      (let [exts          (create-ca-extensions subject-pub
                                                 subject-pub)
             exts-expected [{:oid      "2.16.840.1.113730.1.13"
                             :critical false
                             :value    netscape-comment-value}
-                           {:oid       "2.5.29.17"
-                            :critical false
-                            :value    {:dns-name [subject]}}
                            {:oid      "2.5.29.35"
                             :critical false
                             :value    {:issuer-dn     nil
