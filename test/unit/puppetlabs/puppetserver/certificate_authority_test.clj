@@ -3,8 +3,9 @@
                     StringWriter
                     ByteArrayInputStream
                     ByteArrayOutputStream)
-           (java.security InvalidParameterException)
-           (com.puppetlabs.ssl_utils SSLUtils))
+           (com.puppetlabs.ssl_utils SSLUtils)
+           (java.security PublicKey MessageDigest)
+           (org.bouncycastle.asn1.x509 SubjectPublicKeyInfo))
   (:require [puppetlabs.puppetserver.certificate-authority :refer :all]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.ssl-utils.core :as utils]
@@ -152,6 +153,22 @@
   "Does the provided extension list contain an extensions with the given OID."
   [ext-list oid]
   (> (count (filter #(= oid (:oid %)) ext-list)) 0))
+
+;; TODO copied from jvm-ssl-utils testutils. That lib should be updated
+;; to expose its test jar so we can use this directly instead.
+(defn pubkey-sha1
+  "Gets the SHA-1 digest of the raw bytes of the provided publickey."
+  [pub-key]
+  {:pre [(utils/public-key? pub-key)]
+   :post [(vector? %)
+          (every? integer? %)]}
+  (let [bytes   (-> ^PublicKey
+                    pub-key
+                    .getEncoded
+                    SubjectPublicKeyInfo/getInstance
+                    .getPublicKeyData
+                    .getBytes)]
+    (vec (.digest (MessageDigest/getInstance "SHA1") bytes))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tests
