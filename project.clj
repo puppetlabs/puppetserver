@@ -122,7 +122,7 @@
                                         [beckon]
                                         [lambdaisland/uri "1.4.70"]]}
              :dev [:defaults
-                   {:dependencies [[org.bouncycastle/bcpkix-jdk15on]]
+                   {:dependencies [[org.bouncycastle/bcpkix-jdk15on "1.70"]]
                     :plugins [[lein-nvd "1.4.1" :exclusions [org.apache.commons/commons-lang3
                                                              org.clojure/clojure
                                                              org.slf4j/jcl-over-slf4j
