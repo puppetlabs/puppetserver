@@ -2,8 +2,8 @@
 name: Clojure Snyk Check
 
 on:
-  pull_request_target:
-    types: [labeled]
+  pull_request:
+    types: [opened, reopened, synchronize, labeled]
 
 jobs:
  snyk_vanagon:
@@ -19,7 +19,7 @@ jobs:
       id: scan
       uses: puppetlabs/security-snyk-clojure-action@v1.2.0
       with:
-        snykToken: ${{ secrets.SNYK_TOKEN }}
+        snykToken: ${{ secrets.SNYK_PE_TOKEN }}
         rproxyKey: ${{ secrets.SEC_RPROXY_KEY }}
         snykOrg: 'puppet-foss'
         snykProject: 'puppetserver'
