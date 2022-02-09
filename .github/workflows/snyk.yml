@@ -6,7 +6,7 @@ on:
     types: [opened, reopened, synchronize, labeled]
 
 jobs:
- snyk_vanagon:
+ snyk_clojure:
    runs-on: ubuntu-latest
    if: contains(github.event.pull_request.labels.*.name, 'safe to test')
    steps:
