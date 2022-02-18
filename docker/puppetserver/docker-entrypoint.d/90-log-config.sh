@@ -10,7 +10,11 @@ if test -n "${PUPPETSERVER_HOSTNAME}"; then
   certname=${PUPPETSERVER_HOSTNAME}.pem
 else
   echo "* PUPPETSERVER_HOSTNAME: unset"
-  certname=$(cd "${SSLDIR}/certs" && ls *.pem | grep --invert-match ca.pem)
+  # choose first certificate found
+  for certname in "$SSLDIR/certs"/*.pem ; do
+    certname=${certname##*/}
+    [ "$certname" != ca.pem ] && break
+  done
 fi
 echo "* PUPPET_MASTERPORT: '${PUPPET_MASTERPORT}'"
 echo "* Certname: '${certname}'"
