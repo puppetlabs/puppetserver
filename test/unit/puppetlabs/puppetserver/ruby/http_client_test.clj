@@ -284,24 +284,6 @@
                  (catch EvalFailedException e
                    (is (instance? ex-class (.getCause e))))))))))))
 
-  (when-not (SSLUtils/isFIPS)
-    (let [url (str "https://localhost:10080")]
-      (testing "Can connect via TLSv1 by default"
-        (with-webserver-with-protocols ["TLSv1"] ["TLS_RSA_WITH_AES_128_CBC_SHA"]
-          (with-scripting-container sc
-            (with-http-client sc {}
-              (.runScriptlet sc (format "$response = $c.get(URI('%s'))" url))
-              (is (= 200 (.runScriptlet sc "$response.code")))
-              (is (= "hi" (.runScriptlet sc "$response.body")))))))
-
-      (testing "Can connect via TLSv1.1 by default"
-        (with-webserver-with-protocols ["TLSv1.1"] ["TLS_RSA_WITH_AES_128_CBC_SHA"]
-          (with-scripting-container sc
-            (with-http-client sc {}
-              (.runScriptlet sc (format "$response = $c.get(URI('%s'))" url))
-              (is (= 200 (.runScriptlet sc "$response.code")))
-              (is (= "hi" (.runScriptlet sc "$response.body")))))))))
-
   (testing "Can connect via TLSv1.2 by default"
     (with-webserver-with-protocols ["TLSv1.2"] nil
       (with-scripting-container sc
