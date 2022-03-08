@@ -52,7 +52,7 @@ These scripts will be executed at the end of the entrypoint script, before the s
 
 ## Persistance 
 
-If you plan to use the in-server CA, restarting the container can cause the server's keys and certificates to change, causing agents and the server to stop trusting each other. To prevent this, you can persist the default cadir, `/etc/puppetlabs/puppetserver/ca`. For example, `docker run -v $PWD/ca-ssl:/etc/puppetlabs/puppetserver/ca puppetlabs/puppetserver:latest`.
+If you plan to use the in-server CA, restarting the container can cause the server's keys and certificates to change, causing agents and the server to stop trusting each other. To prevent this, you can persist the default cadir, `/etc/puppetlabs/puppet/ca`. For example, `docker run -v $PWD/ca-ssl:/etc/puppetlabs/puppet/ca puppetlabs/puppetserver:latest`.
 
 ## Analytics Data Collection
 
