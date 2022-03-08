@@ -90,6 +90,7 @@
   :uberjar-name "puppet-server-release.jar"
   :lein-ezbake {:vars {:user "puppet"
                        :group "puppet"
+                       :numeric-uid-gid 52
                        :build-type "foss"
                        :java-args ~(str "-Xms2g -Xmx2g "
                                      "-Djruby.logger.class=com.puppetlabs.jruby_utils.jruby.Slf4jLogger")
