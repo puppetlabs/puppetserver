@@ -855,14 +855,13 @@
   "Create a list of extensions to be added to the master certificate."
   [master-certname :- schema/Str
    master-public-key :- (schema/pred utils/public-key?)
-   ca-public-key :- (schema/pred utils/public-key?)
+   ca-cert :- Certificate
    {:keys [dns-alt-names csr-attributes]} :- MasterSettings]
   (let [alt-names-ext (create-subject-alt-names-ext master-certname dns-alt-names)
         csr-attr-exts (create-csr-attrs-exts csr-attributes)
         base-ext-list [(utils/netscape-comment
                          netscape-comment-value)
-                       (utils/authority-key-identifier
-                         ca-public-key false)
+                       (utils/authority-key-identifier ca-cert)
                        (utils/basic-constraints-for-non-ca true)
                        (utils/ext-key-usages
                          [ssl-server-cert ssl-client-cert] true)
@@ -934,13 +933,12 @@
   (-> settings :certdir fs/file ks/mkdirs!)
   (-> settings :requestdir fs/file ks/mkdirs!)
   (let [ca-cert        (utils/pem->ca-cert (:cacert ca-settings) (:cakey ca-settings))
-        ca-public-key  (.getPublicKey ca-cert)
         ca-private-key (utils/pem->private-key (:cakey ca-settings))
         next-serial    (next-serial-number! (:serial ca-settings))
         public-key     (generate-master-ssl-keys! settings)
         extensions     (create-master-extensions certname
                                                  public-key
-                                                 ca-public-key
+                                                 ca-cert
                                                  settings)
         x500-name      (utils/cn certname)
         validity       (cert-validity-dates (:ca-ttl ca-settings))
@@ -1203,13 +1201,13 @@
   should be signed onto the certificate. This includes a base set of standard
   extensions in addition to any valid extensions found on the signing request."
   [csr :- CertificateRequest
-   capub :- (schema/pred utils/public-key?)]
+   cacert :- Certificate]
   (let [subj-pub-key (utils/get-public-key csr)
         csr-ext-list (utils/get-extensions csr)
         base-ext-list [(utils/netscape-comment
                          netscape-comment-value)
                        (utils/authority-key-identifier
-                         capub false)
+                         cacert)
                        (utils/basic-constraints-for-non-ca true)
                        (utils/ext-key-usages
                          [ssl-server-cert ssl-client-cert] true)
@@ -1242,7 +1240,7 @@
                                             (utils/get-public-key csr)
                                             (create-agent-extensions
                                              csr
-                                             (.getPublicKey cacert)))]
+                                             cacert))]
     (log/info (i18n/trs "Signed certificate request for {0}" subject))
     (write-cert-to-inventory! signed-cert cert-inventory)
     (write-cert signed-cert (path-to-cert signeddir subject))))
