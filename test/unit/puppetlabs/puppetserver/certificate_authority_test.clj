@@ -5,6 +5,7 @@
                     ByteArrayOutputStream)
            (com.puppetlabs.ssl_utils SSLUtils)
            (java.security PublicKey MessageDigest)
+           (org.joda.time DateTime Period)
            (org.bouncycastle.asn1.x509 SubjectPublicKeyInfo))
   (:require [puppetlabs.puppetserver.certificate-authority :refer :all]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
@@ -1227,11 +1228,21 @@
         subject-keys (utils/generate-key-pair 512)
         subject-pub  (utils/get-public-key subject-keys)
         subject      "subject"
-        subject-dn   (utils/cn subject)]
+        subject-dn   (utils/cn subject)
+        not-after    (-> (DateTime/now)
+                         (.plus (Period/years 5))
+                         (.toDate))
+        not-before   (-> (DateTime/now)
+                         (.plus (Period/years 5))
+                         (.toDate))
+        cn           (utils/cn "Root CA")
+        cert         (utils/sign-certificate cn (utils/get-private-key issuer-keys)
+                                             666 not-before not-after cn issuer-pub
+                                             (utils/create-ca-extensions issuer-pub issuer-pub))]
 
     (testing "basic extensions are created for an agent"
       (let [csr  (utils/generate-certificate-request subject-keys subject-dn)
-            exts (create-agent-extensions csr issuer-pub)
+            exts (create-agent-extensions csr cert)
             exts-expected [{:oid      "2.16.840.1.113730.1.13"
                             :critical false
                             :value    netscape-comment-value}
@@ -1241,7 +1252,8 @@
                            {:oid      "2.5.29.35"
                             :critical false
                             :value    {:issuer-dn     nil
-                                       :public-key    issuer-pub
+                                       :public-key    nil
+                                       :cert          cert
                                        :serial-number nil}}
                            {:oid      "2.5.29.19"
                             :critical true
@@ -1263,7 +1275,7 @@
                   subject-keys
                   subject-dn
                   [(utils/subject-dns-alt-names alt-names-list false)])
-            exts (create-agent-extensions csr issuer-pub)
+            exts (create-agent-extensions csr cert)
             exts-expected [{:oid      "2.16.840.1.113730.1.13"
                             :critical false
                             :value    netscape-comment-value}
@@ -1273,7 +1285,8 @@
                            {:oid      "2.5.29.35"
                             :critical false
                             :value    {:issuer-dn     nil
-                                       :public-key    issuer-pub
+                                       :public-key    nil
+                                       :cert          cert
                                        :serial-number nil}}
                            {:oid      "2.5.29.19"
                             :critical true
@@ -1295,7 +1308,7 @@
                   subject-keys
                   subject-dn
                   [(utils/subject-dns-alt-names alt-names-list false)])
-            exts (create-agent-extensions csr issuer-pub)
+            exts (create-agent-extensions csr cert)
             exts-expected [{:oid      "2.16.840.1.113730.1.13"
                             :critical false
                             :value    netscape-comment-value}
@@ -1305,7 +1318,8 @@
                            {:oid      "2.5.29.35"
                             :critical false
                             :value    {:issuer-dn     nil
-                                       :public-key    issuer-pub
+                                       :public-key    nil
+                                       :cert          cert
                                        :serial-number nil}}
                            {:oid      "2.5.29.19"
                             :critical true
@@ -1326,7 +1340,7 @@
                             :csr-attributes "doesntexist")
             exts          (create-master-extensions subject
                                                     subject-pub
-                                                    issuer-pub
+                                                    cert
                                                     settings)
             exts-expected [{:oid      "2.16.840.1.113730.1.13"
                             :critical false
@@ -1334,7 +1348,8 @@
                            {:oid      "2.5.29.35"
                             :critical false
                             :value    {:issuer-dn     nil
-                                       :public-key    issuer-pub
+                                       :public-key    nil
+                                       :cert          cert
                                        :serial-number nil}}
                            {:oid      "2.5.29.19"
                             :critical true
@@ -1363,7 +1378,7 @@
                               (assoc :csr-attributes (csr-attributes-file "csr_attributes.yaml")))
             exts          (create-master-extensions subject
                                                     subject-pub
-                                                    issuer-pub
+                                                    cert
                                                     settings)
             exts-expected (concat attribute-file-extensions
                                   [{:oid      "2.16.840.1.113730.1.13"
@@ -1372,7 +1387,8 @@
                                    {:oid      "2.5.29.35"
                                     :critical false
                                     :value    {:issuer-dn     nil
-                                               :public-key    issuer-pub
+                                               :public-key    nil
+                                               :cert          cert
                                                :serial-number nil}}
                                    {:oid      "2.5.29.19"
                                     :critical true
@@ -1419,14 +1435,14 @@
         (is (thrown+?
               [:kind :disallowed-extension
                :msg "Found extensions that are not permitted: 1.2.3.4"]
-              (create-master-extensions subject subject-pub issuer-pub config)))))
+              (create-master-extensions subject subject-pub cert config)))))
 
     (testing "invalid DNS alt names are rejected"
       (let [dns-alt-names "*.wildcard"]
         (is (thrown+?
               [:kind :invalid-alt-name
                :msg "Cert subjectAltName contains a wildcard, which is not allowed: *.wildcard"]
-              (create-master-extensions subject subject-pub issuer-pub
+              (create-master-extensions subject subject-pub cert
                                         (assoc (testutils/master-settings confdir)
                                                :dns-alt-names dns-alt-names))))))
 
@@ -1440,6 +1456,7 @@
                             :critical false
                             :value    {:issuer-dn     nil
                                        :public-key    subject-pub
+                                       :cert          nil
                                        :serial-number nil}}
                            {:oid      "2.5.29.19"
                             :critical true
@@ -1459,14 +1476,15 @@
                       (utils/puppet-node-uid "UUUU-IIIII-DDD" false)]
             csr      (utils/generate-certificate-request
                        subject-keys subject-dn csr-exts)
-            exts (create-agent-extensions csr issuer-pub)
+            exts (create-agent-extensions csr cert)
             exts-expected [{:oid      "2.16.840.1.113730.1.13"
                             :critical false
                             :value    netscape-comment-value}
                            {:oid      "2.5.29.35"
                             :critical false
                             :value    {:issuer-dn     nil
-                                       :public-key    issuer-pub
+                                       :public-key    nil
+                                       :cert          cert
                                        :serial-number nil}}
                            {:oid       "2.5.29.17"
                             :critical false
@@ -1607,13 +1625,24 @@
 
 (deftest default-master-dns-alt-names
   (testing "Master certificate has default DNS alt names if none are specified"
-    (let [settings  (assoc (testutils/master-settings confdir)
-                      :dns-alt-names "")
-          pubkey    (-> (utils/generate-key-pair 512)
-                        (utils/get-public-key))
-          capubkey  (-> (utils/generate-key-pair 512)
-                        (utils/get-public-key))
-          alt-names (-> (create-master-extensions "master" pubkey capubkey settings)
+    (let [settings     (assoc (testutils/master-settings confdir)
+                              :dns-alt-names "")
+          pubkey       (-> (utils/generate-key-pair 512)
+                           (utils/get-public-key))
+          ca-key-pair  (utils/generate-key-pair 512)
+          ca-priv-key  (utils/get-private-key ca-key-pair)
+          ca-pub-key   (utils/get-public-key ca-key-pair)
+          not-after    (-> (DateTime/now)
+                           (.plus (Period/years 5))
+                           (.toDate))
+          not-before   (-> (DateTime/now)
+                           (.plus (Period/years 5))
+                           (.toDate))
+          cn           (utils/cn "Root CA")
+          cert         (utils/sign-certificate cn ca-priv-key
+                                               666 not-before not-after cn ca-pub-key
+                                               (utils/create-ca-extensions ca-pub-key ca-pub-key))
+          alt-names (-> (create-master-extensions "master" pubkey cert settings)
                         (utils/get-extension-value utils/subject-alt-name-oid)
                         (:dns-name))]
       (is (= #{"puppet" "master"} (set alt-names))))))
