@@ -30,11 +30,11 @@
          (log/info (i18n/trs "Not checking for updates - opt-out setting exists"))))
      (log/info (i18n/trs "Puppet Server Update Service has successfully started and will run in the background"))
 
-     ;; Configure dropsonde
-     (let [dropsonde-enabled (get-in config [:dropsonde :enabled] false)
+     ;; Configure dropsonde, enabled by default if not specified
+     (let [dropsonde-enabled (get-in config [:dropsonde :enabled] true)
            ;; once a week, config value is documented as seconds
            dropsonde-interval-millis (* 1000 (get-in config [:dropsonde :interval]
-                                             (* 60 60 24 7)))]
+                                               (* 60 60 24 7)))]
        (if dropsonde-enabled
          (interspaced dropsonde-interval-millis #(run-dropsonde config))
          (log/info (i18n/trs (str "Not submitting module metrics via Dropsonde -- submission is disabled. "
