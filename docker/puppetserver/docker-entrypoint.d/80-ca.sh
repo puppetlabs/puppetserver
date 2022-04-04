@@ -43,13 +43,11 @@ else
   hocon -f /etc/puppetlabs/puppetserver/conf.d/ca.conf \
     set certificate-authority.allow-subject-alt-names "${CA_ALLOW_SUBJECT_ALT_NAMES}"
 
-  # Generate the same SSL directory that the PE installer creates.
-  #
-  # The steps in this file correspond to the steps in the PE installer.
-  #
-  # See https://github.com/puppetlabs/puppet-enterprise-modules/blob/kearney/modules/pe_install/manifests/prepare/certificates.pp
+  new_cadir=/etc/puppetlabs/puppetserver/ca
 
-  if [ ! -d "$SSLDIR" ] || [ ! "$(ls -A "$SSLDIR")" ]; then
+  if [ ! -f "$new_cadir/ca_crt.pem" ] && [ ! -f "$SSLDIR/ca/ca_crt.pem" ]; then
+      # There is no existing CA
+
       # Append user-supplied DNS Alt Names
       if [ -n "$DNS_ALT_NAMES" ]; then
           current="$(puppet config print --section main dns_alt_names)"
@@ -60,11 +58,16 @@ else
       fi
 
       timestamp="$(date '+%Y-%m-%d %H:%M:%S %z')"
-      ca_name="Puppet Enterprise CA generated on ${HOSTNAME} at $timestamp"
+      ca_name="Puppet CA generated on ${HOSTNAME} at $timestamp"
 
       # See puppet.conf file for relevant settings
       puppetserver ca setup \
           --ca-name "$ca_name" \
+          --config /etc/puppetlabs/puppet/puppet.conf
+
+  elif [ ! -f "$new_cadir/ca_crt.pem" ] && [ -f "$SSLDIR/ca/ca_crt.pem" ]; then
+      # Legacy CA upgrade
+      puppetserver ca migrate \
           --config /etc/puppetlabs/puppet/puppet.conf
   fi
 fi
