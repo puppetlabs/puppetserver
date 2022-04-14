@@ -35,7 +35,7 @@ module Puppet::Server::Network::HTTP::Handler
 
   def body(request)
     body = request["body"]
-    if body.java_kind_of?(InputStream)
+    if body.kind_of?(InputStream)
       body.to_io.read()
     else
       body
@@ -87,7 +87,7 @@ module Puppet::Server::Network::HTTP::Handler
       # value of '["one", "two"]' as a Clojure PersistentVector.  This
       # PersistentVector needs to be converted into a Ruby Array before
       # proceeding with the request processing.
-      [key, value.java_kind_of?(Java::JavaUtil::List) ? value.to_a : value]
+      [key, value.kind_of?(Java::JavaUtil::List) ? value.to_a : value]
     end]
   end
 
