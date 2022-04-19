@@ -104,7 +104,7 @@ class Puppet::Server::Master
 
   def compileAST(compile_options, boltlib_path)
     ruby_compile_options = convert_java_args_to_ruby(compile_options)
-    ruby_boltlib_path = boltlib_path.java_kind_of?(Java::JavaUtil::List) ? boltlib_path.to_a : nil
+    ruby_boltlib_path = boltlib_path.kind_of?(Java::JavaUtil::List) ? boltlib_path.to_a : nil
     Puppet::Server::ASTCompiler.compile(ruby_compile_options, ruby_boltlib_path)
   end
 
@@ -243,9 +243,9 @@ UTM
   # the value. 
   def resolve_java_objects_from_list(list)
     list.map do |value|
-      if value.java_kind_of?(Java::ClojureLang::IPersistentMap)
+      if value.kind_of?(Java::ClojureLang::IPersistentMap)
         convert_java_args_to_ruby(value)
-      elsif value.java_kind_of?(Java::JavaUtil::List)
+      elsif value.kind_of?(Java::JavaUtil::List)
         resolve_java_objects_from_list(value)
       else
         value
@@ -256,9 +256,9 @@ UTM
   def convert_java_args_to_ruby(hash)
     Hash[hash.collect do |key, value|
       # Stolen and heavily modified from params_to_ruby in handler.rb
-      if value.java_kind_of?(Java::ClojureLang::IPersistentMap)
+      if value.kind_of?(Java::ClojureLang::IPersistentMap)
         [key, convert_java_args_to_ruby(value)]
-      elsif value.java_kind_of?(Java::JavaUtil::List)
+      elsif value.kind_of?(Java::JavaUtil::List)
         [key, resolve_java_objects_from_list(value)]
       else
         [key, value]
