@@ -27,7 +27,7 @@ describe 'Puppet::Server::HttpClient' do
     end
 
     subject do
-      Puppet::Server::HttpClient.create_client_options
+      Puppet::Server::HttpClient.create_client_options(include_system_store: false)
     end
 
     it 'then get_socket_timeout_milliseconds is 24' do
@@ -116,6 +116,23 @@ describe 'Puppet::Server::HttpClient' do
           expect { subject }.to raise_error "Error executing http request"
         end
       end
+    end
+  end
+
+  context "when passing the `include_system_store` option" do
+    it "GET uses the client with the system store" do
+      expect(Puppet::Server::HttpClient).
+        to receive(:client_with_system_certs).
+        and_return(double.as_null_object)
+
+      client.get(url, options: {include_system_store: true })
+    end
+    it "POST uses the client with the system store" do
+      expect(Puppet::Server::HttpClient).
+        to receive(:client_with_system_certs).
+        and_return(double.as_null_object)
+
+      client.post(url, nil, options: {include_system_store: true })
     end
   end
 end
