@@ -332,16 +332,30 @@
     (->> (map format-task info-from-jruby)
          (middleware-utils/json-response 200))))
 
+(defn task-file-uri-components
+  "The 'id' portion for a task implementation is a single component like
+  'foo.sh' and can never be nested in subdirectories. In that case we know the
+  'file' must be structured <environment>/<module root>/<module>/tasks/<filename>.
+  Other task files are the path relative to the module root, in the form
+  <module>/<mount>/<path> where <path> may have subdirectories. For those, we
+  just slice that off the end of the file path and take the last component that
+  remains as the module root."
+  [file-id file]
+  (if (str/includes? file-id "/")
+    (let [[module mount subpath] (str/split file-id #"/" 3)
+          module-root (fs/base-name (subs file 0 (str/last-index-of file file-id)))]
+      [module-root module mount subpath])
+    (take-last 4 (str/split file #"/"))))
+
 (defn describe-task-file
   [get-code-content env-name code-id file-data]
   (let [file (:path file-data)
-        subpath (:name file-data)
-        basename (fs/base-name subpath)
+        file-id (:name file-data)
         size (fs/size file)
         sha256 (ks/file->sha256 (io/file file))
-        ;; we trust the file path from Puppet, so extract the subpath from file
-        static-path (re-find (re-pattern (str #"[^/]+/[a-z][a-z0-9_]*/(?:tasks|files|scripts|lib)/.*" basename)) file)
-        [_ module-name mount rest] (str/split static-path #"/" 4)
+        ;; we trust the file path from Puppet, so extract the relative path info from the file
+        [module-root module-name mount relative-path] (task-file-uri-components file-id file)
+        static-path (str/join "/" [module-root module-name mount relative-path])
         uri (try
               ;; if code content can be retrieved, then use static_file_content
               (when (not= sha256 (ks/stream->sha256 (get-code-content env-name code-id static-path)))
@@ -351,12 +365,12 @@
               (catch Exception e
                 (log/debug (i18n/trs "Static file unavailable for {0}: {1}" file e))
                 {:path (case mount
-                         "files" (format "/puppet/v3/file_content/modules/%s/%s" module-name rest)
-                         "lib" (format "/puppet/v3/file_content/plugins/%s" rest)
-                         "scripts" (format "/puppet/v3/file_content/scripts/%s/%s" module-name rest)
-                         "tasks" (format "/puppet/v3/file_content/tasks/%s/%s" module-name rest))
+                         "files" (format "/puppet/v3/file_content/modules/%s/%s" module-name relative-path)
+                         "lib" (format "/puppet/v3/file_content/plugins/%s" relative-path)
+                         "scripts" (format "/puppet/v3/file_content/scripts/%s/%s" module-name relative-path)
+                         "tasks" (format "/puppet/v3/file_content/tasks/%s/%s" module-name relative-path))
                  :params {:environment env-name}}))]
-    {:filename subpath
+    {:filename file-id
      :sha256 sha256
      :size_bytes size
      :uri uri}))
