@@ -342,6 +342,19 @@
       (assert-failure-msg #"/etc/default/puppetserver"
                           "points the user to the debian config location"))))
 
+(deftest task-file-uri-components-test
+  (is (= ["modules" "mymodule" "tasks" "foo.sh"] (task-file-uri-components "foo.sh" "/path/to/environment/modules/mymodule/tasks/foo.sh")))
+  (is (= ["modules" "mymodule" "scripts" "foo.sh"] (task-file-uri-components "mymodule/scripts/foo.sh" "/path/to/environment/modules/mymodule/scripts/foo.sh")))
+  (testing "works with nested files"
+      (is (= ["modules" "mymodule" "lib" "baz/bar/foo.sh"]
+             (task-file-uri-components "mymodule/lib/baz/bar/foo.sh" "/path/to/environment/modules/mymodule/lib/baz/bar/foo.sh"))))
+  (testing "when the module name is the same as a module subdirectory"
+    (doseq [module ["tasks" "scripts" "files" "lib"]
+            subdir ["tasks" "scripts" "files" "lib"]
+            :let [file-name (if (= subdir "tasks") "foo.sh" (format "%s/%s/foo.sh" module subdir))]]
+      (is (= ["modules" module subdir "foo.sh"]
+             (task-file-uri-components file-name (format "/path/to/environment/modules/%s/%s/foo.sh" module subdir)))))))
+
 (deftest all-tasks-response-test
   (testing "all-tasks query"
     (with-redefs [jruby-core/borrow-from-pool-with-timeout (fn [_ _ _] {:jruby-puppet (Object.)})
