@@ -1,3 +1,7 @@
+project.clj merge=version-mergeup
+acceptance/config/beaker/options.rb merge=version-mergeup
+documentation/release_notes.markdown merge=ours
+resources/ext/build-scripts/mri-gem-list-no-deps.txt merge=ours
 docker/**                           text  eol=lf
 resources/ext/build-scripts/*       text  eol=lf
 resources/ext/cli_defaults/*        text  eol=lf
