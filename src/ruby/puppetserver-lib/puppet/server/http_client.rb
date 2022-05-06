@@ -50,8 +50,9 @@ class Puppet::Server::HttpClient < Puppet::HTTP::Client
   end
 
   def get(url, headers: {}, params: {}, options: {}, &block)
+    include_system_store = options.delete(:include_system_store)
     request_options = create_common_request_options(url, headers, params, options)
-    java_response = self.class.client_get(request_options)
+    java_response = self.class.client_get(request_options, include_system_store: include_system_store)
     ruby_response = Puppet::Server::HttpResponse.new(java_response, URI(request_options.uri.to_s))
     if block_given?
       yield ruby_response
@@ -61,6 +62,7 @@ class Puppet::Server::HttpClient < Puppet::HTTP::Client
   end
 
   def post(url, body, headers: {}, params: {}, options: {}, &block)
+    include_system_store = options.delete(:include_system_store)
     request_options = create_common_request_options(url, headers, params, options)
     request_options.set_body(body)
 
@@ -74,7 +76,7 @@ class Puppet::Server::HttpClient < Puppet::HTTP::Client
       end
     end
 
-    java_response = self.class.client_post(request_options)
+    java_response = self.class.client_post(request_options, include_system_store: include_system_store)
     ruby_response = Puppet::Server::HttpResponse.new(java_response, URI(request_options.uri.to_s))
     if block_given?
       yield ruby_response
@@ -146,8 +148,12 @@ class Puppet::Server::HttpClient < Puppet::HTTP::Client
     end
   end
 
-  def self.configure_ssl(client_options)
-    client_options.set_ssl_context(Puppet::Server::Config.ssl_context)
+  def self.configure_ssl(client_options, include_system_store:)
+    if include_system_store
+      client_options.set_ssl_context(Puppet::Server::Config.puppet_and_system_ssl_context)
+    else
+      client_options.set_ssl_context(Puppet::Server::Config.puppet_only_ssl_context)
+    end
 
     settings = self.settings
 
@@ -169,36 +175,43 @@ class Puppet::Server::HttpClient < Puppet::HTTP::Client
     end
   end
 
-  def self.create_client_options
+  def self.create_client_options(include_system_store:)
     client_options = ClientOptions.new
     self.configure_timeouts(client_options)
-    self.configure_ssl(client_options)
+    self.configure_ssl(client_options, include_system_store: include_system_store)
     self.configure_metrics(client_options)
     client_options.set_enable_url_metrics(false)
     client_options
   end
 
-  def self.create_client
-    client_options = create_client_options
+  def self.create_client(include_system_store:)
+    client_options = create_client_options(include_system_store: include_system_store)
     SyncHttpClient.createClient(client_options)
   end
 
   def self.client
-    @client ||= create_client
+    @client ||= create_client(include_system_store: false)
   end
 
-  def self.client_post(request_options)
-    self.client.post(request_options)
+  def self.client_with_system_certs
+    @client_with_system_certs ||= create_client(include_system_store: true)
+  end
+
+  def self.choose_client(include_system_store:)
+    include_system_store ? self.client_with_system_certs : self.client
+  end
+
+  def self.client_post(request_options, include_system_store: false)
+    self.choose_client(include_system_store: include_system_store).post(request_options)
   rescue Java::ComPuppetlabsHttpClient::HttpClientException => e
     raise Puppet::Server::HttpClientError.new(e.message, e)
   end
 
-  def self.client_get(request_options)
-    self.client.get(request_options)
+  def self.client_get(request_options, include_system_store: false)
+    self.choose_client(include_system_store: include_system_store).get(request_options)
   rescue Java::ComPuppetlabsHttpClient::HttpClientException => e
     raise Puppet::Server::HttpClientError.new(e.message, e)
   end
-
 
   def create_session
     raise NotImplementedError
