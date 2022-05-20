@@ -36,7 +36,25 @@ module Puppet::Server::Network::HTTP::Handler
   def body(request)
     body = request["body"]
     if body.kind_of?(InputStream)
-      body.to_io.read()
+      io = body.to_io
+      content_type = ''
+      has_headers = request.key?('headers')
+      if has_headers && request['headers'].key?('content-type')
+        content_type = request['headers']['content-type']
+      end
+
+      case content_type
+      when nil, "", "application/octet-stream", "application/x-msgpack"
+        io.binmode
+      else
+        encoding = 'UTF-8'
+        if has_headers
+          encoding = request['headers'].fetch('content-encoding', 'UTF-8')
+        end
+        io.set_encoding(encoding)
+      end
+
+      io.read
     else
       body
     end
