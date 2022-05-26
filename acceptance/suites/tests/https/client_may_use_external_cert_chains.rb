@@ -42,11 +42,12 @@ test_name "Ensure Puppet Server's HTTP client may use external cert chains" do
     server.start
 EOF
 
+  stores = master.is_pe? ? 'http,puppetdb' : 'http,store'
   enable_https_report_processor_config = {
     'master' => {
       'reporturl' => "https://#{master}:7777/",
       'report_include_system_store' => true,
-      'reports' => 'store,http',
+      'reports' => stores,
       'ssl_trust_store' => server_cert
     }
   }
@@ -66,7 +67,7 @@ EOF
   on master, wait_for_server
 
   with_puppet_running_on(master, enable_https_report_processor_config) do
-    on master, 'puppet agent -t'
+    on master, 'puppet agent -t', acceptable_exit_codes: [0,2]
   end
 
   report_content = on(master, "cat #{directory_to_serve}/#{master}").stdout.chomp
