@@ -25,6 +25,8 @@ if [ -f "${SSLDIR}/certs/ca.pem" ]; then
   openssl x509 -subject -issuer -text -noout -in "${SSLDIR}/certs/ca.pem" $altnames
 fi
 
-echo "Certificate ${certname}:"
-# shellcheck disable=SC2086 # $altnames shouldn't be quoted
-openssl x509 -subject -issuer -text -noout -in "${SSLDIR}/certs/${certname}" $altnames
+if [ -f "${certname}" ]; then
+  echo "Certificate ${certname}:"
+  # shellcheck disable=SC2086 # $altnames shouldn't be quoted
+  openssl x509 -subject -issuer -text -noout -in "${SSLDIR}/certs/${certname}" $altnames
+fi
