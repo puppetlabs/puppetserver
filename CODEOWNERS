@@ -1,6 +1,2 @@
-# This will cause the puppetserver-maintainers group to be assigned
-# review of any opened PRs against the branches containing this file.
-
-*  @puppetlabs/puppetserver-maintainers
-
-/docker/ @puppetlabs/pupperware
+# This repo is owned by the dumpling team
+* @puppetlabs/dumpling
