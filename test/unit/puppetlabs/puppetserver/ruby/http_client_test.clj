@@ -284,6 +284,15 @@
                  (catch EvalFailedException e
                    (is (instance? ex-class (.getCause e))))))))))))
 
+  (testing "Can connect via TLSv1.3 by default"
+    (with-webserver-with-protocols ["TLSv1.3"] nil
+      (with-scripting-container sc
+        (with-http-client sc {}
+          (let [url (str "https://localhost:10080")]
+            (.runScriptlet sc (format "$response = $c.get(URI('%s'))" url))
+            (is (= 200 (.runScriptlet sc "$response.code")))
+            (is (= "hi" (.runScriptlet sc "$response.body"))))))))
+
   (testing "Can connect via TLSv1.2 by default"
     (with-webserver-with-protocols ["TLSv1.2"] nil
       (with-scripting-container sc
