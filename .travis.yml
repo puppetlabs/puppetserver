@@ -6,21 +6,25 @@ services:
   - docker
 
 script:
+  - ./ext/travisci/install-java.sh
   - ./ext/travisci/test.sh
-  - $TRAVIS_BUILD_DIR/ext/travisci/secscan.sh "$TRAVIS_BUILD_DIR/src/clj" "clj"
 jobs:
   include:
     - stage: puppetserver tests
       name: "Java 8"
-      jdk: openjdk8
-    - jdk: openjdk11
-      name: "Java 11"
-    - jdk: openjdk11
-      env: ADDITIONAL_LEIN_ARGS="with-profile fips"
-      name: "Java 11 w/ FIPS"
-    - jdk: openjdk11
-      env: MULTITHREADED=true
-      name: "Java 11 w/ multithreaded"
+      env:
+        - JAVA_VERSION=8
+    - name: "Java 11"
+      env:
+        - JAVA_VERSION=11
+    - name: "Java 11 w/ FIPS"
+      env:
+        - JAVA_VERSION=11
+        - ADDITIONAL_LEIN_ARGS="with-profile fips"
+    - name: "Java 11 w/ multithreaded"
+      env:
+        - JAVA_VERSION=11
+        - MULTITHREADED=true
     - stage: puppetserver container tests
       dist: focal
       language: ruby
