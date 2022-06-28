@@ -287,7 +287,7 @@
   (testing "Can connect via TLSv1.3 by default"
     (with-webserver-with-protocols ["TLSv1.3"] nil
       (with-scripting-container sc
-        (with-http-client sc {}
+        (with-http-client sc {:cipher-suites ["TLS_AES_256_GCM_SHA384" "TLS_AES_128_GCM_SHA256"]}
           (let [url (str "https://localhost:10080")]
             (.runScriptlet sc (format "$response = $c.get(URI('%s'))" url))
             (is (= 200 (.runScriptlet sc "$response.code")))
