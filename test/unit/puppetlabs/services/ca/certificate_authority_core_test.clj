@@ -1183,7 +1183,7 @@
                      :body (body-stream
                             "{\"async\":false}")})]
       (is (= 400 (:status response)))
-      (is (= (re-matches #"Missing.*certnames" (:body response))))))
+      (is (re-matches #"Missing.*certnames.*" (:body response)))))
 
   (testing "Requesting async mode fails"
     (let [settings (testutils/ca-sandbox! cadir)
