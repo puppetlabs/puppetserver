@@ -1,5 +1,8 @@
 test_name "Ensure Puppet Server's HTTP client may use external cert chains" do
 
+  ## This test currently relies on WEBrick/OpenSSL, which is not supported on FIPS
+  skip_test if master.fips_mode?
+
   reports_tmpdir = master.tmpdir('external-reports')
   server_key = reports_tmpdir + '/server.key'
   server_cert = reports_tmpdir + '/server.crt'
