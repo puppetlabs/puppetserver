@@ -28,7 +28,8 @@
   [task-name]
   (let [[module _] (split task-name #"::")]
     {:module {:name module}
-     :name task-name}))
+     :name task-name
+     :metadata {:private false :description "test description"}}))
 
 (defn build-ring-handler
   [request-handler puppet-version jruby-service]
@@ -378,7 +379,9 @@
             response-format (fn [task-name]
                                  {:name task-name
                                   :environment [{:name "production"
-                                                 :code_id nil}]})
+                                                 :code_id nil}]
+                                  :private false
+                                  :description "test description"})
             expected-response (fn [task-names]
                                 (map response-format task-names))
             task-names ["apache" "apache::configure" "mongodb::uninstall"]]

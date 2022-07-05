@@ -327,6 +327,8 @@
    jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
   (let [format-task (fn [task-object]
                       {:name (:name task-object)
+                       :private (get-in task-object [:metadata :private] false)
+                       :description (get-in task-object [:metadata :description] "")
                        :environment [{:name environment
                                       :code_id nil}]})]
     (->> (map format-task info-from-jruby)

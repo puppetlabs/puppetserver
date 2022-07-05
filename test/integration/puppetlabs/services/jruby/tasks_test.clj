@@ -111,8 +111,9 @@
 
 (defn expected-tasks-info
   [tasks]
-  (map (fn [{:keys [name module-name]}]
+  (map (fn [{:keys [name module-name metadata]}]
          {:module {:name module-name}
+          :metadata (clojure.walk/keywordize-keys metadata)
           :name (if (= "init" name)
                   module-name
                   (str module-name "::" name))})

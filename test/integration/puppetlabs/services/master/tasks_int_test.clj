@@ -77,14 +77,19 @@
       app
       puppet-config
       (do
-        (testutils/write-tasks-files "apache" "announce" "echo 'Hi!'")
-        (testutils/write-tasks-files "graphite" "install" "wheeee")
+        (testutils/write-tasks-files "apache" "announce" "echo 'Hi!'" (json/encode { "private" true 
+                                                                                     "description" "the apache module" }))
+        (testutils/write-tasks-files "graphite" "install" "wheeee" (json/encode {}))
         (let [expected-response '({"name" "apache::announce"
                                    "environment" [{"name" "production"
-                                                   "code_id" nil}]}
+                                                   "code_id" nil}]
+                                   "private" true
+                                   "description" "the apache module"}
                                   {"name" "graphite::install"
                                    "environment" [{"name" "production"
-                                                   "code_id" nil}]})
+                                                   "code_id" nil}]
+                                   "private" false
+                                   "description" ""})
               response (get-all-tasks "production")]
           (testing "a successful status code is returned"
             (is (= 200 (:status response))
