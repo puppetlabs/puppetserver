@@ -79,7 +79,7 @@
       (do
         (testutils/write-tasks-files "apache" "announce" "echo 'Hi!'" (json/encode { "private" true 
                                                                                      "description" "the apache module" }))
-        (testutils/write-tasks-files "graphite" "install" "wheeee")
+        (testutils/write-tasks-files "graphite" "install" "wheeee" (json/encode {}))
         (let [expected-response '({"name" "apache::announce"
                                    "environment" [{"name" "production"
                                                    "code_id" nil}]

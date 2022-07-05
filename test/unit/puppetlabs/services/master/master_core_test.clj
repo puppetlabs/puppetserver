@@ -29,8 +29,7 @@
   (let [[module _] (split task-name #"::")]
     {:module {:name module}
      :name task-name
-     :private false
-     :description "test description"}))
+     :metadata {:private false :description "test description"}}))
 
 (defn build-ring-handler
   [request-handler puppet-version jruby-service]
