@@ -1,5 +1,8 @@
 test_name "Ensure Puppet Server's HTTP client may use external cert chains" do
 
+  ## This test currently relies on WEBrick/OpenSSL, which is not supported on FIPS
+  skip_test if master.fips_mode?
+
   reports_tmpdir = master.tmpdir('external-reports')
   server_key = reports_tmpdir + '/server.key'
   server_cert = reports_tmpdir + '/server.crt'
@@ -73,30 +76,24 @@ EOF
   report_content = on(master, "cat #{directory_to_serve}/#{master}").stdout.chomp
   assert_match /(un)?changed/, report_content
 
+  system_ssl_tmpdir = master.tmpdir('system_ssl_store')
+  script_location = system_ssl_tmpdir + '/connection_test.rb'
 
-  # TODO: Because of PA-4440 puppet-cacerts may not be available on all systems
-  if 0 == on(master, 'test -f /opt/puppetlabs/puppet/ssl/puppet-cacerts', accept_all_exit_codes: true).exit_code
-    system_ssl_tmpdir = master.tmpdir('system_ssl_store')
-    script_location = system_ssl_tmpdir + '/connection_test.rb'
+  test_script = <<EOF
+    require 'puppet'
+    require 'puppet/server/puppet_config'
+    require 'puppet/server/http_client'
+    require 'uri'
 
-    test_script = <<EOF
-      require 'puppet'
-      require 'puppet/server/puppet_config'
-      require 'puppet/server/http_client'
-      require 'uri'
+    Puppet::Server::PuppetConfig.initialize_puppet(puppet_config: {})
+    client = Puppet.runtime[:http]
 
-      Puppet::Server::PuppetConfig.initialize_puppet(puppet_config: {})
-      client = Puppet.runtime[:http]
+    response = client.get(URI('https://github.com/index.html'), options: {include_system_store: true})
 
-      response = client.get(URI('https://github.com/index.html'), options: {include_system_store: true})
-
-      puts response.code
+    puts response.code
 EOF
 
-    create_remote_file(master, script_location, test_script)
-    status = on(master, "/opt/puppetlabs/server/apps/puppetserver/bin/puppetserver ruby #{script_location}").stdout.chomp
-    assert_match /.*200$/, status
-  else
-    logger.info "Skipping system certs because /opt/puppetlabs/puppet/ssl/puppet-cacerts is missing!"
-  end
+  create_remote_file(master, script_location, test_script)
+  status = on(master, "/opt/puppetlabs/server/apps/puppetserver/bin/puppetserver ruby #{script_location}").stdout.chomp
+  assert_match /.*200$/, status
 end
