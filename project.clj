@@ -54,7 +54,7 @@
                  [puppetlabs/jruby-utils]
                  [puppetlabs/clj-shell-utils]
                  [puppetlabs/trapperkeeper]
-                 [puppetlabs/trapperkeeper-webserver-jetty9]
+                 [puppetlabs/trapperkeeper-webserver-jetty9 "4.3.1"]
                  [puppetlabs/trapperkeeper-authorization]
                  [puppetlabs/trapperkeeper-comidi-metrics]
                  [puppetlabs/trapperkeeper-metrics]
@@ -114,7 +114,7 @@
 
   :profiles {:defaults {:source-paths  ["dev"]
                         :dependencies  [[org.clojure/tools.namespace]
-                                        [puppetlabs/trapperkeeper-webserver-jetty9 :classifier "test"]
+                                        [puppetlabs/trapperkeeper-webserver-jetty9 "4.3.1" :classifier "test"]
                                         [puppetlabs/trapperkeeper nil :classifier "test" :scope "test"]
                                         [puppetlabs/trapperkeeper-metrics :classifier "test" :scope "test"]
                                         [puppetlabs/kitchensink nil :classifier "test" :scope "test"]
@@ -153,7 +153,7 @@
                     ;; when a test fails.
                     :dependencies [[pjstadig/humane-test-output "0.8.3"]]
                     :injections [(require 'pjstadig.humane-test-output)
-                                (pjstadig.humane-test-output/activate!)]}
+                                 (pjstadig.humane-test-output/activate!)]}
 
 
              :ezbake {:dependencies ^:replace [;; we need to explicitly pull in our parent project's
@@ -166,11 +166,11 @@
                                                [org.bouncycastle/bcpkix-jdk15on]
                                                [puppetlabs/jruby-utils]
                                                [puppetlabs/puppetserver ~ps-version]
-                                               [puppetlabs/trapperkeeper-webserver-jetty9]]
+                                               [puppetlabs/trapperkeeper-webserver-jetty9 "4.3.1"]]
                       :plugins [[puppetlabs/lein-ezbake "2.3.2"]]
                       :name "puppetserver"}
              :uberjar {:dependencies [[org.bouncycastle/bcpkix-jdk15on]
-                                      [puppetlabs/trapperkeeper-webserver-jetty9]]
+                                      [puppetlabs/trapperkeeper-webserver-jetty9 "4.3.1"]]
                        :aot [puppetlabs.trapperkeeper.main
                              puppetlabs.trapperkeeper.services.status.status-service
                              puppetlabs.trapperkeeper.services.metrics.metrics-service
