@@ -79,6 +79,14 @@ If want to play with our code, these documents should prove useful:
 Puppet Server also uses the
 [Trapperkeeper](https://github.com/puppetlabs/trapperkeeper) Clojure framework.
 
+## Testing
+
+To run lein tests, do the following:
+
+-   Clone the repo with the `--recursive` flag, or after cloning, do `git submodule init && git submodule update`
+-   Run `./dev-setup`
+-   Run `lein test`
+
 ## Branching strategy
 
 Puppet Server's branching strategy is documented on the [GitHub repo
