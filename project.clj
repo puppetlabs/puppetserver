@@ -243,6 +243,8 @@
                "-XX:+IgnoreUnrecognizedVMOptions"]
 
   :repl-options {:init-ns dev-tools}
+  :uberjar-exclusions  [#"META-INF/jruby.home/lib/ruby/stdlib/org/bouncycastle"
+                        #"META-INF/jruby.home/lib/ruby/stdlib/org/yaml/snakeyaml"]
 
   ;; This is used to merge the locales.clj of all the dependencies into a single
   ;; file inside the uberjar
