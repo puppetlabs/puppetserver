@@ -132,7 +132,7 @@
                   :SHA256 "00:A9:C2:5E:2A:66:18:E2:99:DF:27:13:36:7E:DB:4D:9B:DC:93:DD:3A:B2:69:48:AD:1A:3B:12:45:BF:CF:8A"
                   :SHA512 "7F:3A:D0:4C:12:68:FA:1C:B4:DE:7F:B7:39:AE:94:00:33:02:B9:E7:B1:2D:8F:6C:BB:58:84:0A:EF:98:D2:79:9F:12:76:23:58:2F:3D:CE:E9:34:16:88:43:DD:2E:A6:98:5E:33:FB:B1:61:38:5E:58:BC:EA:F9:4A:BC:E8:12"
                   :default "00:A9:C2:5E:2A:66:18:E2:99:DF:27:13:36:7E:DB:4D:9B:DC:93:DD:3A:B2:69:48:AD:1A:3B:12:45:BF:CF:8A"}
-   :name "test_cert"
+   :name "test-cert"
    :not_after "2025-08-20T20:30:32UTC"
    :not_before "2020-08-20T20:30:32UTC"
    :serial_number 3
@@ -340,7 +340,7 @@
                 (finally
                   (fs/delete expected-path))))))
 
-        (let [ca-cert-file (ca/path-to-cert cadir "ca_crt_multiple_rdns")
+        (let [ca-cert-file (ca/path-to-cert cadir "ca-crt-multiple-rdns")
               ca-subject-bytes (-> ca-cert-file
                                    (utils/pem->cert)
                                    (.getSubjectX500Principal)
@@ -450,7 +450,7 @@
                   response   (handle-put-certificate-request!
                               subject csr-stream settings)]
               (is (= 400 (:status response)))
-              (is (= "Subject contains unprintable or non-ASCII characters"
+              (is (= "Subject hostname format is invalid"
                      (:body response)))))))
 
       (testing "no wildcards allowed"
@@ -705,7 +705,7 @@
 
         (testing "signing a cert with a CA that has multiple RDNs"
           (let [ca-cert-with-mult-rdns (ca/path-to-cert cadir
-                                                        "ca_crt_multiple_rdns")
+                                                        "ca-crt-multiple-rdns")
                 ca-subject-bytes (-> ca-cert-with-mult-rdns
                                      (utils/pem->cert)
                                      (.getSubjectX500Principal)
@@ -1106,13 +1106,13 @@
                        (wrap-with-ssl-client-cert))
           cert-path1 (ca/path-to-cert (:signeddir settings) "localhost")
           cert1 (utils/pem->cert cert-path1)
-          cert-path2 (ca/path-to-cert (:signeddir settings) "test_cert")
+          cert-path2 (ca/path-to-cert (:signeddir settings) "test-cert")
           cert2 (utils/pem->cert cert-path2)
           response (test-app
                     {:uri "/v1/clean"
                      :request-method :put
                      :body (body-stream
-                            "{\"certnames\":[\"localhost\",\"test_cert\"],\"async\":false}")})]
+                            "{\"certnames\":[\"localhost\",\"test-cert\"],\"async\":false}")})]
       (is (= 200 (:status response)))
       (is (true? (utils/revoked?
                   (utils/pem->crl (:cacrl settings))

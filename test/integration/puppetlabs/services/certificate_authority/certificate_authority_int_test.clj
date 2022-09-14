@@ -192,13 +192,13 @@
     (let [server-conf-dir (str test-resources-dir "/ca_true_test/master/conf")
           req-dir (str server-conf-dir "/ca/requests")
           key-pair (ssl-utils/generate-key-pair)
-          subjectDN (ssl-utils/cn "test_cert_ca_true")
+          subjectDN (ssl-utils/cn "test-cert-ca-true")
           ca-ext [(ssl-utils/basic-constraints-for-ca)]
           csr (ssl-utils/generate-certificate-request key-pair
                                                       subjectDN
                                                       ca-ext)]
       (fs/mkdir req-dir)
-      (ssl-utils/obj->pem! csr (str req-dir "/test_cert_ca_true.pem"))
+      (ssl-utils/obj->pem! csr (str req-dir "/test-cert-ca-true.pem"))
       (bootstrap/with-puppetserver-running-with-mock-jrubies
        "JRuby mocking is safe here because all of the requests are to the CA
        endpoints, which are implemented in Clojure."
@@ -206,7 +206,7 @@
         {:jruby-puppet {:server-conf-dir server-conf-dir}}
         (let [response (http-client/put
                         (str "https://localhost:8140/"
-                             "puppet-ca/v1/certificate_status/test_cert_ca_true")
+                             "puppet-ca/v1/certificate_status/test-cert-ca-true")
                         {:ssl-cert (str server-conf-dir "/ca/ca_crt.pem")
                          :ssl-key (str server-conf-dir "/ca/ca_key.pem")
                          :ssl-ca-cert (str server-conf-dir "/ca/ca_crt.pem")
@@ -285,7 +285,7 @@
         :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
         :ssl-crl-path (str bootstrap/server-conf-dir "/ssl/crl.pem")}}
       (let [key-pair (ssl-utils/generate-key-pair)
-            subject "crl_reload"
+            subject "crl-reload"
             subject-dn (ssl-utils/cn subject)
             public-key (ssl-utils/get-public-key key-pair)
             private-key (ssl-utils/get-private-key key-pair)
@@ -505,7 +505,7 @@
                 "includes authorization extensions for certs and CSRs")
     (let [request-dir (str bootstrap/server-conf-dir "/ca/requests")
           key-pair (ssl-utils/generate-key-pair)
-          subjectDN (ssl-utils/cn "test_cert_with_auth_ext")
+          subjectDN (ssl-utils/cn "test-cert-with-auth-ext")
           auth-ext-short-name {:oid (:pp_auth_role ca/puppet-short-names)
                                :critical false
                                :value "true"}
@@ -517,7 +517,7 @@
                                                       [auth-ext-short-name
                                                        auth-ext-oid])]
       (fs/mkdirs request-dir)
-      (ssl-utils/obj->pem! csr (str request-dir "/test_cert_with_auth_ext.pem"))
+      (ssl-utils/obj->pem! csr (str request-dir "/test-cert-with-auth-ext.pem"))
       (bootstrap/with-puppetserver-running-with-mock-jrubies
         "JRuby mocking is safe here because all of the requests are to the CA
         endpoints, which are implemented in Clojure."
@@ -533,7 +533,7 @@
         (testing "Auth extensions on a CSR"
           (let [response (http-client/get
                            (str "https://localhost:8140/"
-                                "puppet-ca/v1/certificate_status/test_cert_with_auth_ext")
+                                "puppet-ca/v1/certificate_status/test-cert-with-auth-ext")
                            (cert-status-request-params))
                 auth-exts {"pp_auth_role" "true" "1.3.6.1.4.1.34380.1.3.1.2" "true"}]
             (is (= 200 (:status response)))
@@ -543,11 +543,11 @@
         (testing "Auth extensions on a cert"
           (let [sign-response (http-client/put
                                 (str "https://localhost:8140/"
-                                     "puppet-ca/v1/certificate_status/test_cert_with_auth_ext")
+                                     "puppet-ca/v1/certificate_status/test-cert-with-auth-ext")
                                 (cert-status-request-params "{\"desired_state\": \"signed\"}"))
                 status-response (http-client/get
                                   (str "https://localhost:8140/"
-                                       "puppet-ca/v1/certificate_status/test_cert_with_auth_ext")
+                                       "puppet-ca/v1/certificate_status/test-cert-with-auth-ext")
                                   (cert-status-request-params))
                 auth-exts {"pp_auth_role" "true" "1.3.6.1.4.1.34380.1.3.1.2" "true"}]
             (is (= 204 (:status sign-response)))
@@ -555,7 +555,7 @@
             (let [status-body (json/parse-string (:body status-response))]
               (is (= auth-exts (get status-body "authorization_extensions")))
               (is (= "signed" (get status-body "state"))))))))
-    (fs/delete (str bootstrap/server-conf-dir "/ca/signed/test_cert_with_auth_ext.pem"))))
+    (fs/delete (str bootstrap/server-conf-dir "/ca/signed/test-cert-with-auth-ext.pem"))))
 
 (deftest csr-api-test
   (testutils/with-stub-puppet-conf
@@ -571,11 +571,11 @@
         :ssl-crl-path (str bootstrap/server-conf-dir "/ssl/crl.pem")}})
      (let [request-dir (str bootstrap/server-conf-dir "/ca/requests")
            key-pair (ssl-utils/generate-key-pair)
-           subjectDN (ssl-utils/cn "test_cert")
+           subjectDN (ssl-utils/cn "test-cert")
            csr (ssl-utils/generate-certificate-request key-pair subjectDN)
-           csr-file (ks/temp-file "test_csr.pem")
-           saved-csr (str request-dir "/test_cert.pem")
-           url "https://localhost:8140/puppet-ca/v1/certificate_request/test_cert"
+           csr-file (ks/temp-file "test-csr.pem")
+           saved-csr (str request-dir "/test-cert.pem")
+           url "https://localhost:8140/puppet-ca/v1/certificate_request/test-cert"
            request-opts {:ssl-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
                          :ssl-key (str bootstrap/server-conf-dir "/ca/ca_key.pem")
                          :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")

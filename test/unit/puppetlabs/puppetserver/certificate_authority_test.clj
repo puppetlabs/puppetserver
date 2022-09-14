@@ -530,7 +530,7 @@
                     (path-to-cert "localhost")
                     (utils/pem->cert))
           cert2 (-> (:signeddir settings)
-                    (path-to-cert "test_cert")
+                    (path-to-cert "test-cert")
                     (utils/pem->cert))
           revoked? (fn [cert]
                      (-> (:cacrl settings)
@@ -538,7 +538,7 @@
                          (utils/revoked? cert)))]
       (is (false? (revoked? cert1)))
       (is (false? (revoked? cert2)))
-      (revoke-existing-certs! settings ["localhost" "test_cert"])
+      (revoke-existing-certs! settings ["localhost" "test-cert"])
       (is (true? (revoked? cert1)))
       (is (true? (revoked? cert2))))))
 
@@ -1153,7 +1153,7 @@
                           (select-keys % [:kind :msg]))]
                      ["invalid characters in name" "super/bad" "bad-subject-name-1.pem"
                       #(= {:kind :invalid-subject-name
-                           :msg "Subject contains unprintable or non-ASCII characters"}
+                           :msg "Subject hostname format is invalid"}
                           (select-keys % [:kind :msg]))]
                      ["wildcard in name" "foo*bar" "bad-subject-name-wildcard.pem"
                       #(= {:kind :invalid-subject-name
@@ -1189,7 +1189,7 @@
                           (select-keys % [:kind :msg]))]
                      ["subject contains invalid characters" "super/bad" "bad-subject-name-1.pem"
                       #(= {:kind :invalid-subject-name
-                           :msg "Subject contains unprintable or non-ASCII characters"}
+                           :msg "Subject hostname format is invalid"}
                           (select-keys % [:kind :msg]))]
                      ["subject contains wildcard character" "foo*bar" "bad-subject-name-wildcard.pem"
                       #(=  {:kind :invalid-subject-name
@@ -1616,10 +1616,59 @@
 
   (testing "an exception is thrown if the subject name contains a capital letter"
     (is (thrown+?
-          [:kind :invalid-subject-name
-           :msg "Certificate names must be lower case."]
-          (validate-subject! "Host-With-Capital-Letters"
-                             "Host-With-Capital-Letters")))))
+         [:kind :invalid-subject-name
+          :msg "Certificate names must be lower case."]
+         (validate-subject! "Host-With-Capital-Letters"
+                            "Host-With-Capital-Letters"))))
+
+  (testing "an exception is thrown when the hostnames ends in hyphen"
+    (is (thrown+?
+         [:kind :invalid-subject-name
+          :msg "Subject hostname format is invalid"]
+         (validate-subject!
+          "rootca-.example.org" "rootca-.example.org"))))
+  
+  (testing "an exception is thrown when the hostnames starts in hyphen"
+    (is (thrown+?
+         [:kind :invalid-subject-name
+          :msg "Subject hostname format is invalid"]
+         (validate-subject!
+          "-rootca.example.org" "-rootca.example.org"))))
+  
+  (testing "an exception is thrown when the hostnames contains a space"
+    (is (thrown+?
+         [:kind :invalid-subject-name
+          :msg "Subject hostname format is invalid"]
+         (validate-subject!
+          "root ca.example.org" "root ca.example.org"))))
+  
+  (testing "an exception is thrown when the hostnames contain an ampersand"
+    (is (thrown+?
+         [:kind :invalid-subject-name
+          :msg "Subject hostname format is invalid"]
+         (validate-subject!
+          "root&ca.example.org" "root&ca.example.org"))))
+  
+  (testing "an exception is thrown when the hostname is empty"
+    (is (thrown+?
+         [:kind :invalid-subject-name
+          :msg "Subject hostname format is invalid"]
+         (validate-subject!
+          "" ""))))
+  
+  (testing "an exception is thrown when the hostnames contain multiple dots in a row"
+    (is (thrown+?
+         [:kind :invalid-subject-name
+          :msg "Subject hostname format is invalid"]
+         (validate-subject!
+          "rootca..example.org" "rootca..example.org"))))
+  
+  (testing "an exception is thrown when the hostnames end in dot"
+    (is (thrown+?
+         [:kind :invalid-subject-name
+          :msg "Subject hostname format is invalid"]
+         (validate-subject!
+          "rootca." "rootca.")))))
 
 (deftest validate-subject-alt-names!-test
   (testing "Both DNS and IP alt names are allowed"

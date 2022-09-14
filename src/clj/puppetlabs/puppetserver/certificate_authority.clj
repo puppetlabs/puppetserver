@@ -798,23 +798,23 @@
    subject :- schema/Str]
   (when-not (= hostname subject)
     (sling/throw+
-      {:kind :hostname-mismatch
-       :msg  (i18n/tru "Instance name \"{0}\" does not match requested key \"{1}\"" subject hostname)}))
+     {:kind :hostname-mismatch
+      :msg  (i18n/tru "Instance name \"{0}\" does not match requested key \"{1}\"" subject hostname)}))
 
   (when (contains-uppercase? hostname)
     (sling/throw+
-      {:kind :invalid-subject-name
-       :msg  (i18n/tru "Certificate names must be lower case.")}))
-
-  (when-not (re-matches #"\A[ -.0-~]+\Z" subject)
-    (sling/throw+
-      {:kind :invalid-subject-name
-       :msg  (i18n/tru "Subject contains unprintable or non-ASCII characters")}))
+     {:kind :invalid-subject-name
+      :msg  (i18n/tru "Certificate names must be lower case.")}))
 
   (when (.contains subject "*")
     (sling/throw+
-      {:kind :invalid-subject-name
-       :msg  (i18n/tru "Subject contains a wildcard, which is not allowed: {0}" subject)})))
+     {:kind :invalid-subject-name
+      :msg  (i18n/tru "Subject contains a wildcard, which is not allowed: {0}" subject)}))
+
+  (when-not (re-matches #"^([a-z0-9](?:(?:[a-z0-9-]*|(?<!-)\.(?![-.]))*[a-z0-9]+)?)$" subject)
+    (sling/throw+
+     {:kind :invalid-subject-name
+      :msg  (i18n/tru "Subject hostname format is invalid")})))
 
 (schema/defn allowed-extension?
   "A predicate that answers if an extension is allowed or not.
