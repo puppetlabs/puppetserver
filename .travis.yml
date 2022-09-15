@@ -25,6 +25,9 @@ jobs:
       env:
         - JAVA_VERSION=11
         - MULTITHREADED=true
+      name: "Java 17"
+      env:
+        - JAVA_VERSION=17
 
 notifications:
   email: false
