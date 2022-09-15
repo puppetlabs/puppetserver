@@ -164,7 +164,7 @@
    :post [(vector? %)
           (every? integer? %)]}
   (let [bytes   (-> ^PublicKey
-                    pub-key
+                 pub-key
                     .getEncoded
                     SubjectPublicKeyInfo/getInstance
                     .getPublicKeyData
@@ -198,42 +198,42 @@
 (deftest validate-settings-test
   (testing "invalid ca-ttl is rejected"
     (let [settings (assoc
-                     (testutils/ca-settings cadir)
-                     :ca-ttl
-                     (+ max-ca-ttl 1))]
+                    (testutils/ca-settings cadir)
+                    :ca-ttl
+                    (+ max-ca-ttl 1))]
       (is (thrown-with-msg? IllegalStateException #"ca_ttl must have a value below"
                             (validate-settings! settings)))))
 
   (testing "warns if :client-whitelist is set in c-a.c-s section"
     (let [settings (assoc-in
-                     (testutils/ca-settings cadir)
-                     [:access-control :certificate-status :client-whitelist]
-                     ["whitelist"])]
+                    (testutils/ca-settings cadir)
+                    [:access-control :certificate-status :client-whitelist]
+                    ["whitelist"])]
       (logutils/with-test-logging
         (validate-settings! settings)
         (is (logutils/logged? #"Remove these settings and create" :warn)))))
 
   (testing "warns if :authorization-required is overridden in c-a.c-s section"
     (let [settings (assoc-in
-                     (testutils/ca-settings cadir)
-                     [:access-control
-                      :certificate-status
-                      :authorization-required]
-                     false)]
+                    (testutils/ca-settings cadir)
+                    [:access-control
+                     :certificate-status
+                     :authorization-required]
+                    false)]
       (logutils/with-test-logging
         (validate-settings! settings)
         (is (logutils/logged? #"Remove these settings and create" :warn)))))
 
   (testing "warns if :client-whitelist is set incorrectly"
     (let [settings (assoc-in
-                     (testutils/ca-settings cadir)
-                     [:access-control :certificate-status :client-whitelist]
-                     [])]
+                    (testutils/ca-settings cadir)
+                    [:access-control :certificate-status :client-whitelist]
+                    [])]
       (logutils/with-test-logging
         (validate-settings! settings)
         (is (logutils/logged?
-              #"remove the 'certificate-authority' configuration"
-              :warn))))))
+             #"remove the 'certificate-authority' configuration"
+             :warn))))))
 
 (deftest get-certificate-test
   (testing "returns CA certificate when subject is 'ca'"
@@ -365,13 +365,13 @@
 
     (testing "stderr is added to master's log at warn level"
       (logutils/with-test-logging
-       (autosign-csr? executable "test-agent" (csr-fn) ruby-load-path ruby-gem-path)
-       (is (logged? #"generated output to stderr: print to stderr" :warn))))
+        (autosign-csr? executable "test-agent" (csr-fn) ruby-load-path ruby-gem-path)
+        (is (logged? #"generated output to stderr: print to stderr" :warn))))
 
     (testing "non-zero exit-code generates a log entry at warn level"
       (logutils/with-test-logging
-       (autosign-csr? executable "foo" (csr-fn) ruby-load-path ruby-gem-path)
-       (is (logged? #"rejected certificate 'foo'" :warn))))
+        (autosign-csr? executable "foo" (csr-fn) ruby-load-path ruby-gem-path)
+        (is (logged? #"rejected certificate 'foo'" :warn))))
 
     (testing "Ruby load path is configured and contains Puppet"
       (logutils/with-test-logging
@@ -400,13 +400,13 @@
 
     (testing "stderr is added to master's log at warn level"
       (logutils/with-test-logging
-       (autosign-csr? executable "test-agent" (csr-fn))
-       (is (logged? #"generated output to stderr: print to stderr" :warn))))
+        (autosign-csr? executable "test-agent" (csr-fn))
+        (is (logged? #"generated output to stderr: print to stderr" :warn))))
 
     (testing "non-zero exit-code generates a log entry at warn level"
       (logutils/with-test-logging
-       (autosign-csr? executable "foo" (csr-fn))
-       (is (logged? #"rejected certificate 'foo'" :warn))))
+        (autosign-csr? executable "foo" (csr-fn))
+        (is (logged? #"rejected certificate 'foo'" :warn))))
 
     (testing "subject is passed as argument and CSR is provided on stdin"
       (logutils/with-test-logging
@@ -441,7 +441,7 @@
         expected-cert-path (path-to-cert (:signeddir settings) "test-agent")]
     ;; Fix the value of "now" so we can reliably test the dates
     (time/do-at now
-      (autosign-certificate-request! "test-agent" csr settings))
+                (autosign-certificate-request! "test-agent" csr settings))
 
     (testing "requests are autosigned and saved to disk"
       (is (fs/exists? expected-cert-path)))
@@ -546,20 +546,20 @@
   (let [crl (-> (get-certificate-revocation-list cacrl)
                 StringReader.
                 utils/pem->crl)]
-   (testing "Return an empty vector when all supplied serials are already in CRL"
-     (let [test-serial (vec [4])
-           filtered-serial (filter-already-revoked-serials test-serial crl)]
-       (is (empty? filtered-serial))))
+    (testing "Return an empty vector when all supplied serials are already in CRL"
+      (let [test-serial (vec [4])
+            filtered-serial (filter-already-revoked-serials test-serial crl)]
+        (is (empty? filtered-serial))))
 
-   (testing "Return a vector of serials not yet in CRL"
-     (let [test-serial (vec [1 2 3 4])
-           filtered-serial (filter-already-revoked-serials test-serial crl)]
-       (is (true? (= (sort filtered-serial) [1 2 3])))))
+    (testing "Return a vector of serials not yet in CRL"
+      (let [test-serial (vec [1 2 3 4])
+            filtered-serial (filter-already-revoked-serials test-serial crl)]
+        (is (true? (= (sort filtered-serial) [1 2 3])))))
 
-   (testing "Deduplicates the vector of serials to be revoked"
-     (let [test-serial (vec [1 1 2 2 3 3])
-           filtered-serial (filter-already-revoked-serials test-serial crl)]
-       (is (apply distinct? filtered-serial))))))
+    (testing "Deduplicates the vector of serials to be revoked"
+      (let [test-serial (vec [1 1 2 2 3 3])
+            filtered-serial (filter-already-revoked-serials test-serial crl)]
+        (is (apply distinct? filtered-serial))))))
 
 (deftest get-certificate-revocation-list-test
   (testing "`get-certificate-revocation-list` returns a valid CRL file."
@@ -574,93 +574,93 @@
         crl-path (str update-crl-fixture-dir "ca_crl.pem")
         crl-backup-path (str update-crl-fixture-dir "ca_crl.pem.bak")]
     (logutils/with-test-logging
-     (testing "a single newer CRL is used"
-       (let [new-crl-path (str update-crl-fixture-dir "new_root_crl.pem")
-             incoming-crls (utils/pem->crls new-crl-path)]
-         (testutils/with-backed-up-crl crl-path crl-backup-path
-           (update-crls incoming-crls crl-path cert-chain-path)
-           (let [old-crls (utils/pem->crls crl-backup-path)
-                 new-crls (utils/pem->crls crl-path)
-                 old-number (utils/get-crl-number (last old-crls))
-                 new-number (utils/get-crl-number (last new-crls))]
-             (is (> new-number old-number))))))
-     (testing "the newest CRL given is used"
-       (let [multiple-new-crls-path (str update-crl-fixture-dir "multiple_new_root_crls.pem")
-             incoming-crls (utils/pem->crls multiple-new-crls-path)]
-         (testutils/with-backed-up-crl crl-path crl-backup-path
-           (update-crls incoming-crls crl-path cert-chain-path)
-           (let [old-crls (utils/pem->crls crl-backup-path)
-                 new-crls (utils/pem->crls crl-path)
-                 old-number (utils/get-crl-number (last old-crls))
-                 new-number (utils/get-crl-number (last new-crls))]
-             (is (> new-number old-number))
-             (is (= 10 new-number))))))
-     (testing "multiple newer CRLs are used"
-       (let [three-cert-path (str update-crl-fixture-dir "three_cert_chain.pem")
-             three-crl-path (str update-crl-fixture-dir "three_crl.pem")
-             three-newer-crls-path (str update-crl-fixture-dir "three_newer_crl_chain.pem")
-             incoming-crls (utils/pem->crls three-newer-crls-path)]
-         (testutils/with-backed-up-crl three-crl-path crl-backup-path
-           (update-crls incoming-crls three-crl-path three-cert-path)
-           (let [old-crls (utils/pem->crls crl-backup-path)
-                 new-crls (utils/pem->crls three-crl-path)]
-             (is (> (utils/get-crl-number (.get new-crls 2))
-                    (utils/get-crl-number (.get old-crls 2))))
-             (is (> (utils/get-crl-number (.get new-crls 1))
-                    (utils/get-crl-number (.get old-crls 1))))
+      (testing "a single newer CRL is used"
+        (let [new-crl-path (str update-crl-fixture-dir "new_root_crl.pem")
+              incoming-crls (utils/pem->crls new-crl-path)]
+          (testutils/with-backed-up-crl crl-path crl-backup-path
+            (update-crls incoming-crls crl-path cert-chain-path)
+            (let [old-crls (utils/pem->crls crl-backup-path)
+                  new-crls (utils/pem->crls crl-path)
+                  old-number (utils/get-crl-number (last old-crls))
+                  new-number (utils/get-crl-number (last new-crls))]
+              (is (> new-number old-number))))))
+      (testing "the newest CRL given is used"
+        (let [multiple-new-crls-path (str update-crl-fixture-dir "multiple_new_root_crls.pem")
+              incoming-crls (utils/pem->crls multiple-new-crls-path)]
+          (testutils/with-backed-up-crl crl-path crl-backup-path
+            (update-crls incoming-crls crl-path cert-chain-path)
+            (let [old-crls (utils/pem->crls crl-backup-path)
+                  new-crls (utils/pem->crls crl-path)
+                  old-number (utils/get-crl-number (last old-crls))
+                  new-number (utils/get-crl-number (last new-crls))]
+              (is (> new-number old-number))
+              (is (= 10 new-number))))))
+      (testing "multiple newer CRLs are used"
+        (let [three-cert-path (str update-crl-fixture-dir "three_cert_chain.pem")
+              three-crl-path (str update-crl-fixture-dir "three_crl.pem")
+              three-newer-crls-path (str update-crl-fixture-dir "three_newer_crl_chain.pem")
+              incoming-crls (utils/pem->crls three-newer-crls-path)]
+          (testutils/with-backed-up-crl three-crl-path crl-backup-path
+            (update-crls incoming-crls three-crl-path three-cert-path)
+            (let [old-crls (utils/pem->crls crl-backup-path)
+                  new-crls (utils/pem->crls three-crl-path)]
+              (is (> (utils/get-crl-number (.get new-crls 2))
+                     (utils/get-crl-number (.get old-crls 2))))
+              (is (> (utils/get-crl-number (.get new-crls 1))
+                     (utils/get-crl-number (.get old-crls 1))))
              ;; Leaf CRL is never replaced
-             (is (= (utils/get-crl-number (.get new-crls 0))
-                    (utils/get-crl-number (.get old-crls 0))))))))
-     (testing "unrelated CRLs are ignored while newer relevant CRLs are used"
-       (let [new-and-unrelated-crls-path (str update-crl-fixture-dir "new_crls_and_unrelated_crls.pem")
-             incoming-crls (utils/pem->crls new-and-unrelated-crls-path)]
-         (testutils/with-backed-up-crl crl-path crl-backup-path
-           (update-crls incoming-crls crl-path cert-chain-path)
-           (let [old-crls (utils/pem->crls crl-backup-path)
-                 new-crls (utils/pem->crls crl-path)]
-               (is (> (utils/get-crl-number (last new-crls))
-                      (utils/get-crl-number (last old-crls))))
+              (is (= (utils/get-crl-number (.get new-crls 0))
+                     (utils/get-crl-number (.get old-crls 0))))))))
+      (testing "unrelated CRLs are ignored while newer relevant CRLs are used"
+        (let [new-and-unrelated-crls-path (str update-crl-fixture-dir "new_crls_and_unrelated_crls.pem")
+              incoming-crls (utils/pem->crls new-and-unrelated-crls-path)]
+          (testutils/with-backed-up-crl crl-path crl-backup-path
+            (update-crls incoming-crls crl-path cert-chain-path)
+            (let [old-crls (utils/pem->crls crl-backup-path)
+                  new-crls (utils/pem->crls crl-path)]
+              (is (> (utils/get-crl-number (last new-crls))
+                     (utils/get-crl-number (last old-crls))))
                ;; Leaf CRL is never replaced
-               (is (= (utils/get-crl-number (first new-crls))
-                      (utils/get-crl-number (first old-crls))))
-               (testing "CRLs with same issuer name but different auth keys are not used"
-                 (is (= (utils/get-extension-value (last new-crls) utils/authority-key-identifier-oid)
-                        (utils/get-extension-value (last old-crls) utils/authority-key-identifier-oid)))
-                 (is (= (utils/get-extension-value (first new-crls) utils/authority-key-identifier-oid)
-                        (utils/get-extension-value (first old-crls) utils/authority-key-identifier-oid))))))))
-     (testing "all unrelated CRLs are ignored entirely"
-       (let [unrelated-crls-path (str update-crl-fixture-dir "unrelated_crls.pem")
-             incoming-crls (utils/pem->crls unrelated-crls-path)]
-         (testutils/with-backed-up-crl crl-path crl-backup-path
-           (update-crls incoming-crls crl-path cert-chain-path)
-           (let [old-crls (utils/pem->crls crl-backup-path)
-                 new-crls (utils/pem->crls crl-path)]
-             (is (= (count old-crls) (count new-crls)))
-             (is (= (set old-crls) (set new-crls)))))))
-     (testing "older CRLs are ignored"
-       (let [new-root-crl-chain-path (str update-crl-fixture-dir "chain_with_new_root.pem")
-             old-root-crl-path (str update-crl-fixture-dir "old_root_crl.pem")
-             incoming-crls (utils/pem->crls old-root-crl-path)]
-         (testutils/with-backed-up-crl new-root-crl-chain-path crl-backup-path
-           (update-crls incoming-crls new-root-crl-chain-path cert-chain-path)
-           (let [old-crls (utils/pem->crls crl-backup-path)
-                 new-crls (utils/pem->crls new-root-crl-chain-path)]
-               (is (= (set new-crls) (set old-crls)))))))
-     (let [multiple-newest-crls-path (str update-crl-fixture-dir "multiple_newest_root_crls.pem")
-           delta-crl-path (str test-resources-dir "/update_crls/delta_crl.pem")
-           missing-auth-id-crl-path (str test-resources-dir "/update_crls/missing_auth_id_crl.pem")
-           bad-inputs-and-error-msgs {multiple-newest-crls-path #"Could not determine newest CRL."
-                                      delta-crl-path #"Cannot support delta CRL."
-                                      missing-auth-id-crl-path #"CRLs do not have an authority key"}]
-       (doseq [[path error-message] bad-inputs-and-error-msgs]
-         (testing (str "CRLs from " path " are rejected")
-           (let [incoming-crls (utils/pem->crls path)]
-             (testutils/with-backed-up-crl crl-path crl-backup-path
-               (is (thrown-with-msg? IllegalArgumentException error-message
-                                     (update-crls incoming-crls crl-path cert-chain-path)))
-               (let [old-crls (utils/pem->crls crl-backup-path)
-                     new-crls (utils/pem->crls crl-path)]
-                 (is (= (set old-crls) (set new-crls))))))))))))
+              (is (= (utils/get-crl-number (first new-crls))
+                     (utils/get-crl-number (first old-crls))))
+              (testing "CRLs with same issuer name but different auth keys are not used"
+                (is (= (utils/get-extension-value (last new-crls) utils/authority-key-identifier-oid)
+                       (utils/get-extension-value (last old-crls) utils/authority-key-identifier-oid)))
+                (is (= (utils/get-extension-value (first new-crls) utils/authority-key-identifier-oid)
+                       (utils/get-extension-value (first old-crls) utils/authority-key-identifier-oid))))))))
+      (testing "all unrelated CRLs are ignored entirely"
+        (let [unrelated-crls-path (str update-crl-fixture-dir "unrelated_crls.pem")
+              incoming-crls (utils/pem->crls unrelated-crls-path)]
+          (testutils/with-backed-up-crl crl-path crl-backup-path
+            (update-crls incoming-crls crl-path cert-chain-path)
+            (let [old-crls (utils/pem->crls crl-backup-path)
+                  new-crls (utils/pem->crls crl-path)]
+              (is (= (count old-crls) (count new-crls)))
+              (is (= (set old-crls) (set new-crls)))))))
+      (testing "older CRLs are ignored"
+        (let [new-root-crl-chain-path (str update-crl-fixture-dir "chain_with_new_root.pem")
+              old-root-crl-path (str update-crl-fixture-dir "old_root_crl.pem")
+              incoming-crls (utils/pem->crls old-root-crl-path)]
+          (testutils/with-backed-up-crl new-root-crl-chain-path crl-backup-path
+            (update-crls incoming-crls new-root-crl-chain-path cert-chain-path)
+            (let [old-crls (utils/pem->crls crl-backup-path)
+                  new-crls (utils/pem->crls new-root-crl-chain-path)]
+              (is (= (set new-crls) (set old-crls)))))))
+      (let [multiple-newest-crls-path (str update-crl-fixture-dir "multiple_newest_root_crls.pem")
+            delta-crl-path (str test-resources-dir "/update_crls/delta_crl.pem")
+            missing-auth-id-crl-path (str test-resources-dir "/update_crls/missing_auth_id_crl.pem")
+            bad-inputs-and-error-msgs {multiple-newest-crls-path #"Could not determine newest CRL."
+                                       delta-crl-path #"Cannot support delta CRL."
+                                       missing-auth-id-crl-path #"CRLs do not have an authority key"}]
+        (doseq [[path error-message] bad-inputs-and-error-msgs]
+          (testing (str "CRLs from " path " are rejected")
+            (let [incoming-crls (utils/pem->crls path)]
+              (testutils/with-backed-up-crl crl-path crl-backup-path
+                (is (thrown-with-msg? IllegalArgumentException error-message
+                                      (update-crls incoming-crls crl-path cert-chain-path)))
+                (let [old-crls (utils/pem->crls crl-backup-path)
+                      new-crls (utils/pem->crls crl-path)]
+                  (is (= (set old-crls) (set new-crls))))))))))))
 
 (deftest initialize!-test
   (let [settings (testutils/ca-settings (ks/temp-dir))]
@@ -670,7 +670,7 @@
     (testing "Generated SSL file"
       (doseq [file (-> (settings->cadir-paths settings)
                        (select-keys (required-ca-files
-                                      (:enable-infra-crl settings)))
+                                     (:enable-infra-crl settings)))
                        (vals))]
         (testing file
           (is (fs/exists? file)))))
@@ -774,7 +774,7 @@
                 ":manage-internal-file-permissions is false.")
     (let [perms "rw-r--r--"
           settings (assoc (testutils/ca-sandbox! cadir)
-                     :manage-internal-file-permissions false)]
+                          :manage-internal-file-permissions false)]
       (set-file-perms (:cakey settings) perms)
       (initialize! settings)
       (is (= perms (get-file-perms (:cakey settings)))))))
@@ -1081,18 +1081,18 @@
           (is (= (count entries) 2))
 
           (verify-inventory-entry!
-            (first entries)
-            "0x0001"
-            "2020-08-19T20:23:52UTC"
-            "2025-08-19T20:23:52UTC"
-            "/CN=Puppet CA: localhost")
+           (first entries)
+           "0x0001"
+           "2020-08-19T20:23:52UTC"
+           "2025-08-19T20:23:52UTC"
+           "/CN=Puppet CA: localhost")
 
           (verify-inventory-entry!
-            (second entries)
-            "0x0002"
-            "2020-08-19T20:26:02UTC"
-            "2025-08-19T20:26:02UTC"
-            "/CN=localhost"))))))
+           (second entries)
+           "0x0002"
+           "2020-08-19T20:26:02UTC"
+           "2025-08-19T20:26:02UTC"
+           "/CN=localhost"))))))
 
 (deftest allow-duplicate-certs-test
   (let [settings (assoc (testutils/ca-sandbox! cadir) :autosign false)]
@@ -1153,7 +1153,7 @@
                           (select-keys % [:kind :msg]))]
                      ["invalid characters in name" "super/bad" "bad-subject-name-1.pem"
                       #(= {:kind :invalid-subject-name
-                           :msg "Subject contains unprintable or non-ASCII characters"}
+                           :msg "Subject hostname format is invalid"}
                           (select-keys % [:kind :msg]))]
                      ["wildcard in name" "foo*bar" "bad-subject-name-wildcard.pem"
                       #(= {:kind :invalid-subject-name
@@ -1189,7 +1189,7 @@
                           (select-keys % [:kind :msg]))]
                      ["subject contains invalid characters" "super/bad" "bad-subject-name-1.pem"
                       #(= {:kind :invalid-subject-name
-                           :msg "Subject contains unprintable or non-ASCII characters"}
+                           :msg "Subject hostname format is invalid"}
                           (select-keys % [:kind :msg]))]
                      ["subject contains wildcard character" "foo*bar" "bad-subject-name-wildcard.pem"
                       #(=  {:kind :invalid-subject-name
@@ -1207,10 +1207,10 @@
                     [["subject alt name extension exists" "hostwithaltnames" "hostwithaltnames.pem"
                       #(= {:kind :disallowed-extension
                            :msg (str "CSR 'hostwithaltnames' contains extra subject alternative names "
-                                   "(DNS:altname1, DNS:altname2, DNS:altname3), which are disallowed. "
-                                   "To allow subject alternative names, set allow-subject-alt-names to "
-                                   "true in your ca.conf file. Then restart the puppetserver "
-                                   "and try signing this certificate again.")}
+                                     "(DNS:altname1, DNS:altname2, DNS:altname3), which are disallowed. "
+                                     "To allow subject alternative names, set allow-subject-alt-names to "
+                                     "true in your ca.conf file. Then restart the puppetserver "
+                                     "and try signing this certificate again.")}
                           (select-keys % [:kind :msg]))]
                      ["unknown extension exists" "meow" "meow-bad-extension.pem"
                       #(= {:kind :disallowed-extension
@@ -1358,7 +1358,7 @@
 
     (testing "basic extensions are created for a master"
       (let [settings      (assoc (testutils/master-settings confdir)
-                            :csr-attributes "doesntexist")
+                                 :csr-attributes "doesntexist")
             exts          (create-master-extensions subject
                                                     subject-pub
                                                     cert
@@ -1439,14 +1439,14 @@
     (testing "correct subject alt name extensions are created for a master"
       (let [dns-alt-names "onefish,twofish,DNS:threefish,IP:192.168.69.90,fivefish,IP:192.168.69.91"
             exts-expected {:oid      "2.5.29.17"
-                            :critical false
-                            :value    {:dns-name ["onefish"
-                                                  "twofish"
-                                                  "threefish"
-                                                  "fivefish"
-                                                  "subject"]
-                                       :ip       ["192.168.69.90"
-                                                  "192.168.69.91"]}}]
+                           :critical false
+                           :value    {:dns-name ["onefish"
+                                                 "twofish"
+                                                 "threefish"
+                                                 "fivefish"
+                                                 "subject"]
+                                      :ip       ["192.168.69.90"
+                                                 "192.168.69.91"]}}]
         (is (= (create-subject-alt-names-ext "subject" dns-alt-names) exts-expected))))
 
     (testing "A non-puppet OID read from a CSR attributes file is rejected"
@@ -1454,18 +1454,18 @@
                           :csr-attributes
                           (csr-attributes-file "insecure_csr_attributes.yaml"))]
         (is (thrown+?
-              [:kind :disallowed-extension
-               :msg "Found extensions that are not permitted: 1.2.3.4"]
-              (create-master-extensions subject subject-pub cert config)))))
+             [:kind :disallowed-extension
+              :msg "Found extensions that are not permitted: 1.2.3.4"]
+             (create-master-extensions subject subject-pub cert config)))))
 
     (testing "invalid DNS alt names are rejected"
       (let [dns-alt-names "*.wildcard"]
         (is (thrown+?
-              [:kind :invalid-alt-name
-               :msg "Cert subjectAltName contains a wildcard, which is not allowed: *.wildcard"]
-              (create-master-extensions subject subject-pub cert
-                                        (assoc (testutils/master-settings confdir)
-                                               :dns-alt-names dns-alt-names))))))
+             [:kind :invalid-alt-name
+              :msg "Cert subjectAltName contains a wildcard, which is not allowed: *.wildcard"]
+             (create-master-extensions subject subject-pub cert
+                                       (assoc (testutils/master-settings confdir)
+                                              :dns-alt-names dns-alt-names))))))
 
     (testing "basic extensions are created for a CA"
       (let [exts          (create-ca-extensions subject-pub
@@ -1496,7 +1496,7 @@
                       (utils/puppet-node-instance-id "instance" false)
                       (utils/puppet-node-uid "UUUU-IIIII-DDD" false)]
             csr      (utils/generate-certificate-request
-                       subject-keys subject-dn csr-exts)
+                      subject-keys subject-dn csr-exts)
             exts (create-agent-extensions csr cert)
             exts-expected [{:oid      "2.16.840.1.113730.1.13"
                             :critical false
@@ -1546,31 +1546,31 @@
         subject "new-cert"
         subject-dn (utils/cn subject)]
     (logutils/with-test-logging
-     (testing "when allow-subject-alt-names is false"
-       (testing "rejects alt names that don't match the subject"
-         (let [alt-name-ext {:oid utils/subject-alt-name-oid
-                             :value {:dns-name ["bad-name"]}
-                             :critical false}
-               csr (utils/generate-certificate-request subject-keys subject-dn [alt-name-ext])]
-           (is (thrown+-with-msg?
-                [:kind :disallowed-extension]
-                #".*new-cert.*subject alternative names.*bad-name.*"
-                (ensure-subject-alt-names-allowed! csr false))))
-         (let [alt-name-ext {:oid utils/subject-alt-name-oid
-                             :value {:dns-name ["bad-name" subject]}
-                             :critical false}
-               csr (utils/generate-certificate-request subject-keys subject-dn [alt-name-ext])]
-           (is (thrown+-with-msg?
-                [:kind :disallowed-extension]
-                #".*new-cert.*subject alternative names.*bad-name.*"
-                (ensure-subject-alt-names-allowed! csr false)))))
-       (testing "allows a single alt name matching the subject"
-         (let [alt-name-ext {:oid utils/subject-alt-name-oid
-                             :value {:dns-name [subject]}
-                             :critical false}
-               csr (utils/generate-certificate-request subject-keys subject-dn [alt-name-ext])]
-           (is (nil? (ensure-subject-alt-names-allowed! csr false)))
-           (is (logutils/logged? #"Allowing subject alt name" :debug))))))
+      (testing "when allow-subject-alt-names is false"
+        (testing "rejects alt names that don't match the subject"
+          (let [alt-name-ext {:oid utils/subject-alt-name-oid
+                              :value {:dns-name ["bad-name"]}
+                              :critical false}
+                csr (utils/generate-certificate-request subject-keys subject-dn [alt-name-ext])]
+            (is (thrown+-with-msg?
+                 [:kind :disallowed-extension]
+                 #".*new-cert.*subject alternative names.*bad-name.*"
+                 (ensure-subject-alt-names-allowed! csr false))))
+          (let [alt-name-ext {:oid utils/subject-alt-name-oid
+                              :value {:dns-name ["bad-name" subject]}
+                              :critical false}
+                csr (utils/generate-certificate-request subject-keys subject-dn [alt-name-ext])]
+            (is (thrown+-with-msg?
+                 [:kind :disallowed-extension]
+                 #".*new-cert.*subject alternative names.*bad-name.*"
+                 (ensure-subject-alt-names-allowed! csr false)))))
+        (testing "allows a single alt name matching the subject"
+          (let [alt-name-ext {:oid utils/subject-alt-name-oid
+                              :value {:dns-name [subject]}
+                              :critical false}
+                csr (utils/generate-certificate-request subject-keys subject-dn [alt-name-ext])]
+            (is (nil? (ensure-subject-alt-names-allowed! csr false)))
+            (is (logutils/logged? #"Allowing subject alt name" :debug))))))
     (testing "when allow-subject-alt-names is true"
       (testing "allows all alt names"
         (let [alt-name-ext {:oid utils/subject-alt-name-oid
@@ -1609,40 +1609,124 @@
 (deftest validate-subject!-test
   (testing "an exception is thrown when the hostnames don't match"
     (is (thrown+?
-          [:kind :hostname-mismatch
-           :msg "Instance name \"test-agent\" does not match requested key \"not-test-agent\""]
-          (validate-subject!
-            "not-test-agent" "test-agent"))))
+         [:kind :hostname-mismatch
+          :msg "Instance name \"test-agent\" does not match requested key \"not-test-agent\""]
+         (validate-subject!
+          "not-test-agent" "test-agent"))))
 
   (testing "an exception is thrown if the subject name contains a capital letter"
     (is (thrown+?
-          [:kind :invalid-subject-name
-           :msg "Certificate names must be lower case."]
-          (validate-subject! "Host-With-Capital-Letters"
-                             "Host-With-Capital-Letters")))))
+         [:kind :invalid-subject-name
+          :msg "Certificate names must be lower case."]
+         (validate-subject! "Host-With-Capital-Letters"
+                            "Host-With-Capital-Letters"))))
+
+  (testing "an exception is thrown when the hostnames ends in hyphen"
+    (is (thrown+?
+         [:kind :invalid-subject-name
+          :msg "Subject hostname format is invalid"]
+         (validate-subject!
+          "rootca-.example.org" "rootca-.example.org"))))
+
+  (testing "an exception is thrown when the hostnames starts with hyphen"
+    (is (thrown+?
+         [:kind :invalid-subject-name
+          :msg "Subject hostname format is invalid"]
+         (validate-subject!
+          "-rootca.example.org" "-rootca.example.org"))))
+
+  (testing "an exception is thrown when the hostnames contains a space"
+    (is (thrown+?
+         [:kind :invalid-subject-name
+          :msg "Subject hostname format is invalid"]
+         (validate-subject!
+          "root ca.example.org" "root ca.example.org"))))
+
+  (testing "an exception is thrown when the hostnames contain an ampersand"
+    (is (thrown+?
+         [:kind :invalid-subject-name
+          :msg "Subject hostname format is invalid"]
+         (validate-subject!
+          "root&ca.example.org" "root&ca.example.org"))))
+
+  (testing "an exception is thrown when the hostname is empty"
+    (is (thrown+?
+         [:kind :invalid-subject-name
+          :msg "Subject hostname format is invalid"]
+         (validate-subject!
+          "" ""))))
+
+  (testing "an exception is thrown when the hostnames contain multiple dots in a row"
+    (is (thrown+?
+         [:kind :invalid-subject-name
+          :msg "Subject hostname format is invalid"]
+         (validate-subject!
+          "rootca..example.org" "rootca..example.org"))))
+
+  (testing "an exception is thrown when the hostnames end in dot"
+    (is (thrown+?
+         [:kind :invalid-subject-name
+          :msg "Subject hostname format is invalid"]
+         (validate-subject!
+          "rootca." "rootca."))))
+
+  (testing "Single word hostnames are allowed"
+    (is (nil?
+         (validate-subject!
+          "rootca" "rootca"))))
+
+  (testing "Domain names are allowed"
+    (is (nil?
+         (validate-subject!
+          "puppet.com" "puppet.com"))))
+
+  (testing "Subdomains are allowed"
+    (is (nil?
+         (validate-subject!
+          "ca.puppet.com" "ca.puppet.com"))))
+
+  (testing "Hostnames containing underscores are allowed"
+    (is (nil?
+         (validate-subject!
+          "root_ca" "root_ca"))))
+
+  (testing "Hostnames containing dashes are allowed"
+    (is (nil?
+         (validate-subject!
+          "root-ca" "root-ca"))))
+  
+  (testing "Hostnames containing numbers are allowed"
+    (is (nil?
+         (validate-subject!
+          "root123" "root123"))))
+  
+  (testing "Domains containing numbers are allowed"
+    (is (nil?
+         (validate-subject!
+          "root123.com" "root123.com")))))
 
 (deftest validate-subject-alt-names!-test
   (testing "Both DNS and IP alt names are allowed"
     (is (nil?
-          (validate-subject-alt-names! {:oid "2.5.29.17"
-                                        :critical false
-                                        :value {:ip ["12.34.5.6"] :dns-name ["ahostname"]}}))))
+         (validate-subject-alt-names! {:oid "2.5.29.17"
+                                       :critical false
+                                       :value {:ip ["12.34.5.6"] :dns-name ["ahostname"]}}))))
 
   (testing "Non-DNS and IP names are not allowed"
     (is (thrown+?
-          [:kind :invalid-alt-name
-           :msg "Only DNS and IP names are allowed in the Subject Alternative Names extension"]
-          (validate-subject-alt-names! {:oid "2.5.29.17"
-                                        :critical false
-                                        :value {:uri ["12.34.5.6"]}}))))
+         [:kind :invalid-alt-name
+          :msg "Only DNS and IP names are allowed in the Subject Alternative Names extension"]
+         (validate-subject-alt-names! {:oid "2.5.29.17"
+                                       :critical false
+                                       :value {:uri ["12.34.5.6"]}}))))
 
   (testing "No DNS wildcards are allowed"
     (is (thrown+?
-          [:kind :invalid-alt-name
-           :msg "Cert subjectAltName contains a wildcard, which is not allowed: foo*bar"]
-          (validate-subject-alt-names! {:oid "2.5.29.17"
-                                        :critical false
-                                        :value {:dns-name ["ahostname" "foo*bar"]}})))))
+         [:kind :invalid-alt-name
+          :msg "Cert subjectAltName contains a wildcard, which is not allowed: foo*bar"]
+         (validate-subject-alt-names! {:oid "2.5.29.17"
+                                       :critical false
+                                       :value {:dns-name ["ahostname" "foo*bar"]}})))))
 
 (deftest default-master-dns-alt-names
   (testing "Master certificate has default DNS alt names if none are specified"
