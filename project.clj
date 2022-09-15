@@ -130,14 +130,15 @@
                                     [org.bouncycastle/bctls-fips]]
                      :jvm-opts ~(let [version (System/getProperty "java.specification.version")
                                       [major minor _] (clojure.string/split version #"\.")
-                                      unsupported-ex (ex-info "Unsupported major Java version. Expects 8 or 11."
+                                      unsupported-ex (ex-info "Unsupported major Java version."
                                                        {:major major
                                                         :minor minor})]
                                   (condp = (java.lang.Integer/parseInt major)
                                     1 (if (= 8 (java.lang.Integer/parseInt minor))
                                         ["-Djava.security.properties==./dev-resources/java.security.jdk8-fips"]
                                         (throw unsupported-ex))
-                                    11 ["-Djava.security.properties==./dev-resources/java.security.jdk11-fips"]
+                                    11 ["-Djava.security.properties==./dev-resources/java.security.jdk11on-fips"]
+                                    17 ["-Djava.security.properties==./dev-resources/java.security.jdk11on-fips"]
                                     (throw unsupported-ex)))}]
 
              :testutils {:source-paths ["test/unit" "test/integration"]}
