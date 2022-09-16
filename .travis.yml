@@ -10,24 +10,17 @@ script:
   - ./ext/travisci/test.sh
 jobs:
   include:
-    - stage: puppetserver tests
-      name: "Java 8"
-      env:
-        - JAVA_VERSION=8
-    - name: "Java 11"
-      env:
-        - JAVA_VERSION=11
-    - name: "Java 11 w/ FIPS"
-      env:
-        - JAVA_VERSION=11
-        - ADDITIONAL_LEIN_ARGS="with-profile fips"
-    - name: "Java 11 w/ multithreaded"
-      env:
-        - JAVA_VERSION=11
-        - MULTITHREADED=true
-      name: "Java 17"
+    - name: "Java 17"
       env:
         - JAVA_VERSION=17
+    - name: "Java 17 w/ FIPS"
+      env:
+        - JAVA_VERSION=17
+        - ADDITIONAL_LEIN_ARGS="with-profile fips"
+    - name: "Java 17 w/ multithreaded"
+      env:
+        - JAVA_VERSION=17
+        - MULTITHREADED=true
 
 notifications:
   email: false
