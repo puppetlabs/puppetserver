@@ -241,7 +241,11 @@
                "-XX:+UseG1GC"
                ~(str "-Xms" (heap-size "1G"))
                ~(str "-Xmx" (heap-size "2G"))
-               "-XX:+IgnoreUnrecognizedVMOptions"]
+               "-XX:+IgnoreUnrecognizedVMOptions"
+               "--add-opens"
+               "java.base/sun.nio.ch=ALL-UNNAMED"
+               "--add-opens"
+               "java.base/java.io=ALL-UNNAMED"]
 
   :repl-options {:init-ns dev-tools}
   :uberjar-exclusions  [#"META-INF/jruby.home/lib/ruby/stdlib/org/bouncycastle"
