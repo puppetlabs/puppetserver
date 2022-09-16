@@ -1,6 +1,6 @@
 language: clojure
 lein: 2.9.1
-dist: bionic
+dist: jammy
 
 services:
   - docker
