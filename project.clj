@@ -130,14 +130,15 @@
                                     [org.bouncycastle/bctls-fips]]
                      :jvm-opts ~(let [version (System/getProperty "java.specification.version")
                                       [major minor _] (clojure.string/split version #"\.")
-                                      unsupported-ex (ex-info "Unsupported major Java version. Expects 8 or 11."
+                                      unsupported-ex (ex-info "Unsupported major Java version."
                                                        {:major major
                                                         :minor minor})]
                                   (condp = (java.lang.Integer/parseInt major)
                                     1 (if (= 8 (java.lang.Integer/parseInt minor))
                                         ["-Djava.security.properties==./dev-resources/java.security.jdk8-fips"]
                                         (throw unsupported-ex))
-                                    11 ["-Djava.security.properties==./dev-resources/java.security.jdk11-fips"]
+                                    11 ["-Djava.security.properties==./dev-resources/java.security.jdk11on-fips"]
+                                    17 ["-Djava.security.properties==./dev-resources/java.security.jdk11on-fips"]
                                     (throw unsupported-ex)))}]
 
              :testutils {:source-paths ["test/unit" "test/integration"]}
@@ -240,7 +241,11 @@
                "-XX:+UseG1GC"
                ~(str "-Xms" (heap-size "1G"))
                ~(str "-Xmx" (heap-size "2G"))
-               "-XX:+IgnoreUnrecognizedVMOptions"]
+               "-XX:+IgnoreUnrecognizedVMOptions"
+               "--add-opens"
+               "java.base/sun.nio.ch=ALL-UNNAMED"
+               "--add-opens"
+               "java.base/java.io=ALL-UNNAMED"]
 
   :repl-options {:init-ns dev-tools}
   :uberjar-exclusions  [#"META-INF/jruby.home/lib/ruby/stdlib/org/bouncycastle"

@@ -1,6 +1,6 @@
 language: clojure
-lein: 2.9.1
-dist: bionic
+lein: 2.9.10
+dist: jammy
 
 services:
   - docker
@@ -10,20 +10,16 @@ script:
   - ./ext/travisci/test.sh
 jobs:
   include:
-    - stage: puppetserver tests
-      name: "Java 8"
+    - name: "Java 17"
       env:
-        - JAVA_VERSION=8
-    - name: "Java 11"
+        - JAVA_VERSION=17
+    - name: "Java 17 w/ FIPS"
       env:
-        - JAVA_VERSION=11
-    - name: "Java 11 w/ FIPS"
-      env:
-        - JAVA_VERSION=11
+        - JAVA_VERSION=17
         - ADDITIONAL_LEIN_ARGS="with-profile fips"
-    - name: "Java 11 w/ multithreaded"
+    - name: "Java 17 w/ multithreaded"
       env:
-        - JAVA_VERSION=11
+        - JAVA_VERSION=17
         - MULTITHREADED=true
 
 notifications:

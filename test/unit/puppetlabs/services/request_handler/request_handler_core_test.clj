@@ -264,9 +264,11 @@
   "A cert provided in the x-client-cert header that cannot be decoded into
   an X509Certificate object throws the expected failure"
   (testing "Improperly URL encoded content"
-    (is (thrown+? [:kind :bad-request
-                   :msg (str "Unable to URL decode the x-client-cert header: "
-                             "For input string: \"1Q\"")]
+    (is (thrown+? #(and
+                     (= (:kind %) :bad-request)
+                     (re-matches
+                       #"Unable to URL decode the x-client-cert header: For input string: \"1Q\".*"
+                       (:msg %)))
                   (jruby-request-with-client-cert-header "%1Q%2"))))
   (testing "Bad certificate content"
     (is (thrown+? [:kind :bad-request
