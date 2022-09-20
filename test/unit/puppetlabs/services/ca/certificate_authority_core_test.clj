@@ -450,7 +450,7 @@
                   response   (handle-put-certificate-request!
                               subject csr-stream settings)]
               (is (= 400 (:status response)))
-              (is (= "Subject contains unprintable or non-ASCII characters"
+              (is (= "Subject hostname format is invalid"
                      (:body response)))))))
 
       (testing "no wildcards allowed"

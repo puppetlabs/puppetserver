@@ -76,7 +76,7 @@ msgid "Certificate names must be lower case."
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
-msgid "Subject contains unprintable or non-ASCII characters"
+msgid "Subject hostname format is invalid"
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
