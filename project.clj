@@ -237,15 +237,17 @@
             "irb" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.irb" "--config" "./dev/puppetserver.conf" "--"]
             "thread-test" ["trampoline" "run" "-b" "ext/thread_test/bootstrap.cfg" "--config" "./ext/thread_test/puppetserver.conf"]}
 
-  :jvm-opts ["-Djruby.logger.class=com.puppetlabs.jruby_utils.jruby.Slf4jLogger"
-               "-XX:+UseG1GC"
-               ~(str "-Xms" (heap-size "1G"))
-               ~(str "-Xmx" (heap-size "2G"))
-               "-XX:+IgnoreUnrecognizedVMOptions"
-               "--add-opens"
-               "java.base/sun.nio.ch=ALL-UNNAMED"
-               "--add-opens"
-               "java.base/java.io=ALL-UNNAMED"]
+  :jvm-opts ~(let [version (System/getProperty "java.specification.version")
+                   [major minor _] (clojure.string/split version #"\.")]
+               (concat
+                 ["-Djruby.logger.class=com.puppetlabs.jruby_utils.jruby.Slf4jLogger"
+                  "-XX:+UseG1GC"
+                  (str "-Xms" (heap-size "1G"))
+                  (str "-Xmx" (heap-size "2G"))
+                  "-XX:+IgnoreUnrecognizedVMOptions"]
+                 (if (= 17 (java.lang.Integer/parseInt major))
+                   ["--add-opens" "java.base/sun.nio.ch=ALL-UNNAMED" "--add-opens" "java.base/java.io=ALL-UNNAMED"]
+                   [])))
 
   :repl-options {:init-ns dev-tools}
   :uberjar-exclusions  [#"META-INF/jruby.home/lib/ruby/stdlib/org/bouncycastle"
