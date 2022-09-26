@@ -2,7 +2,13 @@
 
 set -e
 
+# INFO FOR DEBUGGING PURPOSES
+set -x
+lsb_release -a
+java -version
+set +x
 echo "Total memory available: $(grep MemTotal /proc/meminfo | awk '{print $2}')"
+##############################
 
 git submodule update --recursive --init
 lein clean

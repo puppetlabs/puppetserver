@@ -3,6 +3,9 @@
 set -e
 
 echo "TESTING!!!!!!"
+set -x
+lsb_release -a
+set +x
 echo "Installing Java $JAVA_VERSION"
 
 sudo rm -rf /usr/local/lib/jvm/
