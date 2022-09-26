@@ -2,6 +2,7 @@
 
 set -e
 
+echo "TESTING!!!!!!"
 echo "Installing Java $JAVA_VERSION"
 
 sudo rm -rf /usr/local/lib/jvm/
