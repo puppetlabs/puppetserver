@@ -1,6 +1,6 @@
 language: clojure
 lein: 2.9.10
-dist: jammy
+dist: focal
 
 services:
   - docker
