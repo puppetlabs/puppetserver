@@ -2,9 +2,6 @@ language: clojure
 lein: 2.9.10
 dist: jammy
 
-script:
-  - ./ext/travisci/install-java.sh
-  - ./ext/travisci/test.sh
 jobs:
   include:
     - name: "Java 17"
@@ -18,6 +15,9 @@ jobs:
       env:
         - JAVA_VERSION=17
         - MULTITHREADED=true
+script:
+  - ./ext/travisci/install-java.sh
+  - ./ext/travisci/test.sh
 
 notifications:
   email: false
