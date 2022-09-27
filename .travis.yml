@@ -2,9 +2,6 @@ language: clojure
 lein: 2.9.10
 dist: jammy
 
-services:
-  - docker
-
 script:
   - ./ext/travisci/install-java.sh
   - ./ext/travisci/test.sh
