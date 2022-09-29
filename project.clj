@@ -123,7 +123,7 @@
                                         [beckon]
                                         [lambdaisland/uri "1.4.70"]]}
              :dev [:defaults
-                   {:dependencies [[org.bouncycastle/bcpkix-jdk15on]]}]
+                   {:dependencies [[org.bouncycastle/bcpkix-jdk18on]]}]
              :fips [:defaults
                     {:dependencies [[org.bouncycastle/bcpkix-fips]
                                     [org.bouncycastle/bc-fips]
@@ -153,7 +153,7 @@
                     ;; when a test fails.
                     :dependencies [[pjstadig/humane-test-output "0.8.3"]]
                     :injections [(require 'pjstadig.humane-test-output)
-                                (pjstadig.humane-test-output/activate!)]}
+                                 (pjstadig.humane-test-output/activate!)]}
 
 
              :ezbake {:dependencies ^:replace [;; we need to explicitly pull in our parent project's
@@ -163,13 +163,13 @@
                                                ;; in the list above, so any version overrides need to be
                                                ;; specified in both places. TODO: fix this.
                                                [org.clojure/clojure]
-                                               [org.bouncycastle/bcpkix-jdk15on]
+                                               [org.bouncycastle/bcpkix-jdk18on]
                                                [puppetlabs/jruby-utils]
                                                [puppetlabs/puppetserver ~ps-version]
                                                [puppetlabs/trapperkeeper-webserver-jetty9]]
                       :plugins [[puppetlabs/lein-ezbake "2.3.2"]]
                       :name "puppetserver"}
-             :uberjar {:dependencies [[org.bouncycastle/bcpkix-jdk15on]
+             :uberjar {:dependencies [[org.bouncycastle/bcpkix-jdk18on]
                                       [puppetlabs/trapperkeeper-webserver-jetty9]]
                        :aot [puppetlabs.trapperkeeper.main
                              puppetlabs.trapperkeeper.services.status.status-service
