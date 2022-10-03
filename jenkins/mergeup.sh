@@ -61,7 +61,7 @@ while [[ "$num_conflicts" -gt 0 ]]; do
     elif echo $line_content | grep "ps-version" ; then
       echo "ps-version, keep ours"
     # check if it's a clj-parent bump and keep ours
-    elif echo $line_content | grep "puppetlabs/clj-parent" ; then
+    elif echo $line_content | grep "clj-parent-version" ; then
       echo "clj-parent bump, keep ours"
     # check for matching lines, since identical lines sometimes still get caught in conflicts, if they're near enough real conflicts
     # potential for error if the line content happens to match something else that isn't just a single line??
