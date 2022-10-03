@@ -130,14 +130,15 @@
                                     [org.bouncycastle/bctls-fips]]
                      :jvm-opts ~(let [version (System/getProperty "java.specification.version")
                                       [major minor _] (clojure.string/split version #"\.")
-                                      unsupported-ex (ex-info "Unsupported major Java version. Expects 8 or 11."
+                                      unsupported-ex (ex-info "Unsupported major Java version."
                                                        {:major major
                                                         :minor minor})]
                                   (condp = (java.lang.Integer/parseInt major)
                                     1 (if (= 8 (java.lang.Integer/parseInt minor))
                                         ["-Djava.security.properties==./dev-resources/java.security.jdk8-fips"]
                                         (throw unsupported-ex))
-                                    11 ["-Djava.security.properties==./dev-resources/java.security.jdk11-fips"]
+                                    11 ["-Djava.security.properties==./dev-resources/java.security.jdk11on-fips"]
+                                    17 ["-Djava.security.properties==./dev-resources/java.security.jdk11on-fips"]
                                     (throw unsupported-ex)))}]
 
              :testutils {:source-paths ["test/unit" "test/integration"]}
@@ -236,11 +237,17 @@
             "irb" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.irb" "--config" "./dev/puppetserver.conf" "--"]
             "thread-test" ["trampoline" "run" "-b" "ext/thread_test/bootstrap.cfg" "--config" "./ext/thread_test/puppetserver.conf"]}
 
-  :jvm-opts ["-Djruby.logger.class=com.puppetlabs.jruby_utils.jruby.Slf4jLogger"
-               "-XX:+UseG1GC"
-               ~(str "-Xms" (heap-size "1G"))
-               ~(str "-Xmx" (heap-size "2G"))
-               "-XX:+IgnoreUnrecognizedVMOptions"]
+  :jvm-opts ~(let [version (System/getProperty "java.specification.version")
+                   [major minor _] (clojure.string/split version #"\.")]
+               (concat
+                 ["-Djruby.logger.class=com.puppetlabs.jruby_utils.jruby.Slf4jLogger"
+                  "-XX:+UseG1GC"
+                  (str "-Xms" (heap-size "1G"))
+                  (str "-Xmx" (heap-size "2G"))
+                  "-XX:+IgnoreUnrecognizedVMOptions"]
+                 (if (= 17 (java.lang.Integer/parseInt major))
+                   ["--add-opens" "java.base/sun.nio.ch=ALL-UNNAMED" "--add-opens" "java.base/java.io=ALL-UNNAMED"]
+                   [])))
 
   :repl-options {:init-ns dev-tools}
   :uberjar-exclusions  [#"META-INF/jruby.home/lib/ruby/stdlib/org/bouncycastle"
