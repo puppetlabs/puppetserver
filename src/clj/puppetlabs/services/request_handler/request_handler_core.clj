@@ -45,48 +45,31 @@
   "Converts a JRubyPuppetResponse instance to a map."
   [response]
   { :pre [(instance? JRubyPuppetResponse response)]
-    :post [(map? %)] }
-    { :status  (.getStatus response)
-      :body    (.getBody response)
-      :headers {"Content-Type"     (.getContentType response)
-                "X-Puppet-Version" (.getPuppetVersion response)}})
+    :post [(map? %)]}
+  { :status  (.getStatus response)
+    :body    (.getBody response)
+    :headers {"Content-Type"     (.getContentType response)
+              "X-Puppet-Version" (.getPuppetVersion response)}})
 
-(defn body-for-jruby
-  "Converts the body from a request into a String if it is a non-binary
-   content type.  Otherwise, just returns back the same body InputStream.
-   Non-binary request bodies are coerced per the appropriate encoding at
-   the Clojure layer.  Binary request bodies, however, need to be preserved
-   in the originating InputStream so that they can be converted at the Ruby
-   layer, where the raw bytes within the stream can be converted losslessly
-   to a Ruby ASCII-8BIT encoded String.  Java has no equivalent to ASCII-8BIT
-   for its Strings."
+
+(defn update-body-for-jruby
+  "Converts the body from a request into a String if it is a form encoding.
+   Otherwise, just returns back the same body InputStream."
   [request]
-  (let [body         (:body request)
-        content-type (if-let [raw-type (:content-type request)]
+  (let [content-type (if-let [raw-type (:content-type request)]
                        (string/lower-case raw-type))]
-    (case content-type
-      (nil "" "application/octet-stream" "application/x-msgpack") body
-      ; Treatment of the *default* encoding arguably should be much more
-      ; intelligent than just choosing UTF-8.  Basing the default on the
-      ; Content-Type would be an improvement although even this could lead to
-      ; some ambiguities.  For "text/*" Content-Types, for example,
-      ; different RFCs specified that either US-ASCII or ISO-8859-1 could
-      ; be applied - see https://tools.ietf.org/html/rfc6657.  Ideally, this
-      ; should be filled in with a broader list of the different Content-Types
-      ; that Puppet recognizes and the default encodings to use when typical
-      ; Puppet requests do not specify a corresponding charset.
-      (slurp body :encoding (or (:character-encoding request)
-                                "UTF-8")))))
-
+    (if (= content-type "application/x-www-form-urlencoded")
+      (update request :body slurp :encoding (or (:character-encoding request)
+                                                "UTF-8"))
+      request)))
 (defn wrap-params-for-jruby
   "Pull parameters from the URL query string and/or urlencoded form POST
    body into the ring request map.  Includes some special processing for
    a request destined for JRubyPuppet."
   [request]
-  (let [body-for-jruby (body-for-jruby request)]
-    (-> request
-        (assoc :body body-for-jruby)
-        pl-ring-params/params-request)))
+  (-> request
+      update-body-for-jruby
+      pl-ring-params/params-request))
 
 (def unauthenticated-client-info
   "Return a map with default info for an unauthenticated client"
