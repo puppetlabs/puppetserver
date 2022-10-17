@@ -7,6 +7,10 @@ script:
   - ./ext/travisci/install-java.sh
   - ./ext/travisci/test.sh
 jobs:
+  # NOTE: Puppet does not officially support the s390x architecture.
+  # Testing against this architecture provides value to the open source community,
+  # but we make no promises about its functionality and may ignore any test failures
+  # that arise when testing against s390x.
   allow_failures:
     - arch: s390x
   include:
