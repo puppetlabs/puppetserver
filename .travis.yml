@@ -1,11 +1,14 @@
 language: clojure
 lein: 2.9.10
 dist: focal
+os: linux
 
 script:
   - ./ext/travisci/install-java.sh
   - ./ext/travisci/test.sh
 jobs:
+  allow_failures:
+    - arch: s390x
   include:
     - name: "Java 17"
       env:
@@ -18,6 +21,20 @@ jobs:
       env:
         - JAVA_VERSION=17
         - MULTITHREADED=true
+    - name: "Java 17 (s390x)"
+      env:
+        - JAVA_VERSION=17
+      arch: s390x
+    - name: "Java 17 w/ FIPS (s390x)"
+      env:
+        - JAVA_VERSION=17
+        - ADDITIONAL_LEIN_ARGS="with-profile fips"
+      arch: s390x
+    - name: "Java 17 w/ multithreaded (s390x)"
+      env:
+        - JAVA_VERSION=17
+        - MULTITHREADED=true
+      arch: s390x
 
 notifications:
   email: false
