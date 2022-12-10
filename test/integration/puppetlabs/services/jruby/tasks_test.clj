@@ -181,17 +181,9 @@
 
 (deftest ^:integration all-tasks-test
   (testing "requesting all tasks"
-    (let [tasks [{:name "install"
+    (let [tasks [{:name "init"
                   :module-name "apache"
-                  :metadata (simple-impl-metadata "apache")
-                  :number-of-files 2}
-                 {:name "init"
-                  :module-name "apache"
-                  :number-of-files 1}
-                 {:name "configure"
-                  :module-name "django"
-                  :metadata { }
-                  :number-of-files 0}]
+                  :number-of-files 1}]
           get-tasks (fn [env]
                       (.getTasks *jruby-puppet* env))]
 
