@@ -25,6 +25,14 @@ jobs:
       name: "Java 17"
       env:
         - JAVA_VERSION=17
+    - name: "Java 17 w/ FIPS"
+      env:
+        - JAVA_VERSION=17
+        - ADDITIONAL_LEIN_ARGS="with-profile fips"
+    - name: "Java 17 w/ multithreaded"
+      env:
+        - JAVA_VERSION=17
+        - MULTITHREADED=true
 
 notifications:
   email: false
