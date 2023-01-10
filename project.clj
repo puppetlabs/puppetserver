@@ -34,7 +34,7 @@
 
                  [slingshot]
                  [clj-commons/clj-yaml]
-                 [org.yaml/snakeyaml "1.31"]
+                 [org.yaml/snakeyaml]
                  [commons-lang]
                  [commons-io]
 
