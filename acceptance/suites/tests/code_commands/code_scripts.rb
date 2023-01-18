@@ -121,6 +121,9 @@ end
 
 step 'SETUP: Install and configure r10k, and perform the initial commit' do
   on master, "puppet config set server #{fqdn}"
+  # We need to install a specific version of puppet_forge to maintain support
+  # for Ruby 2.5 in PS 6.x / PE 2019.x
+  on master, '/opt/puppetlabs/puppet/bin/gem install puppet_forge -v 3.2.0'
   on master, '/opt/puppetlabs/puppet/bin/gem install r10k'
   on master, "cd #{git_local_repo} && git checkout -b production"
   r10k_yaml=<<-R10K
