@@ -1,3 +1,2 @@
-puppet_forge 3.2.0
 dropsonde 0.0.8
 scanf 1.0.0
