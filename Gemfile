@@ -17,6 +17,9 @@ gem 'packaging', *location_for(ENV['PACKAGING_LOCATION'] || '~> 0.99')
 gem 'rake', :group => [:development, :test]
 
 group :test do
+  gem 'minitest', '~> 5.15.0'
+  gem 'signet', '~> 0.16.0'
+  gem 'googleauth', '~> 1.1.3'
   gem 'rspec'
   gem 'beaker', *location_for(ENV['BEAKER_VERSION'] || '~> 4.11')
   gem "beaker-hostgenerator", *location_for(ENV['BEAKER_HOSTGENERATOR_VERSION'] || "~> 1.1")
