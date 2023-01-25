@@ -162,10 +162,8 @@ class Puppet::Server::Master
 
   def terminate
     Puppet::Server::Config.terminate_puppet_server
-    # executor shutdown can be removed after puppetserver upgrades to a version of jruby
-    # following merge of https://github.com/jruby/jruby/pull/6127
-    executor = Timeout.to_java.getInternalVariable('__executor__')
-    executor.shutdown
+    # See https://github.com/jruby/jruby/issues/7349
+    Timeout.instance_variable_get(:@timeout_thread).exit
   end
 
    # @return [Array, nil] an array of hashes describing tasks
