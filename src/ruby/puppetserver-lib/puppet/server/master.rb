@@ -281,7 +281,7 @@ UTM
           []
         when File.directory?(env.manifest)
           Dir.glob(File.join(env.manifest, '**/*.pp'))
-        when File.exists?(env.manifest)
+        when File.exist?(env.manifest)
           [env.manifest]
         else
           []
