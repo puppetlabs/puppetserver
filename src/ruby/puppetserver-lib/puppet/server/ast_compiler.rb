@@ -136,7 +136,11 @@ module Puppet
         }
 
         # Use the existing environment with the requested name
-        Puppet::Pal.in_environment(compile_options['environment'], env_conf) do |pal|
+        Puppet::Pal.in_environment(compile_options['environment'], env_conf) do |pal, foo|
+          puts "first argument to Puppet::Pal#in_environment block"
+          puts pal.inspect
+          puts "second argument to Puppet::Pal#in_environment block"
+          puts foo.inspect
           # TODO: Given we hide this from plan authors this current iteration has only
           # the "required" data for now. Once we can get https://github.com/puppetlabs/bolt/pull/1770
           # merged and promoted we can just use an empty hash.
