@@ -9,6 +9,7 @@
              jruby-pool-manager-core]
             [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]
             [puppetlabs.services.master.master-core :refer :all]
+            [puppetlabs.services.master.master-service :as master-service]
             [puppetlabs.services.protocols.jruby-puppet :as jruby]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
             [ring.middleware.params :as ring]
@@ -468,6 +469,20 @@
                                                               :variables {:values {}}
                                                               :options {:compile_for_plan true}}))))]
           (is (= 400 (:status response))))))))
+
+(deftest jdk-support-status-test
+  (is (= :unsupported (master-service/jdk-support-status "1.7")))
+  (is (= :unsupported (master-service/jdk-support-status "1.7.0")))
+  (is (= :deprecated (master-service/jdk-support-status "1.8")))
+  (is (= :deprecated (master-service/jdk-support-status "1.8.0")))
+  (is (= :deprecated (master-service/jdk-support-status "1.9")))
+  (is (= :deprecated (master-service/jdk-support-status "1.9.0")))
+  (is (= :deprecated (master-service/jdk-support-status "10")))
+  (is (= :deprecated (master-service/jdk-support-status "10.0")))
+  (is (= :official (master-service/jdk-support-status "11.0")))
+  (is (= :official (master-service/jdk-support-status "11.0.7")))
+  (is (= :official (master-service/jdk-support-status "17.0")))
+  (is (= :official (master-service/jdk-support-status "17.0.4"))))
 
 (deftest v4-routes-test
   (with-redefs [jruby-core/borrow-from-pool-with-timeout (fn [_ _ _] {:jruby-puppet (Object.)})
