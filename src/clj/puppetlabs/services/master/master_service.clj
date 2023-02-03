@@ -79,6 +79,25 @@
    default-jvm-metrics-allowed
    http-client-metrics-allowed-hists))
 
+(defn jdk-support-status
+  "Returns :official, :deprecated, :unknown, or :unsupported."
+  [version]
+  (cond
+    (re-matches #"1\.[1234567]($|(\..*))" version) :unsupported
+    (re-matches #"1\.[89]($|(\..*))" version) :deprecated
+    (re-matches #"10($|(\..*))" version) :deprecated
+    (re-matches (re-pattern (str 11 "($|(\\..*))")) version) :official
+    (re-matches #"17($|(\..*))" version) :official
+    :else :unknown))
+
+(defn log-java-deprecation-message [version]
+  (let [status (jdk-support-status version)]
+    (case status
+      (:unknown) (log/warn (i18n/trs "JDK {0} is neither tested nor supported. Please use JDK 11 or 17" version))
+      (:deprecated) (log/warn (i18n/trs "JDK {0} is deprecated, please upgrade to JDK 11 or 17" version))
+      (:official) nil
+      (:unsupported) (log/warn (i18n/trs "Puppetserver doesn't support JDK {0}" version)))))
+
 (defservice master-service
   master/MasterService
   [[:WebroutingService add-ring-handler get-route]
@@ -115,10 +134,10 @@
          wrap-with-jruby-queue-limit (if (pos? max-queued-requests)
                                        (fn [handler]
                                          (jruby-request/wrap-with-request-queue-limit
-                                           handler
-                                           metrics-service
-                                           max-queued-requests
-                                           max-retry-delay))
+                                          handler
+                                          metrics-service
+                                          max-queued-requests
+                                          max-retry-delay))
                                        identity)
 
          boltlib-path (get-in config [:jruby-puppet :boltlib-path])
@@ -147,7 +166,7 @@
                           (http-metrics/wrap-with-request-metrics http-metrics)
                           (comidi/wrap-with-route-metadata routes))
          hostcrl (get-in config [:puppetserver :hostcrl])]
-
+     (log-java-deprecation-message (System/getProperty "java.version"))
      (retrieve-ca-cert! localcacert)
      (retrieve-ca-crl! hostcrl)
      (initialize-master-ssl! settings certname)
