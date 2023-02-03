@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: b5a7d1789d51423af2b1bc332703636697ca7f66\n"
+"X-Git-Ref: a06ca1846201da2bef1f728cb0905b17855086e4\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -77,11 +77,11 @@ msgid "Certificate names must be lower case."
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
-msgid "Subject hostname format is invalid"
+msgid "Subject contains a wildcard, which is not allowed: {0}"
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
-msgid "Subject contains a wildcard, which is not allowed: {0}"
+msgid "Subject hostname format is invalid"
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
@@ -663,6 +663,18 @@ msgstr ""
 
 #: src/clj/puppetlabs/services/master/master_core.clj
 msgid "Route not found for service {0}"
+msgstr ""
+
+#: src/clj/puppetlabs/services/master/master_service.clj
+msgid "JDK {0} is neither tested nor supported. Please use JDK 11 or 17"
+msgstr ""
+
+#: src/clj/puppetlabs/services/master/master_service.clj
+msgid "JDK {0} is deprecated, please upgrade to JDK 11 or 17"
+msgstr ""
+
+#: src/clj/puppetlabs/services/master/master_service.clj
+msgid "Puppetserver doesn't support JDK {0}"
 msgstr ""
 
 #: src/clj/puppetlabs/services/master/master_service.clj
