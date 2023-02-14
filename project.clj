@@ -51,7 +51,8 @@
                  ;; send their logs to logstash, so we include it in the jar.
                  [net.logstash.logback/logstash-logback-encoder]
 
-                 [puppetlabs/jruby-utils]
+                 [puppetlabs/jruby-deps "9.4.1.0-1"]
+                 [puppetlabs/jruby-utils :exclusions [puppetlabs/jruby-deps]]
                  [puppetlabs/clj-shell-utils]
                  [puppetlabs/trapperkeeper]
                  [puppetlabs/trapperkeeper-webserver-jetty9]
@@ -165,7 +166,7 @@
                                                ;; specified in both places. TODO: fix this.
                                                [org.clojure/clojure]
                                                [org.bouncycastle/bcpkix-jdk18on]
-                                               [puppetlabs/jruby-utils]
+                                               [puppetlabs/jruby-utils :exclusions [puppetlabs/jruby-deps]]
                                                [puppetlabs/puppetserver ~ps-version]
                                                [puppetlabs/trapperkeeper-webserver-jetty9]]
                       :plugins [[puppetlabs/lein-ezbake "2.3.2"]]
