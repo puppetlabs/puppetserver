@@ -53,11 +53,11 @@
       (rr/content-type "text/plain")))
 
 (schema/defn handle-put-certificate-request!
-  [subject :- String
-   certificate-request :- InputStream
-   ca-settings :- ca/CaSettings]
+  [ca-settings :- ca/CaSettings
+   report-activity
+   {:keys [body] {:keys [subject]} :route-params :as request}]
   (sling/try+
-    (ca/process-csr-submission! subject certificate-request ca-settings)
+    (ca/process-csr-submission! subject body ca-settings report-activity request)
     (rr/content-type (rr/response nil) "text/plain")
     (catch ca/csr-validation-failure? {:keys [msg]}
       (log/error msg)
@@ -144,9 +144,10 @@
       (log/debug e))))
 
 (schema/defn handle-cert-clean
-  [{:keys [body]}
-   ca-settings :- ca/CaSettings]
-  (if-let [json-body (try-to-parse body)]
+  [request
+   ca-settings :- ca/CaSettings
+   report-activity]
+  (if-let [json-body (try-to-parse (:body request))]
     ;; TODO support async mode
     (if (true? (:async json-body))
       (-> (rr/response "Async mode is not currently supported.")
@@ -161,7 +162,7 @@
                         (format "The following certs do not exist and cannot be revoked: %s"
                                 (vec missing-certs)))]
           (try
-            (ca/revoke-existing-certs! ca-settings existing-certs)
+            (ca/revoke-existing-certs! ca-settings existing-certs report-activity request)  
             (ca/delete-certificates! ca-settings existing-certs)
             (-> (rr/response (or message "Successfully cleaned all certs."))
                 (rr/status 200)
@@ -263,7 +264,7 @@
     (representation/ring-response)))
 
 (defresource certificate-status
-  [subject settings]
+  [subject settings report-activity]
   :allowed-methods [:get :put :delete]
 
   :available-media-types media-types
@@ -366,12 +367,15 @@
 
   :put!
   (fn [context]
-     (let [desired-state (get-desired-state context)]
-       (locking crl-write-serializer
-         (ca/set-certificate-status!
-          (merge-request-settings settings context)
-          subject
-          desired-state))
+     (let [desired-state (get-desired-state context)
+           request (:request context)]
+       (locking crl-write-serializer          
+          (ca/set-certificate-status!
+            (merge-request-settings settings context)
+            subject
+            desired-state
+            report-activity
+            request))
        (-> context
          (assoc-in [:representation :media-type] "text/plain")))))
 
@@ -395,11 +399,12 @@
         (as-json-or-pson context)))))
 
 (schema/defn ^:always-validate web-routes :- bidi-schema/RoutePair
-  [ca-settings :- ca/CaSettings]
+  [ca-settings :- ca/CaSettings
+   report-activity]
   (comidi/routes
     (comidi/context ["/v1"]
       (ANY ["/certificate_status/" :subject] [subject]
-        (certificate-status subject ca-settings))
+          (certificate-status subject ca-settings report-activity))
       (comidi/context ["/certificate_statuses/"]
         (ANY [[#"[^/]+" :ignored-but-required]] request
           (certificate-statuses request ca-settings))
@@ -409,8 +414,8 @@
       (comidi/context ["/certificate_request/" :subject]
         (GET [""] [subject]
           (handle-get-certificate-request subject ca-settings))
-        (PUT [""] [subject :as {body :body}]
-          (handle-put-certificate-request! subject body ca-settings))
+        (PUT [""] request
+          (handle-put-certificate-request! ca-settings report-activity request))
         (DELETE [""] [subject]
           (handle-delete-certificate-request! subject ca-settings)))
       (GET ["/certificate_revocation_list/" :ignored-node-name] request
@@ -420,7 +425,7 @@
       (GET ["/expirations"] _request
         (handle-get-ca-expirations ca-settings))
       (PUT ["/clean"] request
-        (handle-cert-clean request ca-settings)))
+        (handle-cert-clean request ca-settings report-activity)))
     (comidi/not-found "Not Found")))
 
 (schema/defn ^:always-validate

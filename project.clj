@@ -68,7 +68,8 @@
                  [puppetlabs/dujour-version-check]
                  [puppetlabs/http-client]
                  [puppetlabs/comidi]
-                 [puppetlabs/i18n]]
+                 [puppetlabs/i18n]
+                 [puppetlabs/rbac-client]]
 
   :main puppetlabs.trapperkeeper.main
 
@@ -123,7 +124,8 @@
                                         [ring-basic-authentication]
                                         [ring/ring-mock]
                                         [beckon]
-                                        [lambdaisland/uri "1.4.70"]]}
+                                        [lambdaisland/uri "1.4.70"]
+                                        [puppetlabs/rbac-client :classifier "test" :scope "test"]]}
              :dev [:defaults
                    {:dependencies [[org.bouncycastle/bcpkix-jdk18on]]}]
              :fips [:defaults
