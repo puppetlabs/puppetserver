@@ -163,7 +163,7 @@ class Puppet::Server::Master
   def terminate
     Puppet::Server::Config.terminate_puppet_server
     # See https://github.com/jruby/jruby/issues/7349
-    Timeout.instance_variable_get(:@timeout_thread).exit
+    Timeout.instance_variable_get(:@timeout_thread)&.exit
   end
 
    # @return [Array, nil] an array of hashes describing tasks
