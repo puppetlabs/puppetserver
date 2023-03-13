@@ -1,7 +1,10 @@
 (ns puppetlabs.services.master.file-serving-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is testing]]
             [me.raynes.fs :as fs]
-            [puppetlabs.services.master.file-serving :refer :all])
+            [puppetlabs.services.master.file-serving :refer [get-project-root
+                                                             find-project-file
+                                                             get-project-modulepath
+                                                             read-attributes]])
   (:import java.nio.file.Paths))
 
 (deftest bolt-projects-test

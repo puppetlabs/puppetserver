@@ -1,7 +1,7 @@
 (ns puppetlabs.puppetserver.error-handling-int-test
   (:require
-    [clojure.test :refer :all]
-    [puppetlabs.trapperkeeper.testutils.logging :refer :all]
+    [clojure.test :refer [deftest is testing use-fixtures]]
+    [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
     [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
     [puppetlabs.puppetserver.testutils :as testutils]
     [puppetlabs.puppetserver.certificate-authority :as ca]

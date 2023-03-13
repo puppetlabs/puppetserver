@@ -1,7 +1,6 @@
 (ns puppetlabs.services.master.environment-transports-int-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is testing use-fixtures]]
             [clojure.string :as str]
-            [clojure.walk :as walk]
             [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
@@ -15,7 +14,7 @@
             [clojure.tools.logging :as log]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils])
   (:import (com.puppetlabs.puppetserver JRubyPuppetResponse JRubyPuppet)
-           (java.util HashMap ArrayList)))
+           (java.util ArrayList)))
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/master/environment_transports_int_test")
@@ -127,7 +126,7 @@ Puppet::ResourceApi.register_transport(
   ([env-name]
    (get-env-transports env-name nil))
   ([env-name if-none-match]
-   (let [opts (if if-none-match
+   (let [opts (when if-none-match
                 {:headers {"If-None-Match" if-none-match}})]
      (try
        (http-client/get
@@ -290,10 +289,7 @@ Puppet::ResourceApi.register_transport(
                                                      "production"
                                                      production-etag-initial)
                production-etag-after-prod-flush (response-etag
-                                                 production-response-after-prod-flush)
-               test-response-after-prod-flush (get-env-transports
-                                               "test"
-                                               test-etag-initial)]
+                                                 production-response-after-prod-flush)]
            (is (= 200 (:status production-response-after-prod-flush))
                (str
                 "unexpected status code for prod response after code change "

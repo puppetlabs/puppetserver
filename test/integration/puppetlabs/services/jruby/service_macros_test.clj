@@ -1,5 +1,5 @@
 (ns puppetlabs.services.jruby.service-macros-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is testing]]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby-puppet]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]

@@ -1,14 +1,19 @@
 (ns puppetlabs.services.ca.certificate-authority-core-test
   (:require [cheshire.core :as json]
             [clojure.java.io :as io]
-            [clojure.test :refer :all]
+            [clojure.test :refer [deftest is testing use-fixtures]]
             [me.raynes.fs :as fs]
             [puppetlabs.ssl-utils.core :as utils]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.services.ca.ca-testutils :as testutils]
-            [puppetlabs.services.ca.certificate-authority-core :refer :all]
-            [puppetlabs.trapperkeeper.testutils.logging :as logutils]
+            [puppetlabs.services.ca.certificate-authority-core :refer [get-wrapped-handler
+                                                                       web-routes
+                                                                       handle-get-certificate-revocation-list
+                                                                       handle-put-certificate-revocation-list!
+                                                                       handle-put-certificate-request!
+                                                                       handle-delete-certificate-request!]]
+            [puppetlabs.trapperkeeper.testutils.logging :refer [logged?] :as logutils]
             [ring.mock.request :as mock]
             [schema.test :as schema-test]
             [puppetlabs.comidi :as comidi]))

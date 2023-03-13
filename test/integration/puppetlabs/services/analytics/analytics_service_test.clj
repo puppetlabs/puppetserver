@@ -1,6 +1,6 @@
 (ns puppetlabs.services.analytics.analytics-service-test
   (:require
-    [clojure.test :refer :all]
+    [clojure.test :refer [deftest is testing]]
     [puppetlabs.dujour.version-check :as version-check]
     [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap-testutils]
     [puppetlabs.trapperkeeper.testutils.logging :as logutils]))

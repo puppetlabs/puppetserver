@@ -1,12 +1,9 @@
 (ns puppetlabs.services.jruby.jruby-puppet-service-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is testing use-fixtures]]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
-            [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.trapperkeeper.app :as app]
-            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
-            [me.raynes.fs :as fs]
             [schema.test :as schema-test]))
 
 (use-fixtures :once schema-test/validate-schemas)

@@ -6,7 +6,6 @@
             [me.raynes.fs :as fs]
             [puppetlabs.ssl-utils.core :as ssl-utils]
             [puppetlabs.ssl-utils.simple :as ssl-simple]
-            [puppetlabs.ssl-utils.core :as utils]
             [schema.core :as schema]
             [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.services.jruby.jruby-puppet-testutils
@@ -86,7 +85,7 @@
   any important test coverage.  For this reason, we require a `docstring` argument
   to be passed in, as a sort of annotation explaining why you feel it's safe to
   use this mocking in your test."
-  [docstring app services config-overrides & body]
+  [_docstring app services config-overrides & body]
   (let [config (load-dev-config-with-overrides config-overrides)]
     `(let [services# (conj ~services
                            (jruby-puppet-testutils/mock-jruby-pool-manager-service
@@ -103,7 +102,7 @@
   any important test coverage.  For this reason, we require a `docstring` argument
   to be passed in, as a sort of annotation explaining why you feel it's safe to
   use this mocking in your test."
-  [docstring app services config-overrides mock-jruby-puppet-fn & body]
+  [_docstring app services config-overrides mock-jruby-puppet-fn & body]
   (let [config (load-dev-config-with-overrides config-overrides)]
     `(let [services# (conj ~services
                            (jruby-puppet-testutils/mock-jruby-pool-manager-service
@@ -140,7 +139,7 @@
   any important test coverage.  For this reason, we require a `docstring` argument
   to be passed in, as a sort of annotation explaining why you feel it's safe to
   use this mocking in your test."
-  [docstring app config-overrides & body]
+  [_docstring app config-overrides & body]
   (let [config (load-dev-config-with-overrides config-overrides)]
     `(let [services#
            (services-from-dev-bootstrap-plus-mock-jruby-pool-manager-service
@@ -157,7 +156,7 @@
   any important test coverage.  For this reason, we require a `docstring` argument
   to be passed in, as a sort of annotation explaining why you feel it's safe to
   use this mocking in your test."
-  [docstring app config-overrides mock-jruby-puppet-fn & body]
+  [_docstring app config-overrides mock-jruby-puppet-fn & body]
   (let [config (load-dev-config-with-overrides config-overrides)]
     `(let [services#
            (services-from-dev-bootstrap-plus-mock-jruby-pool-manager-service
@@ -171,7 +170,7 @@
 
 (defn write-to-stream [o]
   (let [s (ByteArrayOutputStream.)]
-    (utils/obj->pem! o s)
+    (ssl-utils/obj->pem! o s)
     (-> s .toByteArray ByteArrayInputStream.)))
 
 (schema/defn get-ca-cert-for-running-server :- ca/Certificate

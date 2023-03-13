@@ -1,14 +1,23 @@
 (ns puppetlabs.services.master.master-core-test
   (:require [cheshire.core :as json]
             [clojure.string :refer [split]]
-            [clojure.test :refer :all]
+            [clojure.test :refer [deftest is testing use-fixtures]]
             [puppetlabs.comidi :as comidi]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.services.jruby-pool-manager.impl.jruby-pool-manager-core
              :as
              jruby-pool-manager-core]
             [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]
-            [puppetlabs.services.master.master-core :refer :all]
+            [puppetlabs.services.master.master-core :refer [root-routes
+                                                            wrap-middleware
+                                                            if-none-match-from-request
+                                                            class-info-from-jruby->class-info-for-json
+                                                            valid-static-file-path?
+                                                            validate-memory-requirements!
+                                                            meminfo-content
+                                                            max-heap-size
+                                                            task-file-uri-components
+                                                            all-tasks-response!]]
             [puppetlabs.services.master.master-service :as master-service]
             [puppetlabs.services.protocols.jruby-puppet :as jruby]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
@@ -106,7 +115,7 @@
                                                                                   :gem-path "bar:foobar"
                                                                                   :ruby-load-path ["foo"]})))
                             (get-environment-class-info [_ _ env]
-                              (if (= env "production")
+                              (when (= env "production")
                                 {}))
                             (get-cached-content-version
                               [_ _ _])
@@ -367,7 +376,7 @@
                                                                                   :gem-path "bar:foobar"
                                                                                   :ruby-load-path ["foo"]})))
                             (get-tasks [_ _ env]
-                              (if (= env "production")
+                              (when (= env "production")
                                 [])))
             handler (fn ([req] {:request req}))
             app (build-ring-handler handler "1.2.3" jruby-service)

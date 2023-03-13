@@ -245,5 +245,5 @@
       ;; It might be better to break this into a record/type plus a protocol;
       ;; Then we could hide things like the `tasks` and `task-phases` in
       ;; the type and not expose as part of the protocol API.
-      (task-phases [this] task-phases)
-      (tasks [this] tasks))))
+      (task-phases [_this] task-phases)
+      (tasks [_this] tasks))))

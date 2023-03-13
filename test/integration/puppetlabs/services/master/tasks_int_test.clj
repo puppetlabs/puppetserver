@@ -1,6 +1,6 @@
 (ns puppetlabs.services.master.tasks-int-test
   (:require [clojure.string :as str]
-            [clojure.test :refer :all]
+            [clojure.test :refer [deftest is testing use-fixtures]]
             [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
@@ -39,7 +39,7 @@
 (defn get-all-tasks
   [env-name]
   (let [url (str "https://localhost:8140/puppet/v3/tasks"
-                 (if env-name (str "?environment=" env-name)))]
+                 (when env-name (str "?environment=" env-name)))]
     (try
       (http-client/get url request-as-text-with-ssl)
       (catch Exception e
@@ -50,7 +50,7 @@
   [env-name full-task-name]
   (let [[module-name task-name]  (str/split full-task-name #"::")
         url (str "https://localhost:8140/puppet/v3/tasks/" module-name "/" task-name
-                 (if env-name (str "?environment=" env-name)))]
+                 (when env-name (str "?environment=" env-name)))]
     (try
       (http-client/get url request-as-text-with-ssl)
       (catch Exception e

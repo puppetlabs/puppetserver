@@ -1,10 +1,10 @@
 (ns puppetlabs.services.jruby.puppet-environments-int-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is testing use-fixtures]]
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
             [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.puppetserver.testutils :as testutils :refer
-             [ssl-request-options catalog-request-options get-catalog]]
+             [ssl-request-options get-catalog]]
             [me.raynes.fs :as fs]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.kitchensink.core :as ks]))

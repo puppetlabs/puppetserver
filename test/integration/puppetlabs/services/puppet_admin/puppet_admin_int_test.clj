@@ -1,6 +1,6 @@
 (ns puppetlabs.services.puppet-admin.puppet-admin-int-test
   (:require
-    [clojure.test :refer :all]
+    [clojure.test :refer [deftest is testing use-fixtures]]
     [puppetlabs.kitchensink.core :as ks]
     [puppetlabs.http.client.sync :as http-client]
     [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
@@ -8,8 +8,7 @@
     [schema.test :as schema-test]
     [me.raynes.fs :as fs]
     [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
-    [puppetlabs.puppetserver.testutils :as testutils :refer
-     [ca-cert localhost-cert localhost-key ssl-request-options]]
+    [puppetlabs.puppetserver.testutils :as testutils :refer [ssl-request-options]]
     [puppetlabs.trapperkeeper.app :as tk-app]
     [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
     [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core])

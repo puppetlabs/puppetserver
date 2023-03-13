@@ -1,7 +1,7 @@
 (ns puppetlabs.services.master.master-service-test
   (:require
-    [clojure.test :refer :all]
-    [puppetlabs.services.master.master-service :refer :all]
+    [clojure.test :refer [deftest is testing use-fixtures]]
+    ; [puppetlabs.services.master.master-service :refer :all]
     [cheshire.core :as json]
     [clojure.set :as setutils]
     [clojure.string :as str]
@@ -210,7 +210,7 @@
              (is (contains? jruby-metrics :borrow-timers))
              (is (= #{:total :puppet-v3-catalog :puppet-v3-node}
                     (set (keys (:borrow-timers jruby-metrics)))))
-             (doseq [[k v] (:borrow-timers jruby-metrics)]
+             (doseq [[_k v] (:borrow-timers jruby-metrics)]
                (is (nil? (schema/check jruby-metrics-core/TimerSummary v))))))
 
          (is (= 1 (get-in status [:puppet-profiler :service_status_version])))
@@ -246,7 +246,7 @@
        ;; which should cause a subsequent catalog request to block on a borrow
        ;; request
        (jruby-service/with-jruby-puppet
-        _
+        jruby-puppet
         jruby-service
         :master-service-metrics-test
         (let [time-before-second-borrow (System/currentTimeMillis)]
@@ -597,7 +597,7 @@
 (deftest ^:integration add-metric-ids-to-http-client-metrics-list-test
   (let [test-service (tk-services/service
                       [[:MasterService add-metric-ids-to-http-client-metrics-list!]]
-                      (init [this context]
+                      (init [_this context]
                             (add-metric-ids-to-http-client-metrics-list! [["foo" "bar"]
                                                                           ["hello" "cruel" "world"]])
                             context))]
@@ -697,7 +697,7 @@
 (deftest encoded-spaces-test
   (testing "Encoded spaces should be routed correctly"
     (bootstrap-testutils/with-puppetserver-running
-     _
+     app
      {:jruby-puppet {:gem-path gem-path
                      :max-active-instances 1
                      :server-conf-dir master-service-test-runtime-dir}}

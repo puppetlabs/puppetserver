@@ -1,5 +1,5 @@
 (ns puppetlabs.services.jruby.class-info-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is testing]]
             [clojure.string :as str]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]

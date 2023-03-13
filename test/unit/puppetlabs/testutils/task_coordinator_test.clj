@@ -1,5 +1,5 @@
 (ns puppetlabs.testutils.task-coordinator-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is testing]]
             [puppetlabs.testutils.task-coordinator :as tc]))
 
 (deftest task-coordinator-basic-test
@@ -62,7 +62,7 @@
                             (partial task-fn :task1 task1-current-phase))
 
         (tc/callback-at-phase coordinator :task1 :phase1
-                              (fn [task-id phase]
+                              (fn [_task-id _phase]
                                 (deliver callback-promise true)))
 
         (tc/unblock-task-to coordinator :task1 :phase2)
