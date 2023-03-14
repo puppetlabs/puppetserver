@@ -16,7 +16,7 @@
                                            {:request-values request-values
                                             :update-server-url update-server-url}))]
       (with-redefs
-       [version-check/check-for-updates! version-check-test-fn]
+       [version-check/check-for-update version-check-test-fn]
         (logutils/with-test-logging
          (bootstrap-testutils/with-puppetserver-running-with-mock-jrubies
           "Mocking is safe here because we're not doing anything with JRubies, just making sure

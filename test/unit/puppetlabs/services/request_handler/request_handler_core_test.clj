@@ -343,7 +343,7 @@
         app services {:jruby-puppet {:max-active-instances 1}}
         (partial jruby-testutils/create-mock-jruby-puppet
                  (fn [request]
-                   (JRubyPuppetResponse. (Integer. 200)
+                   (JRubyPuppetResponse. (int 200)
                                          (cheshire/generate-string
                                           {"classes" []
                                            "environment" "production"

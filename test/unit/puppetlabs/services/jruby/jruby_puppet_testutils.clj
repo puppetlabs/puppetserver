@@ -316,7 +316,7 @@ create-mock-pool-instance :- JRubyInstance
    (partial create-mock-jruby-puppet
             (fn [_]
               (JRubyPuppetResponse.
-               (Integer. status-code)
+               (int status-code)
                response-body
                response-content-type
                puppet-version)))))

@@ -293,8 +293,8 @@
       (is (= "application/octet-stream"
              (get-in resp [:request :content-type])))
 
-      (testing "Even if the client sends something insane, "
-               "just pass it through and let the puppet code handle it."
+      (testing (str "Even if the client sends something insane, "
+                    "just pass it through and let the puppet code handle it.")
         (let [resp (app (-> {:request-method :put
                           :content-type "something-crazy/for-content-type"
                           :uri "/v3/file_bucket_file/bar"}

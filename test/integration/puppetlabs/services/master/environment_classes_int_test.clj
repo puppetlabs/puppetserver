@@ -160,11 +160,11 @@
              "no etag found for initial response"))
        (testing "ensure the env cache is purged"
          (purge-env-cache "production")
-         (= nil
-           (jruby-protocol/get-cached-info-tag
-            (tk-app/get-service app :JRubyPuppetService)
-            "production"
-            :classes)))
+         (is (= nil
+                (jruby-protocol/get-cached-info-tag
+                 (tk-app/get-service app :JRubyPuppetService)
+                 "production"
+                 :classes))))
        (testing "Env cache is updated when given correct etag but cache was nil"
          (let [next-response (get-env-classes "production" initial-etag)]
            (is (= 304 (:status next-response))

@@ -333,12 +333,11 @@
                                         invalid-line
                                         "qux")]
           (assert-autosign whitelist "foo")
-          (logutils/with-log-output logs
+          (logutils/with-test-logging
             (assert-no-autosign whitelist invalid-line)
-            (is (logutils/logs-matching
+            (is (logged?
                  (re-pattern (format "Invalid pattern '%s' found in %s"
-                                     invalid-line whitelist))
-                 @logs))
+                                     invalid-line whitelist))))
             (assert-autosign whitelist "qux")))))
 
     (testing "sample file that covers everything"

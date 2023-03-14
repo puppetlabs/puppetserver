@@ -907,7 +907,7 @@
    (schema/required-key "code_ast") schema/Str
    (schema/required-key "trusted_facts") {(schema/required-key "values") {schema/Str schema/Any}}
    (schema/required-key "facts") {(schema/required-key "values") {schema/Str schema/Any}}
-   (schema/required-key "variables") {(schema/required-key "values") (schema/either [{schema/Str schema/Any}] {schema/Str schema/Any})}
+   (schema/required-key "variables") {(schema/required-key "values") (schema/cond-pre [{schema/Str schema/Any}] {schema/Str schema/Any})}
   ;;  Both environment and versioned project are technically listed in the schema as
   ;;  "optional" but we will check later that exactly one of them is set.
    (schema/optional-key "environment") schema/Str
@@ -1152,16 +1152,16 @@
    jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
    wrap-with-jruby-queue-limit :- IFn
    current-code-id-fn :- IFn]
-  (let [v4-catalog-handler (v4-catalog-handler
-                             jruby-service
-                             wrap-with-jruby-queue-limit
-                             current-code-id-fn)]
+  (let [v4-catalog-handler' (v4-catalog-handler
+                              jruby-service
+                              wrap-with-jruby-queue-limit
+                              current-code-id-fn)]
     (comidi/context
           "/v4"
           (comidi/wrap-routes
            (comidi/routes
             (comidi/POST "/catalog" request
-                         (v4-catalog-handler request)))
+                         (v4-catalog-handler' request)))
            clojure-request-wrapper))))
 
 (schema/defn ^:always-validate
@@ -1218,8 +1218,8 @@
   []
   (when-let [meminfo-file-content (meminfo-content)]
     (let [heap-size max-heap-size
-          mem-size (Integer. (second (re-find #"MemTotal:\s+(\d+)\s+\S+"
-                                               meminfo-file-content)))
+          mem-size (Integer/parseInt (second (re-find #"MemTotal:\s+(\d+)\s+\S+"
+                                                      meminfo-file-content)))
           required-mem-size (* heap-size 1.1)]
       (when (< mem-size required-mem-size)
         (throw (Error.

@@ -429,29 +429,29 @@
              non-heap-memory-map (get-memory-map "non-heap")
              total-memory-map (get-memory-map "total")]
          (testing "heap memory metrics work"
-           (= #{"puppetlabs.localhost.memory.heap.committed"
-                "puppetlabs.localhost.memory.heap.init"
-                "puppetlabs.localhost.memory.heap.max"
-                "puppetlabs.localhost.memory.heap.used"} (ks/keyset heap-memory-map))
+           (is (= #{"puppetlabs.localhost.memory.heap.committed"
+                    "puppetlabs.localhost.memory.heap.init"
+                    "puppetlabs.localhost.memory.heap.max"
+                    "puppetlabs.localhost.memory.heap.used"} (ks/keyset heap-memory-map)))
            (is (every? #(< 0 %) (vals heap-memory-map))))
 
          (testing "non-heap memory metrics work"
-           (= #{"puppetlabs.localhost.memory.non-heap.committed"
-                "puppetlabs.localhost.memory.non-heap.init"
-                "puppetlabs.localhost.memory.non-heap.max"
-                "puppetlabs.localhost.memory.non-heap.used"}
-              (ks/keyset non-heap-memory-map))
+           (is (= #{"puppetlabs.localhost.memory.non-heap.committed"
+                    "puppetlabs.localhost.memory.non-heap.init"
+                    "puppetlabs.localhost.memory.non-heap.max"
+                    "puppetlabs.localhost.memory.non-heap.used"}
+                  (ks/keyset non-heap-memory-map)))
            ;; Some of the memory metrics don't propagate correctly on OS X, which can result in a
            ;; value of -1. This is here so that these tests will pass when run in developers local
            ;; environments.
            (is (every? #(or (< 0 %) (= -1 %)) (vals non-heap-memory-map))))
 
          (testing "total memory metrics work"
-           (= #{"puppetlabs.localhost.memory.total.committed"
-                "puppetlabs.localhost.memory.total.init"
-                "puppetlabs.localhost.memory.total.max"
-                "puppetlabs.localhost.memory.total.used"}
-              (ks/keyset total-memory-map))
+           (is (= #{"puppetlabs.localhost.memory.total.committed"
+                    "puppetlabs.localhost.memory.total.init"
+                    "puppetlabs.localhost.memory.total.max"
+                    "puppetlabs.localhost.memory.total.used"}
+                  (ks/keyset total-memory-map)))
            (is (every? #(< 0 %) (vals total-memory-map))))
 
          (testing "uptime metric works"
@@ -548,8 +548,8 @@
                    (make-request-with-metric-id "['puppetdb', 'facts', 'find', 'foonode']")
                    (make-request-with-metric-id "['puppetdb', 'facts', 'search']")
                    (make-request-with-metric-id "['puppetdb', 'resource', 'search', 'Package']")
-                   (= (set master-core/puppet-server-http-client-metrics-for-status)
-                      (set (map :metric-id (get-http-client-metrics-status)))))
+                   (is (= (set master-core/puppet-server-http-client-metrics-for-status)
+                          (set (map :metric-id (get-http-client-metrics-status))))))
 
                  (testing "all metrics contain information they are supposed to have"
                    (let [metrics (get-http-client-metrics-status)]

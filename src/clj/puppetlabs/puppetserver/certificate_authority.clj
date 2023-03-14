@@ -1,12 +1,13 @@
 (ns puppetlabs.puppetserver.certificate-authority
   (:import [org.apache.commons.io IOUtils]
+           (org.bouncycastle.pkcs PKCS10CertificationRequest)
            [java.util Date]
            [java.io InputStream ByteArrayOutputStream ByteArrayInputStream File StringReader IOException]
            [java.nio.file Files]
            [java.nio.file.attribute FileAttribute PosixFilePermissions]
            (java.security PrivateKey PublicKey)
            (org.joda.time DateTime)
-           (java.security.cert CRLException CertPathValidatorException X509CRL))
+           (java.security.cert X509Certificate CRLException CertPathValidatorException X509CRL))
   (:require [me.raynes.fs :as fs]
             [schema.core :as schema]
             [clojure.string :as str]
@@ -27,6 +28,12 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
+
+(def AutoSignInput
+  (schema/cond-pre schema/Bool schema/Str))
+
+(def CertificateOrCSR
+  (schema/cond-pre X509Certificate PKCS10CertificationRequest))
 
 (def MasterSettings
   "Settings from Puppet that are necessary for SSL initialization on the master.
@@ -59,7 +66,7 @@
    :allow-authorization-extensions   schema/Bool
    :allow-duplicate-certs            schema/Bool
    :allow-subject-alt-names          schema/Bool
-   :autosign                         (schema/either schema/Str schema/Bool)
+   :autosign                         AutoSignInput
    :cacert                           schema/Str
    :cadir                            schema/Str
    :cacrl                            schema/Str
@@ -373,14 +380,14 @@
 (schema/defn dns-alt-names :- [schema/Str]
   "Get the list of DNS alt names on the provided certificate or CSR.
    Each name will be prepended with 'DNS:'."
-  [cert-or-csr :- (schema/either Certificate CertificateRequest)]
+  [cert-or-csr :- CertificateOrCSR]
   (mapv (partial str "DNS:")
         (utils/get-subject-dns-alt-names cert-or-csr)))
 
 (schema/defn subject-alt-names :- [schema/Str]
   "Get the list of both DNS and IP alt names on the provided certificate or CSR.
    Each name will be prepended with 'DNS:' or 'IP:'."
-  [cert-or-csr :- (schema/either Certificate CertificateRequest)]
+  [cert-or-csr :- CertificateOrCSR]
   (into (mapv (partial str "IP:") (utils/get-subject-ip-alt-names cert-or-csr))
         (mapv (partial str "DNS:") (utils/get-subject-dns-alt-names cert-or-csr))))
 
@@ -388,7 +395,7 @@
   "Get the authorization extensions for the certificate or CSR.
   These are extensions that fall under the ppAuthCert OID arc.
   Returns a map of OIDS to values."
-  [cert-or-csr :- (schema/either Certificate CertificateRequest)]
+  [cert-or-csr :- CertificateOrCSR]
   (let [extensions (utils/get-extensions cert-or-csr)
         auth-exts (filter (fn [{:keys [oid]}]
                             (utils/subtree-of? ppAuthCertExt oid))
@@ -1092,9 +1099,9 @@
                        ruby-load-path)
                      (map ks/absolute-path)
                      (str/join (System/getProperty "path.separator")))
-        gempath (->> (if-let [gems (get env "GEM_PATH")]
-                       (str gems (System/getProperty "path.separator") gem-path)
-                       gem-path))
+        gempath (if-let [gems (get env "GEM_PATH")]
+                  (str gems (System/getProperty "path.separator") gem-path)
+                  gem-path)
         results (shell-utils/execute-command
                  executable
                  {:args [subject]
@@ -1164,11 +1171,11 @@
   autosign-csr? :- schema/Bool
   "Return true if the CSR should be automatically signed given
   Puppet's autosign setting, and false otherwise."
-  ([autosign :- (schema/either schema/Str schema/Bool)
+  ([autosign :- AutoSignInput
     subject :- schema/Str
     csr-stream :- InputStream]
    (autosign-csr? autosign subject csr-stream [] ""))
-  ([autosign :- (schema/either schema/Str schema/Bool)
+  ([autosign :- AutoSignInput
     subject :- schema/Str
     csr-stream :- InputStream
     ruby-load-path :- [schema/Str]
@@ -1526,7 +1533,7 @@
 
 (schema/defn certificate-state :- CertificateState
   "Determine the state a certificate is in."
-  [cert-or-csr :- (schema/either Certificate CertificateRequest)
+  [cert-or-csr :- CertificateOrCSR
    crl :- CertificateRevocationList]
   (if (utils/certificate-request? cert-or-csr)
     "requested"
@@ -1537,7 +1544,7 @@
 (schema/defn fingerprint :- schema/Str
   "Calculate the hash of the certificate or CSR using the given
    algorithm, which must be one of SHA-1, SHA-256, or SHA-512."
-  [cert-or-csr :- (schema/either Certificate CertificateRequest)
+  [cert-or-csr :- CertificateOrCSR
    algorithm :- schema/Str]
   (->> (utils/fingerprint cert-or-csr algorithm)
        (partition 2)
@@ -1561,7 +1568,7 @@
   [crl :- CertificateRevocationList
    is-cert? :- schema/Bool
    subject :- schema/Str
-   cert-or-csr :- (schema/either Certificate CertificateRequest)]
+   cert-or-csr :- CertificateOrCSR]
   (let [default-fingerprint (fingerprint cert-or-csr "SHA-256")]
     (merge
       {:name              subject
