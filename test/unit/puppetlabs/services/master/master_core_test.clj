@@ -384,8 +384,7 @@
             response (fn [info]
                       (all-tasks-response!
                         info
-                       "production"
-                       jruby-service))
+                        "production"))
             response-format (fn [task-name]
                                  {:name task-name
                                   :environment [{:name "production"

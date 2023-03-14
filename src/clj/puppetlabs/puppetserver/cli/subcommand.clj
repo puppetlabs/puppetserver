@@ -44,7 +44,7 @@
       (run-fn (load-tk-config config) extra-args))
     (catch map? m
       (let [kind (:kind m)]
-        (if (keyword? kind)
+        (when (keyword? kind)
           (case (ks/without-ns kind)
             :cli-error (print-message-and-exit m 1)
             :cli-help (print-message-and-exit m 0)

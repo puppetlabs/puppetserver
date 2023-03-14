@@ -14,9 +14,9 @@
 
   (init
    [this context]
-   (if (nil? (get-in-config [:versioned-code :code-id-command]))
+   (when (nil? (get-in-config [:versioned-code :code-id-command]))
      (log/info (i18n/trs "No code-id-command set for versioned-code-service. Code-id will be nil.")))
-   (if (nil? (get-in-config [:versioned-code :code-content-command]))
+   (when (nil? (get-in-config [:versioned-code :code-content-command]))
      (log/info (i18n/trs "No code-content-command set for versioned-code-service. Attempting to fetch code content will fail.")))
    (vc-core/validate-config! (get-in-config [:versioned-code]))
    context)

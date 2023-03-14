@@ -4,6 +4,7 @@
            (com.puppetlabs.puppetserver JRubyPuppetResponse))
   (:require [clojure.tools.logging :as log]
             [clojure.string :as string]
+            [clojure.walk :as walk]
             [puppetlabs.ring-middleware.utils :as ringutils]
             [puppetlabs.ssl-utils.core :as ssl-utils]
             [puppetlabs.puppetserver.common :as ps-common]
@@ -23,9 +24,9 @@
   "x-client-cert")
 
 (defn unmunge-http-header-name
-  [setting]
   "Given the value of a Puppet setting which contains a munged HTTP header name,
   convert it to the actual header name in all lower-case."
+  [setting]
   (->> (string/split setting #"_")
        rest
        (string/join "-")
@@ -62,7 +63,7 @@
    for its Strings."
   [request]
   (let [body         (:body request)
-        content-type (if-let [raw-type (:content-type request)]
+        content-type (when-let [raw-type (:content-type request)]
                        (string/lower-case raw-type))]
     (case content-type
       (nil "" "application/octet-stream" "application/x-msgpack") body
@@ -97,19 +98,18 @@
   "Return a map with authentication info based on header content"
   [header-dn-name header-dn-val header-auth-name header-auth-val]
   (if (ssl-utils/valid-x500-name? header-dn-val)
-    (do
-      (let [cn (ssl-utils/x500-name->CN header-dn-val)
-            authenticated (= "SUCCESS" header-auth-val)]
-        (log/debug (i18n/trs "CN ''{0}'' provided by HTTP header ''{1}''"
-                        cn header-dn-val))
-        (log/debug (format "%s %s"
-                           (i18n/trs "Verification of client ''{0}'' provided by HTTP header ''{1}'': ''{2}''."
-                                cn
-                                header-auth-name
-                                header-auth-val)
-                           (i18n/trs "Authenticated: {0}." authenticated)))
-        {:client-cert-cn cn
-         :authenticated authenticated}))
+    (let [cn (ssl-utils/x500-name->CN header-dn-val)
+          authenticated (= "SUCCESS" header-auth-val)]
+      (log/debug (i18n/trs "CN ''{0}'' provided by HTTP header ''{1}''"
+                      cn header-dn-val))
+      (log/debug (format "%s %s"
+                         (i18n/trs "Verification of client ''{0}'' provided by HTTP header ''{1}'': ''{2}''."
+                              cn
+                              header-auth-name
+                              header-auth-val)
+                         (i18n/trs "Authenticated: {0}." authenticated)))
+      {:client-cert-cn cn
+       :authenticated authenticated})
     (do
       (if (nil? header-dn-val)
         (log/debug (format "%s %s"
@@ -145,7 +145,7 @@
   "Return an X509Certificate or nil from a string encoded for transmission
   in an HTTP header."
   [header-cert-val]
-  (if header-cert-val
+  (when header-cert-val
     (let [pem        (header-cert->pem header-cert-val)
           certs      (pem->certs pem)
           cert-count (count certs)]
@@ -188,7 +188,7 @@
   * config - Map of configuration data
   * request - Ring request containing client data"
   [config request]
-  (if-let [authorization (:authorization request)]
+  (if (:authorization request)
     {:client-cert    (ring-auth/authorized-certificate request)
      :client-cert-cn (ring-auth/authorized-name request)
      :authenticated  (true? (ring-auth/authorized-authenticated request))}
@@ -242,8 +242,8 @@
     (client-auth-info config request)))
 
 (defn make-request-mutable
-  [request]
   "Make the request mutable.  This is required by the ruby layer."
+  [request]
   (HashMap. request))
 
 (defn with-code-id
@@ -268,7 +268,7 @@
          wrap-params-for-jruby
          (with-code-id current-code-id)
          (as-jruby-request config)
-         clojure.walk/stringify-keys
+         walk/stringify-keys
          make-request-mutable
          (.handleRequest (:jruby-instance request))
          response->map)))

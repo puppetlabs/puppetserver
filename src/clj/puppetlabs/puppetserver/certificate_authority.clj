@@ -2,7 +2,7 @@
   (:import [org.apache.commons.io IOUtils]
            [java.util Date]
            [java.io InputStream ByteArrayOutputStream ByteArrayInputStream File StringReader IOException]
-           [java.nio.file Files LinkOption]
+           [java.nio.file Files]
            [java.nio.file.attribute FileAttribute PosixFilePermissions]
            (java.security PrivateKey PublicKey)
            (org.joda.time DateTime)
@@ -21,7 +21,6 @@
             [puppetlabs.kitchensink.file :as ks-file]
             [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.ssl-utils.core :as utils]
-            [clojure.set :as cset :refer [union]]
             [clj-yaml.core :as yaml]
             [puppetlabs.puppetserver.shell-utils :as shell-utils]
             [puppetlabs.i18n.core :as i18n]))
@@ -138,9 +137,6 @@
 (def CertificateRevocationList
   (schema/pred utils/certificate-revocation-list?))
 
-(def CertificateRequest
-  (schema/pred utils/certificate-request?))
-
 (def OutcomeInfo
   "Generic map of outcome & message for API consumers"
   {:outcome (schema/enum :success :not-found :error)
@@ -248,7 +244,7 @@
 (defn required-ca-files
   "The set of SSL related files that are required on the CA."
   [enable-infra-crl]
-  (union #{:cacert :cacrl :cakey :cert-inventory :serial}
+  (set/union #{:cacert :cacrl :cakey :cert-inventory :serial}
      (if enable-infra-crl #{:infra-nodes-path :infra-crl-path} #{})))
 
 (def max-ca-ttl
@@ -635,7 +631,7 @@
     (line-seq (io/reader infra-file)))
 
 (defn- write-infra-serials-to-writer
-  [writer infra-nodes-path infra-node-serials-path signeddir]
+  [writer infra-nodes-path signeddir]
   (try
     (let [infra-nodes (read-infra-nodes infra-nodes-path)]
       (doseq [infra-node infra-nodes]
@@ -645,13 +641,13 @@
                                  (utils/get-serial))]
             (.write writer (str infra-serial))
             (.newLine writer))
-          (catch java.io.FileNotFoundException ex
+          (catch java.io.FileNotFoundException _
             (log/warn
              (i18n/trs
               (str
                "Failed to find/load certificate for Puppet Infrastructure Node:"
                infra-node)))))))
-    (catch java.io.FileNotFoundException ex
+    (catch java.io.FileNotFoundException _
       (log/warn (i18n/trs (str infra-nodes-path " does not exist"))))))
 
 (schema/defn generate-infra-serials
@@ -662,7 +658,6 @@
   (ks-file/atomic-write infra-node-serials-path
                         #(write-infra-serials-to-writer %
                                                         infra-nodes-path
-                                                        infra-node-serials-path
                                                         signeddir)
                         public-key-perms))
 
@@ -816,8 +811,7 @@
     * Each DNS name does not contain a wildcard character (*)"
   [{value :value} :- Extension]
   (let [name-types (keys value)
-        dns-names (:dns-name value)
-        ip-names (:ip value)]
+        dns-names (:dns-name value)]
     (when-not (every? #{:dns-name :ip} name-types)
       (sling/throw+
         {:kind :invalid-alt-name
@@ -980,7 +974,7 @@
     (do
       (ks/mkdirs! (fs/parent localcacert))
       (fs/copy cacert localcacert))
-    (if-not (fs/exists? localcacert)
+    (when-not (fs/exists? localcacert)
       (throw (IllegalStateException.
                (i18n/trs ":localcacert ({0}) could not be found and no file at :cacert ({1}) to copy it from"
                     localcacert cacert))))))
@@ -1153,7 +1147,7 @@
   (let [cert-path (if (= "ca" subject)
                     cacert
                     (path-to-cert signeddir subject))]
-    (if (fs/exists? cert-path)
+    (when (fs/exists? cert-path)
       (slurp cert-path))))
 
 (schema/defn ^:always-validate
@@ -1163,7 +1157,7 @@
   [subject :- schema/Str
    csrdir :- schema/Str]
   (let [cert-request-path (path-to-cert-request csrdir subject)]
-    (if (fs/exists? cert-request-path)
+    (when (fs/exists? cert-request-path)
       (slurp cert-request-path))))
 
 (schema/defn ^:always-validate
@@ -1293,7 +1287,7 @@
   (let [extensions (utils/get-extensions csr)]
     (doseq [extension extensions]
       (when (utils/subtree-of? ppAuthCertExt (:oid extension))
-        (if (false? allow-authorization-extensions)
+        (when (false? allow-authorization-extensions)
           (sling/throw+
             {:kind :disallowed-extension
              :msg (format "%s %s %s"
@@ -1310,7 +1304,7 @@
   [csr :- CertificateRequest
    allow-subject-alt-names :- schema/Bool]
   (when-let [subject-alt-names (not-empty (subject-alt-names csr))]
-    (if (false? allow-subject-alt-names)
+    (when (false? allow-subject-alt-names)
       (let [subject (get-csr-subject csr)
             cn-alt-name (str "DNS:" subject)]
         (if (and (= 1 (count subject-alt-names))
@@ -1581,7 +1575,7 @@
                            :SHA512  (fingerprint cert-or-csr "SHA-512")
                            :default default-fingerprint}}
       ;; Only certificates have expiry dates
-      (if is-cert?
+      (when is-cert?
         (get-certificate-details cert-or-csr)))))
 
 (schema/defn ^:always-validate get-cert-or-csr-status :- CertificateStatusResult
@@ -1734,7 +1728,7 @@
    certificate policy will not be checked.
    If the CSR is invalid, returns a user-facing message.
    Otherwise, returns nil."
-  [{:keys [csrdir allow-subject-alt-names allow-authorization-extensions] :as settings} :- CaSettings
+  [{:keys [csrdir allow-subject-alt-names allow-authorization-extensions] :as _settings} :- CaSettings
    subject :- schema/Str]
   (let [csr         (utils/pem->csr (path-to-cert-request csrdir subject))
         csr-subject (get-csr-subject csr)
