@@ -13,6 +13,7 @@
             [puppetlabs.services.ca.ca-testutils :as testutils]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.kitchensink.core :as ks]
+            [puppetlabs.kitchensink.file :as ks-file]
             [slingshot.test :refer :all]
             [schema.test :as schema-test]
             [clojure.test :refer :all]
@@ -764,20 +765,20 @@
   (testing (str "The CA private key has its permissions properly reset when "
                 ":manage-internal-file-permissions is true.")
     (let [settings (testutils/ca-sandbox! cadir)]
-      (set-file-perms (:cakey settings) "rw-r--r--")
+      (ks-file/set-perms (:cakey settings) "rw-r--r--")
       (logutils/with-test-logging
         (initialize! settings)
         (is (logged? #"/ca/ca_key.pem' was found to have the wrong permissions set as 'rw-r--r--'. This has been corrected to 'rw-r-----'."))
-        (is (= private-key-perms (get-file-perms (:cakey settings)))))))
+        (is (= private-key-perms (ks-file/get-perms (:cakey settings)))))))
 
   (testing (str "The CA private key's permissions are not reset if "
                 ":manage-internal-file-permissions is false.")
     (let [perms "rw-r--r--"
           settings (assoc (testutils/ca-sandbox! cadir)
                      :manage-internal-file-permissions false)]
-      (set-file-perms (:cakey settings) perms)
+      (ks-file/set-perms (:cakey settings) perms)
       (initialize! settings)
-      (is (= perms (get-file-perms (:cakey settings)))))))
+      (is (= perms (ks-file/get-perms (:cakey settings)))))))
 
 (deftest retrieve-ca-cert!-test
   (testing "CA file copied when it doesn't already exist"
@@ -1760,7 +1761,7 @@
       (let [tmp-file (fs/temp-name "ca-file-perms-test")
             perms (str u g o)]
         (create-file-with-perms tmp-file perms)
-        (is (= perms (get-file-perms tmp-file)))
+        (is (= perms (ks-file/get-perms tmp-file)))
         (fs/delete tmp-file))))
 
   (testing "Changing the perms of an already created file"
@@ -1773,8 +1774,8 @@
           (let [tmp-file (fs/temp-name "ca-file-perms-test")
                 [init-perm change-perm] (take 2 perms)]
             (create-file-with-perms tmp-file init-perm)
-            (set-file-perms tmp-file change-perm)
-            (is (= change-perm (get-file-perms tmp-file)))
+            (ks-file/set-perms tmp-file change-perm)
+            (is (= change-perm (ks-file/get-perms tmp-file)))
             (fs/delete tmp-file)
             (recur (nthnext perms 2))))))))
 

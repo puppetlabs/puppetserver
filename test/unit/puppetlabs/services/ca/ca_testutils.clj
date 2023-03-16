@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [me.raynes.fs :as fs]
             [puppetlabs.kitchensink.core :as ks]
-            [puppetlabs.puppetserver.certificate-authority :as ca]
+            [puppetlabs.kitchensink.file :as ks-file]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils])
   (:import (java.io ByteArrayInputStream)))
 
@@ -82,5 +82,5 @@
   (let [tmp-ssldir (ks/temp-dir)]
     (fs/copy-dir cadir tmp-ssldir)
     ;; This is to ensure no warnings are logged during tests
-    (ca/set-file-perms (str tmp-ssldir "/ca/ca_key.pem") "rw-r-----")
+    (ks-file/set-perms (str tmp-ssldir "/ca/ca_key.pem") "rw-r-----")
     (ca-settings (str tmp-ssldir "/ca"))))
