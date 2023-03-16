@@ -2,13 +2,11 @@
   (:import [org.apache.commons.io IOUtils]
            [java.util Date]
            [java.io InputStream ByteArrayOutputStream ByteArrayInputStream File StringReader IOException]
-           [java.nio.file Files Paths LinkOption]
+           [java.nio.file Files LinkOption]
            [java.nio.file.attribute FileAttribute PosixFilePermissions]
-           (java.security PrivateKey PublicKey KeyPair)
+           (java.security PrivateKey PublicKey)
            (org.joda.time DateTime)
-           (java.security.cert CRLException CertPathValidatorException X509CRL)
-           (javax.security.auth.x500 X500Principal)
-           (sun.security.x509 X509CertImpl))
+           (java.security.cert CRLException CertPathValidatorException X509CRL))
   (:require [me.raynes.fs :as fs]
             [schema.core :as schema]
             [clojure.string :as str]
@@ -272,40 +270,13 @@
   "Posix permissions for the private key directory on disk."
   "rwxr-x---")
 
-(def empty-string-array
-  "The API for Paths/get requires a string array which is empty for all of the
-  needs of this namespace. "
-  (into-array String []))
-
-(defn get-path-obj
-  "Create a Path object from the provided path."
-  [path]
-  (Paths/get path empty-string-array))
-
-(schema/defn set-file-perms :- File
-  "Set the provided permissions on the given path. The permissions string is in
-  the form of the standard 9 character posix format, ie \"rwxr-xr-x\"."
-  [path :- schema/Str
-   permissions :- schema/Str]
-  (-> (get-path-obj path)
-      (Files/setPosixFilePermissions
-        (PosixFilePermissions/fromString permissions))
-      (.toFile)))
-
-(schema/defn get-file-perms :- schema/Str
-  "Returns the currently set permissions of the given file path."
-  [path :- schema/Str]
-  (-> (get-path-obj path)
-      (Files/getPosixFilePermissions (into-array LinkOption []))
-      PosixFilePermissions/toString))
-
 (schema/defn create-file-with-perms :- File
   "Create a new empty file which has the provided posix file permissions. The
   permissions string is in the form of the standard 9 character posix format. "
   [path :- schema/Str
    permissions :- schema/Str]
   (let [perms-set (PosixFilePermissions/fromString permissions)]
-    (-> (get-path-obj path)
+    (-> (ks-file/str->path path)
         (Files/createFile
          (into-array FileAttribute
                      [(PosixFilePermissions/asFileAttribute perms-set)]))
@@ -952,7 +923,7 @@
                      (i18n/trs "Initializing SSL for the Master; settings:")
                      (ks/pprint-to-string settings)))
   (create-parent-directories! (vals (settings->ssldir-paths settings)))
-  (set-file-perms (:privatekeydir settings) private-key-dir-perms)
+  (ks-file/set-perms (:privatekeydir settings) private-key-dir-perms)
   (-> settings :certdir fs/file ks/mkdirs!)
   (-> settings :requestdir fs/file ks/mkdirs!)
   (let [ca-cert        (utils/pem->ca-cert (:cacert ca-settings) (:cakey ca-settings))
@@ -1523,9 +1494,9 @@
   does not, then correct them."
   [settings :- CaSettings]
   (let [ca-p-key (:cakey settings)
-        cur-perms (get-file-perms ca-p-key)]
+        cur-perms (ks-file/get-perms ca-p-key)]
     (when-not (= private-key-perms cur-perms)
-      (set-file-perms ca-p-key private-key-perms)
+      (ks-file/set-perms ca-p-key private-key-perms)
       (log/warn (format "%s %s"
                         (i18n/trs "The private CA key at ''{0}'' was found to have the wrong permissions set as ''{1}''."
                              ca-p-key cur-perms)
