@@ -1,5 +1,6 @@
 (ns puppetlabs.puppetserver.bootstrap-int-test
   (:require [clojure.test :refer :all]
+            [puppetlabs.kitchensink.file :as ks-file]
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
             [puppetlabs.puppetserver.certificate-authority :as ca]
@@ -17,10 +18,10 @@
      (testing "Private keys have the correct permissions."
        (let [pk-dir (str bootstrap/server-conf-dir "/ssl/private_keys")
              pks (fs/find-files pk-dir #".*pem$")]
-         (is (= ca/private-key-dir-perms (ca/get-file-perms pk-dir)))
+         (is (= ca/private-key-dir-perms (ks-file/get-perms pk-dir)))
          (is (= ca/private-key-perms
-                (ca/get-file-perms (str bootstrap/server-conf-dir
+                (ks-file/get-perms (str bootstrap/server-conf-dir
                                         "/ca/ca_key.pem"))))
          (doseq [pk pks]
-           (is (= ca/private-key-perms (ca/get-file-perms (.getPath pk)))))))
+           (is (= ca/private-key-perms (ks-file/get-perms (.getPath pk)))))))
      (is (true? true)))))
