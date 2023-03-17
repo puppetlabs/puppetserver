@@ -304,20 +304,22 @@
   These paths are necessary during CA initialization for determining what needs
   to be created and where they should be placed."
   [ca-settings :- CaSettings]
-  (-> (dissoc ca-settings
-          :access-control
-          :allow-authorization-extensions
-          :allow-duplicate-certs
-          :allow-subject-alt-names
-          :autosign
-          :ca-name
-          :ca-ttl
-          :keylength
-          :manage-internal-file-permissions
-          :ruby-load-path
-          :gem-path
-          :enable-infra-crl)
-      (dissoc (when-not (:enable-infra-crl ca-settings) :infra-crl-path :infra-node-serials-path))))
+  (let [settings' (dissoc ca-settings
+                    :access-control
+                    :allow-authorization-extensions
+                    :allow-duplicate-certs
+                    :allow-subject-alt-names
+                    :autosign
+                    :ca-name
+                    :ca-ttl
+                    :keylength
+                    :manage-internal-file-permissions
+                    :ruby-load-path
+                    :gem-path
+                    :enable-infra-crl)]
+    (if (:enable-infra-crl ca-settings)
+      settings'
+      (dissoc settings' :infra-crl-path :infra-node-serials-path))))
 
 (schema/defn settings->ssldir-paths
   "Remove all keys from the master settings map which are not file or directory

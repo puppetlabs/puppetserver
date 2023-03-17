@@ -29,7 +29,7 @@
                        (try
                          (version-check/check-for-update
                           {:product-name product-name} update-server-url)
-                         (catch Exception e
+                         (catch Exception _
                            (log/error (i18n/trs "Failed to check for product updates"))))))
          (log/info (i18n/trs "Not checking for updates - opt-out setting exists"))))
      (log/info (i18n/trs "Puppet Server Update Service has successfully started and will run in the background"))

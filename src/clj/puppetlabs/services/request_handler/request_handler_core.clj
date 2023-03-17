@@ -163,7 +163,7 @@
   [ssl-client-cert]
   (if ssl-client-cert
     (let [cn (ssl-utils/get-cn-from-x509-certificate ssl-client-cert)
-          authenticated (not (empty? cn))]
+          authenticated (if (seq cn) true false)]
       (log/debug (i18n/trs "CN ''{0}'' provided by SSL certificate.  Authenticated: {1}."
                   cn authenticated))
       {:client-cert-cn cn
