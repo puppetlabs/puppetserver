@@ -316,7 +316,7 @@ create-mock-pool-instance :- JRubyInstance
    (partial create-mock-jruby-puppet
             (fn [_]
               (JRubyPuppetResponse.
-               (Integer. status-code)
+               (int status-code)
                response-body
                response-content-type
                puppet-version)))))
@@ -361,7 +361,7 @@ create-mock-pool-instance :- JRubyInstance
     pool-manager-protocol/PoolManagerService
     []
     (create-pool
-     [this jruby-config]
+     [_this jruby-config]
      (create-mock-pool jruby-config (partial mock-jruby-puppet-fn config))))))
 
 (defn add-mock-jruby-pool-manager-service

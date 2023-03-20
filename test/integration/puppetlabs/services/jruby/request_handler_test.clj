@@ -4,15 +4,14 @@
            (org.apache.commons.io IOUtils))
   (:require [clojure.string :as string]
             [clojure.java.io :as io]
-            [clojure.test :refer :all]
+            [clojure.test :refer [deftest is testing use-fixtures]]
             [me.raynes.fs :as fs]
             [puppetlabs.kitchensink.core :as ks]
             [schema.test :as schema-test]
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.http.client.sync :as http-client]
-            [puppetlabs.puppetserver.testutils :as testutils :refer
-             [ca-cert localhost-cert localhost-key ssl-request-options]]))
+            [puppetlabs.puppetserver.testutils :as testutils :refer [ssl-request-options]]))
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/jruby/request_handler_test")
@@ -62,7 +61,7 @@
            (is (fs/exists? expected-bucket-file)
                "Bucket file not stored at expected location")
            (is (= (seq raw-byte-arr)
-                  (if (fs/exists? expected-bucket-file)
+                  (when (fs/exists? expected-bucket-file)
                     (-> expected-bucket-file
                         (io/input-stream)
                         (IOUtils/toByteArray)

@@ -89,13 +89,15 @@
       (advance-task-to coordinator task-id phase))
     (log/debug "Done initializing task:" task-id)))
 
+(def Scalar (schema/cond-pre schema/Str schema/Int schema/Keyword))
+
 (schema/defn ^:always-validate do-initialize-task
   ([coordinator :- (schema/protocol TaskCoordinator)
-    task-id :- (schema/either schema/Str schema/Int schema/Keyword)
+    task-id :- Scalar
     req-fn :- IFn]
    (do-initialize-task coordinator task-id req-fn nil))
   ([coordinator :- (schema/protocol TaskCoordinator)
-    task-id :- (schema/either schema/Str schema/Int schema/Keyword)
+    task-id :- Scalar
     req-fn :- IFn
     phase :- (schema/maybe schema/Keyword)]
    (do-initialize-task* coordinator (str task-id) req-fn phase)))
@@ -114,7 +116,7 @@
 
 (schema/defn ^:always-validate do-notify-task-progress
   [coordinator :- (schema/protocol TaskCoordinator)
-   task-id :- (schema/either schema/Str schema/Int schema/Keyword)
+   task-id :- Scalar
    phase :- schema/Keyword]
   (do-notify-task-progress* coordinator (str task-id) phase))
 
@@ -148,7 +150,7 @@
 
 (schema/defn ^:always-validate do-advance-task-to
   [coordinator :- (schema/protocol TaskCoordinator)
-   task-id :- (schema/either schema/Str schema/Int schema/Keyword)
+   task-id :- Scalar
    desired-phase :- schema/Keyword]
   (do-advance-task-to* coordinator (str task-id) desired-phase))
 
@@ -164,16 +166,16 @@
 
 (schema/defn ^:always-validate do-advance-task-through-all-phases
   [coordinator :- (schema/protocol TaskCoordinator)
-   task-id :- (schema/either schema/Str schema/Int schema/Keyword)]
+   task-id :- Scalar]
   (do-advance-task-through-all-phases* coordinator (str task-id)))
 
 (schema/defn ^:always-validate do-unblock-task-to
   ([coordinator :- (schema/protocol TaskCoordinator)
-    task-id :- (schema/either schema/Str schema/Int schema/Keyword)
+    task-id :- Scalar
     desired-phase :- schema/Keyword]
    (do-unblock-task-to coordinator task-id desired-phase nil))
   ([coordinator :- (schema/protocol TaskCoordinator)
-    task-id :- (schema/either schema/Str schema/Int schema/Keyword)
+    task-id :- Scalar
     desired-phase :- schema/Keyword
     callback :- (schema/maybe IFn)]
    (log/debug "Unblocking task to phase:" task-id desired-phase)
@@ -192,13 +194,13 @@
 
 (schema/defn ^:always-validate do-wait-for-task
   [coordinator :- (schema/protocol TaskCoordinator)
-   task-id :- (schema/either schema/Str schema/Int schema/Keyword)
+   task-id :- Scalar
    desired-phase :- schema/Keyword]
   (do-wait-for-task* coordinator (str task-id) desired-phase))
 
 (schema/defn ^:always-validate do-callback-at-phase
   [coordinator :- (schema/protocol TaskCoordinator)
-   task-id :- (schema/either schema/Str schema/Int schema/Keyword)
+   task-id :- Scalar
    desired-phase :- schema/Keyword
    callback :- IFn]
   (async/go (do-wait-for-task coordinator task-id desired-phase)
@@ -220,7 +222,7 @@
 
 (schema/defn ^:always-validate do-final-result
   [coordinator :- (schema/protocol TaskCoordinator)
-   task-id :- (schema/either schema/Str schema/Int schema/Keyword)]
+   task-id :- Scalar]
   (do-final-result* coordinator (str task-id)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -245,5 +247,5 @@
       ;; It might be better to break this into a record/type plus a protocol;
       ;; Then we could hide things like the `tasks` and `task-phases` in
       ;; the type and not expose as part of the protocol API.
-      (task-phases [this] task-phases)
-      (tasks [this] tasks))))
+      (task-phases [_this] task-phases)
+      (tasks [_this] tasks))))

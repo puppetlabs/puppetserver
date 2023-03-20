@@ -1,26 +1,15 @@
 (ns puppetlabs.services.jruby.jruby-metrics-service-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is testing use-fixtures]]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
-            [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty9-service]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby-service]
-            [puppetlabs.services.jruby-pool-manager.impl.jruby-internal :as jruby-internal]
-            [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
-            [puppetlabs.services.jruby.jruby-metrics-service :as jruby-metrics-service]
-            [puppetlabs.trapperkeeper.services.scheduler.scheduler-service :as scheduler-service]
-            [puppetlabs.trapperkeeper.services.metrics.metrics-service :as metrics-service]
-            [puppetlabs.services.request-handler.request-handler-service :as request-handler-service]
-            [puppetlabs.services.versioned-code-service.versioned-code-service :as versioned-code-service]
-            [puppetlabs.services.jruby-pool-manager.jruby-pool-manager-service :as jruby-pool-manager-service]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [puppetlabs.services.protocols.jruby-metrics :as jruby-metrics-protocol]
             [puppetlabs.services.protocols.puppet-server-config :as ps-config-protocol]
-            [puppetlabs.trapperkeeper.services.status.status-service :as status-service]
-            [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :as webrouting-service]
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap-testutils]
             [schema.test :as schema-test]
             [puppetlabs.metrics :as metrics]
@@ -174,9 +163,9 @@
   (let [puppet-config (jruby-testutils/mock-puppet-config-settings
                        (:jruby-puppet config))]
     (reify JRubyPuppet
-      (getSetting [_ setting]
+      (getSetting [_this setting]
         (get puppet-config setting))
-      (handleRequest [this request]
+      (handleRequest [_this request]
        ;; read the request-id from the query params so that we can
        ;; interact with the test coordinator
         (let [request-id (get-in request ["params" "request-id"])]
@@ -421,8 +410,7 @@
                                  :borrow-count 2
                                  :current-borrowed-instances 2})
 
-        (let [expected-metrics (expected-metrics-values)
-              jruby-status-metrics (current-jruby-status-metrics)]
+        (let [expected-metrics (expected-metrics-values)]
           (is (= expected-metrics (current-metrics-values)))
           (is (= expected-metrics (-> (current-jruby-status-metrics)
                                       (jruby-status-metric-counters)))))
@@ -517,16 +505,16 @@
 
         ;; manually borrow an instance, but do it on another thread because
         ;; we know it will block right now due to the empty pool
-        (let [future-instance (promise)
-              wait-to-return (promise)
-              future-thread (future
-                             (let [instance (jruby-testutils/borrow-instance
-                                             jruby-service :metrics-manual-borrow-test2)]
-                                (deliver future-instance instance)
-                                @wait-to-return
-                                (jruby-testutils/return-instance
-                                 jruby-service instance
-                                 :metrics-manual-borrow-test2)))
+        (let [instance-borrowed (promise)
+              return-instance (promise)
+              pool-worker (future
+                            (let [instance (jruby-testutils/borrow-instance
+                                            jruby-service :metrics-manual-borrow-test2)]
+                               (deliver instance-borrowed instance)
+                               @return-instance
+                               (jruby-testutils/return-instance
+                                jruby-service instance
+                                :metrics-manual-borrow-test2)))
               expected-request-count (inc (:requested-count (expected-metrics-values)))]
           ;; wait for manual borrow attempt to register as a requested instance
           (while (> expected-request-count (.getCount requested-count)))
@@ -543,20 +531,21 @@
           (coordinator/final-result coordinator 1)
           (coordinator/final-result coordinator 2)
 
-          (let [instance @future-instance]
-            (update-expected-values {:num-free-jrubies 1
-                                     :return-count 2
-                                     :borrow-count 1
-                                     :current-borrowed-instances -1
-                                     :current-requested-instances -1})
-            (is (= (expected-metrics-values) (current-metrics-values)))
+          @instance-borrowed
 
-            (let [borrowed (first (vals @borrowed-instances))]
-              (is (timestamp-after? start-time (:time borrowed)))
-              (is (= :metrics-manual-borrow-test2 (:reason borrowed))))
+          (update-expected-values {:num-free-jrubies 1
+                                   :return-count 2
+                                   :borrow-count 1
+                                   :current-borrowed-instances -1
+                                   :current-requested-instances -1})
+          (is (= (expected-metrics-values) (current-metrics-values)))
 
-            (deliver wait-to-return true)
-            @future-thread))
+          (let [borrowed (first (vals @borrowed-instances))]
+            (is (timestamp-after? start-time (:time borrowed)))
+            (is (= :metrics-manual-borrow-test2 (:reason borrowed))))
+
+          (deliver return-instance true)
+          @pool-worker)
 
         (update-expected-values {:num-free-jrubies 1
                                  :return-count 1
@@ -604,7 +593,7 @@
                                     ;; will be empty.)
                                     (coordinator/unblock-task-to coordinator request-id :borrowed-jruby)))
 
-                run-request-and-take-sample (fn [request-id phase]
+                run-request-and-take-sample (fn [request-id _phase]
                                               ;; block until the request has borrowed a jruby; we need
                                               ;; to do this since we told them they were unblocked to
                                               ;; that point.
@@ -660,7 +649,7 @@
           (let [initial-value (metrics/mean free-jrubies-histo)]
             ;; take 10 samples; no jrubies are in use, so the average
             ;; should increase with each sample.
-            (let [samples (for [i (range 10)]
+            (let [samples (for [_ (range 10)]
                             (do
                               (sample-metrics!)
                               (metrics/mean free-jrubies-histo)))]
@@ -672,7 +661,7 @@
         (testing "requested-jrubies histo decreases when requests are not queued"
           (let [initial-value (metrics/mean requested-jrubies-histo)]
             ;; take 10 samples; the average should increase with each sample.
-            (let [samples (for [i (range 10)]
+            (let [samples (for [_ (range 10)]
                             (do
                               (sample-metrics!)
                               (metrics/mean requested-jrubies-histo)))]
@@ -714,7 +703,7 @@
         ;; take some samples and validate that the histogram is
         ;; increasing.
         (let [initial-value (metrics/mean requested-jrubies-histo)]
-          (let [samples (for [i (range 10)]
+          (let [samples (for [_ (range 10)]
                           (do
                             (sample-metrics!)
                             (metrics/mean requested-jrubies-histo)))]
@@ -753,7 +742,7 @@
           (is (= 0 (.getValue num-free-jrubies)))
 
           ;; take 10 samples; the average should decrease with each sample.
-          (let [samples (for [i (range 10)]
+          (let [samples (for [_ (range 10)]
                           (do
                             (sample-metrics!)
                             (metrics/mean free-jrubies-histo)))]
@@ -806,18 +795,18 @@
           {:keys [borrow-timer]} (:metrics test-env)]
       (testing "borrow timer increases when requests are slower"
         (dotimes [request-id 10]
-          (let [last-borrow-time (metrics/mean-millis borrow-timer)]
-            (let [longer-borrow-time (+ 50 last-borrow-time)]
-              (sync-request coordinator request-id (format "/foo/bar/req?sleep=%s" longer-borrow-time))
-              ;; sample and validate that the borrow time has increased
-              (sample-metrics!)
-              (let [new-borrow-time (metrics/mean-millis borrow-timer)]
-                (is (<= last-borrow-time new-borrow-time)
-                    (format
-                     (str "Borrow time did not increase! "
-                          "last-borrow-time: '%s', longer-borrow-time: '%s', "
-                          "new-borrow-time: '%s'")
-                     last-borrow-time longer-borrow-time new-borrow-time))))))
+          (let [last-borrow-time (metrics/mean-millis borrow-timer)
+                longer-borrow-time (+ 50 last-borrow-time)]
+            (sync-request coordinator request-id (format "/foo/bar/req?sleep=%s" longer-borrow-time))
+            ;; sample and validate that the borrow time has increased
+            (sample-metrics!)
+            (let [new-borrow-time (metrics/mean-millis borrow-timer)]
+              (is (<= last-borrow-time new-borrow-time)
+                  (format
+                   (str "Borrow time did not increase! "
+                        "last-borrow-time: '%s', longer-borrow-time: '%s', "
+                        "new-borrow-time: '%s'")
+                   last-borrow-time longer-borrow-time new-borrow-time)))))
 
           (update-expected-values {:requested-count 10
                                    :borrow-count 10
@@ -926,9 +915,8 @@
     (-> default-test-config
         (assoc-in [:jruby-puppet :max-active-instances] 2)
         (assoc-in [:jruby-puppet :max-queued-requests] 2))
-    (let [{:keys [current-metrics-values coordinator]} test-env
-          {:keys [requested-count requested-instances
-                  borrowed-instances queue-limit-hit-meter]} (:metrics test-env)]
+    (let [{:keys [coordinator]} test-env
+          {:keys [requested-count queue-limit-hit-meter]} (:metrics test-env)]
       (logging/with-test-logging
         ;; Block up two JRuby instances
         (async-request coordinator 1 "/foo/bar/async1" :returning-jruby)

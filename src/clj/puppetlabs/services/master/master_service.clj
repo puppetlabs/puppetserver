@@ -1,13 +1,10 @@
 (ns puppetlabs.services.master.master-service
   (:require [clojure.tools.logging :as log]
-            [ring.middleware.params :as ring]
             [puppetlabs.trapperkeeper.core :refer [defservice]]
-            [puppetlabs.services.master.master-core :as core]
             [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.puppetserver.jruby-request :as jruby-request]
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.comidi :as comidi]
-            [puppetlabs.dujour.version-check :as version-check]
             [puppetlabs.metrics.http :as http-metrics]
             [puppetlabs.services.protocols.master :as master]
             [puppetlabs.i18n.core :as i18n]
@@ -112,10 +109,10 @@
    [:VersionedCodeService get-code-content current-code-id]]
   (init
    [this context]
-   (core/validate-memory-requirements!)
+   (master-core/validate-memory-requirements!)
    (let [config (get-config)
-         route-config (core/get-master-route-config ::master-service config)
-         path (core/get-master-mount ::master-service route-config)
+         route-config (master-core/get-master-route-config ::master-service config)
+         path (master-core/get-master-mount ::master-service route-config)
          certname (get-in config [:puppetserver :certname])
          localcacert (get-in config [:puppetserver :localcacert])
          puppet-version (get-in config [:puppetserver :puppet-version])
@@ -142,7 +139,7 @@
 
          boltlib-path (get-in config [:jruby-puppet :boltlib-path])
          ring-app (comidi/routes
-                   (core/construct-root-routes puppet-version
+                   (master-core/construct-root-routes puppet-version
                                                jruby-service
                                                get-code-content
                                                current-code-id
@@ -171,7 +168,7 @@
      (retrieve-ca-crl! hostcrl)
      (initialize-master-ssl! settings certname)
 
-     (core/register-jvm-metrics! registry metrics-server-id)
+     (master-core/register-jvm-metrics! registry metrics-server-id)
 
      (update-registry-settings :puppetserver
                                {:default-metrics-allowed default-metrics-allowed})
@@ -200,12 +197,12 @@
       "master"
       (status-core/get-artifact-version "puppetlabs" "puppetserver")
       master-service-status-version
-      (partial core/v1-status http-metrics http-client-metric-ids-for-status registry))
+      (partial master-core/v1-status http-metrics http-client-metric-ids-for-status registry))
      (register-status
       "server"
       (status-core/get-artifact-version "puppetlabs" "puppetserver")
       master-service-status-version
-      (partial core/v1-status http-metrics http-client-metric-ids-for-status registry))
+      (partial master-core/v1-status http-metrics http-client-metric-ids-for-status registry))
      (-> context
          (assoc :http-metrics http-metrics)
          (assoc :http-client-metric-ids-for-status http-client-metric-ids-for-status))))

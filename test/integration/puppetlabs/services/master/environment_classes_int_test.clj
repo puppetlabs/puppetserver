@@ -1,5 +1,5 @@
 (ns puppetlabs.services.master.environment-classes-int-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is testing use-fixtures]]
             [clojure.string :as str]
             [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.kitchensink.core :as ks]
@@ -45,7 +45,7 @@
   ([env-name]
    (get-env-classes env-name nil))
   ([env-name if-none-match]
-   (let [opts (if if-none-match
+   (let [opts (when if-none-match
                 {:headers {"If-None-Match" if-none-match}})]
      (try
        (http-client/get
@@ -143,40 +143,39 @@
       :jruby-puppet {:gem-path gem-path
                      :max-active-instances 1
                      :environment-class-cache-enabled true}}
-     (try
-       (let [foo-file (testutils/write-pp-file
-                       "class foo (String $foo_1 = \"is foo\"){}"
-                       "foo")
-             bar-file (testutils/write-pp-file
-                       "class foo::bar (Integer $foo_2 = 3){}"
-                       "bar")
-             initial-response (get-env-classes "production")
-             initial-etag (-> initial-response response-etag without-gzip-suffix)]
-         (testing "initial fetch of environment_classes info is good"
-           (is (= 200 (:status initial-response))
+     (let [_foo-file (testutils/write-pp-file
+                      "class foo (String $foo_1 = \"is foo\"){}"
+                      "foo")
+           _bar-file (testutils/write-pp-file
+                      "class foo::bar (Integer $foo_2 = 3){}"
+                      "bar")
+           initial-response (get-env-classes "production")
+           initial-etag (-> initial-response response-etag without-gzip-suffix)]
+       (testing "initial fetch of environment_classes info is good"
+         (is (= 200 (:status initial-response))
+             (str
+              "unexpected status code for initial response, response: "
+              (ks/pprint-to-string initial-response)))
+         (is (not (nil? initial-etag))
+             "no etag found for initial response"))
+       (testing "ensure the env cache is purged"
+         (purge-env-cache "production")
+         (is (= nil
+                (jruby-protocol/get-cached-info-tag
+                 (tk-app/get-service app :JRubyPuppetService)
+                 "production"
+                 :classes))))
+       (testing "Env cache is updated when given correct etag but cache was nil"
+         (let [next-response (get-env-classes "production" initial-etag)]
+           (is (= 304 (:status next-response))
                (str
                 "unexpected status code for initial response, response: "
                 (ks/pprint-to-string initial-response)))
-           (is (not (nil? initial-etag))
-               "no etag found for initial response"))
-         (testing "ensure the env cache is purged"
-           (purge-env-cache "production")
-           (= nil
-             (jruby-protocol/get-cached-info-tag
-              (tk-app/get-service app :JRubyPuppetService)
-              "production"
-              :classes)))
-         (testing "Env cache is updated when given correct etag but cache was nil"
-           (let [next-response (get-env-classes "production" initial-etag)]
-             (is (= 304 (:status next-response))
-                 (str
-                  "unexpected status code for initial response, response: "
-                  (ks/pprint-to-string initial-response)))
-             (is (= initial-etag
-                    (jruby-protocol/get-cached-info-tag
-                     (tk-app/get-service app :JRubyPuppetService)
-                     "production"
-                     :classes))))))))))
+           (is (= initial-etag
+                  (jruby-protocol/get-cached-info-tag
+                   (tk-app/get-service app :JRubyPuppetService)
+                   "production"
+                   :classes)))))))))
 
 (deftest ^:integration environment-classes-integration-cache-enabled-test
   (let [debug-log "./target/environment-classes-integration-cache-enabled.log"]

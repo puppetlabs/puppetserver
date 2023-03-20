@@ -12,7 +12,6 @@
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol])
   (:import (com.codahale.metrics MetricRegistry Gauge Counter Histogram Meter Timer)
            (clojure.lang Atom IFn)
-           (puppetlabs.services.jruby_pool_manager.jruby_schemas JRubyInstance)
            (java.util.concurrent TimeUnit)
            (org.joda.time DateTime)
            (org.joda.time.format DateTimeFormatter)
@@ -208,7 +207,7 @@
         ;; TODO: v4.0 of Dropwizard Metrics has a MetricFilter/startsWith
         ;;       static method that returns a filter which can be passed
         ;;       directly to .getTimers.
-        metric-filter (partial filter (fn [[k v]]
+        metric-filter (partial filter (fn [[k _]]
                                         (str/starts-with? k metric-namespace)))]
     (->> (.getTimers metric-registry)
          metric-filter

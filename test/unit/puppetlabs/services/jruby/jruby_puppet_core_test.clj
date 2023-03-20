@@ -1,14 +1,11 @@
 (ns puppetlabs.services.jruby.jruby-puppet-core-test
-  (:require [clojure.test :refer :all]
-            [me.raynes.fs :as fs]
+  (:require [clojure.test :refer [deftest is testing use-fixtures]]
             [schema.test :as schema-test]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]
             [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]
-            [puppetlabs.services.jruby-pool-manager.jruby-schemas :as jruby-schemas]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils])
-  (:import (java.io ByteArrayOutputStream PrintStream)
-           (org.jruby.runtime Constants)))
+  (:import (java.io ByteArrayOutputStream PrintStream)))
 
 (use-fixtures :once schema-test/validate-schemas)
 

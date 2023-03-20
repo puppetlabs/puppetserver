@@ -1,6 +1,5 @@
 (ns puppetlabs.services.jruby.jruby-puppet-core
   (:require [clojure.tools.logging :as log]
-            [me.raynes.fs :as fs]
             [schema.core :as schema]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-puppet-schemas]
@@ -9,13 +8,11 @@
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]
             [puppetlabs.trapperkeeper.services.protocols.metrics :as metrics]
             [puppetlabs.i18n.core :as i18n]
-            [clojure.tools.logging :as log]
             [clojure.string :as str])
   (:import (com.puppetlabs.puppetserver PuppetProfiler JRubyPuppet)
            (clojure.lang IFn)
            (java.util HashMap)
-           (com.codahale.metrics MetricRegistry)
-           (org.jruby.runtime Constants)))
+           (com.codahale.metrics MetricRegistry)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
@@ -85,9 +82,9 @@
                                 [:server-var-dir "vardir"]
                                 [:server-run-dir "rundir"]
                                 [:server-log-dir "logdir"]]]
-      (if-let [value (get config setting-name)]
+      (when-let [value (get config setting-name)]
         (.put puppet-config dir (ks/absolute-path value))))
-    (if (:disable-i18n config)
+    (when (:disable-i18n config)
       ; The value for disable-i18n is stripped in Puppet::Server::PuppetConfig
       ; so that only the key is outputted, so that '--disable_18n' is used, not
       ; '--disable_i18n true'
@@ -183,7 +180,7 @@
   [http-config :- {schema/Keyword schema/Any}
    jruby-puppet-config :- {schema/Keyword schema/Any}
    multithreaded :- schema/Bool]
-  (if multithreaded
+  (when multithreaded
     (log/info (i18n/trs "Disabling i18n for puppet because using multithreaded jruby")))
   (let [config (-> jruby-puppet-config
                  (assoc :http-client-ssl-protocols (:ssl-protocols http-config))

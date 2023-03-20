@@ -1,9 +1,8 @@
 (ns puppetlabs.general-puppet.general-puppet-int-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is testing use-fixtures]]
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [me.raynes.fs :as fs]
-            [cheshire.core :as json]
             [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.puppetserver.testutils :as testutils]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]

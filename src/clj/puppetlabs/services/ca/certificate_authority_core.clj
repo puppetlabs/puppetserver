@@ -73,7 +73,7 @@
       (time-format/parse
         (time-format/formatters :rfc822)
         (string/replace http-date #"GMT" "+0000"))
-      (catch IllegalArgumentException e
+      (catch IllegalArgumentException _
         nil))))
 
 (defn handle-get-certificate-revocation-list
@@ -290,12 +290,12 @@
           (conflict error-message))))))
 
   :delete!
-  (fn [context]
+  (fn [_context]
     (ca/delete-certificate! settings subject)
     (ca/delete-certificate-request! settings subject))
 
   :exists?
-  (fn [context]
+  (fn [_context]
     (or
      (ca/certificate-exists? settings subject)
      (ca/csr-exists? settings subject)))
@@ -417,7 +417,7 @@
         (handle-get-certificate-revocation-list request ca-settings))
       (PUT ["/certificate_revocation_list"] request
         (handle-put-certificate-revocation-list! (:body request) ca-settings))
-      (GET ["/expirations"] request
+      (GET ["/expirations"] _request
         (handle-get-ca-expirations ca-settings))
       (PUT ["/clean"] request
         (handle-cert-clean request ca-settings)))
@@ -448,7 +448,7 @@
   ;; and replace with a line chaining the handler into a call to
   ;; 'authorization-fn'.
   (let [whitelist-path (str path
-                            (if (not= \/ (last path)) "/")
+                            (when (not= \/ (last path)) "/")
                             puppet-ca-API-version
                             "/certificate_status")]
     (-> route-handler
@@ -463,6 +463,6 @@
 ;;; Public
 
 (schema/defn ^:always-validate v1-status :- status-core/StatusCallbackResponse
-  [level :- status-core/ServiceStatusDetailLevel]
+  [_level :- status-core/ServiceStatusDetailLevel]
   {:state :running
    :status {}})

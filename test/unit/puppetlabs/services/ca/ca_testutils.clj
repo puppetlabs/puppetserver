@@ -1,5 +1,5 @@
 (ns puppetlabs.services.ca.ca-testutils
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [is]]
             [me.raynes.fs :as fs]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.kitchensink.file :as ks-file]

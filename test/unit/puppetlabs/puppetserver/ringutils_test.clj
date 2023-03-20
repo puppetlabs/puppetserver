@@ -1,6 +1,6 @@
 (ns puppetlabs.puppetserver.ringutils-test
-  (:require [clojure.test :refer :all]
-            [puppetlabs.puppetserver.ringutils :refer :all]
+  (:require [clojure.test :refer [deftest is testing use-fixtures]]
+            [puppetlabs.puppetserver.ringutils :refer [wrap-with-cert-whitelist-check]]
             [puppetlabs.ssl-utils.core :as ssl-utils]
             [schema.test :as schema-test]))
 
@@ -23,7 +23,7 @@
   (ssl-utils/pem->cert (test-pem-file "revoked-agent.pem")))
 
 (def base-handler
-  (fn [request]
+  (fn [_req]
     {:status 200 :body "hello"}))
 
 (defn build-ring-handler

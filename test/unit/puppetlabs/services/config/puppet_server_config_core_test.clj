@@ -1,6 +1,10 @@
 (ns puppetlabs.services.config.puppet-server-config-core-test
-  (:require [clojure.test :refer :all]
-            [puppetlabs.services.config.puppet-server-config-core :refer :all]
+  (:require [clojure.test :refer [deftest is testing use-fixtures]]
+            [puppetlabs.services.config.puppet-server-config-core :refer [Config
+                                                                          get-puppet-config*
+                                                                          get-puppet-config-value
+                                                                          init-webserver!
+                                                                          puppet-config-keys]]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.puppetserver.testutils :as testutils]
             [schema.core :as schema]
