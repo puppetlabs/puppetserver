@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: a3f5c3fd14f536f5e8089c2682c432b28069c704\n"
+"X-Git-Ref: 771cf462d29fb22fe310e228aadfc24a94cc9d1e\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -359,6 +359,10 @@ msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/ringutils.clj
 msgid "Access to {0} rejected; no client certificate found"
+msgstr ""
+
+#: src/clj/puppetlabs/services/analytics/analytics_service.clj
+msgid "Failed to check for product updates"
 msgstr ""
 
 #: src/clj/puppetlabs/services/analytics/analytics_service.clj
