@@ -1,5 +1,5 @@
 (ns puppetlabs.puppetserver.bootstrap-int-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is testing use-fixtures]]
             [puppetlabs.kitchensink.file :as ks-file]
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]

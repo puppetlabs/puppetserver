@@ -1,5 +1,5 @@
 (ns puppetlabs.services.jruby.puppet-environments-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is testing]]
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]))
 
 (defn contains-environment?

@@ -1,5 +1,5 @@
 (ns puppetlabs.services.jruby.module-info-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is testing]]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [me.raynes.fs :as fs]
@@ -51,7 +51,6 @@
        (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
              instance (jruby-testutils/borrow-instance jruby-service :test)
              jruby-puppet (:jruby-puppet instance)
-             env-registry (:environment-registry instance)
 
              _ (testutils/create-file (fs/file conf-dir "puppet.conf")
                                       "[main]\nenvironment_timeout=unlimited\nbasemodulepath=$codedir/modules\n")

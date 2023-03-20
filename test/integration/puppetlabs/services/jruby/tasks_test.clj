@@ -1,10 +1,9 @@
 (ns puppetlabs.services.jruby.tasks-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is testing use-fixtures]]
             [clojure.string :as str]
-            [clojure.pprint :refer :all]
+            [clojure.walk :refer [keywordize-keys]]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
-            [puppetlabs.services.jruby.puppet-environments :as puppet-env]
             [puppetlabs.services.master.master-core :as mc]
             [me.raynes.fs :as fs]
             [cheshire.core :as cheshire]
@@ -113,7 +112,7 @@
   [tasks]
   (map (fn [{:keys [name module-name metadata]}]
          {:module {:name module-name}
-          :metadata (clojure.walk/keywordize-keys metadata)
+          :metadata (keywordize-keys metadata)
           :name (if (= "init" name)
                   module-name
                   (str module-name "::" name))})
@@ -310,9 +309,9 @@
                            (get-task-details "production" "apache" "init")))))
 
                 (testing "with no payload files"
-                  (let [expected-info {:metadata {:meta "data"}
-                                       :name "apache::about"
-                                       :files []}]
+                  (let [_expected-info {:metadata {:meta "data"}
+                                        :name "apache::about"
+                                        :files []}]
                     (is (thrown+? [:kind "puppet.tasks/no-implementation"] (get-task-details "production" "apache" "about"))))))
 
               (testing "but the task doesn't exist"

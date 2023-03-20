@@ -101,9 +101,9 @@
         (throw-execution-error! e)))))
 
 (schema/defn ^:always-validate validate-config!
-  [{:keys [code-id-command code-content-command]} :- (schema/maybe VersionedCodeServiceConfig)]
   "Validates the versioned-code-service config. The config is considered valid
   if it is either empty or fully populated."
+  [{:keys [code-id-command code-content-command]} :- (schema/maybe VersionedCodeServiceConfig)]
   (when (or
     (and code-id-command (not code-content-command))
     (and (not code-id-command) code-content-command))

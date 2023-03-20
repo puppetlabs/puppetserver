@@ -1,5 +1,5 @@
 (ns puppetlabs.services.master.environment-modules-int-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is testing use-fixtures]]
             [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
@@ -70,14 +70,14 @@
          (ks/dissoc-in [:jruby-puppet
                         :environment-class-cache-enabled]))
      (logutils/with-test-logging
-       (let [foo-file (testutils/write-foo-pp-file
-                        "class foo (String $foo_1 = \"is foo\"){}")
-             all-foo-file (testutils/write-pp-file
-                            "class foo (String $foo_1 = \"is foo\"){}"
-                            "foo"
-                            "woo"
-                            "hoo"
-                            "1.0.0")
+       (let [_foo-file (testutils/write-foo-pp-file
+                         "class foo (String $foo_1 = \"is foo\"){}")
+             _all-foo-file (testutils/write-pp-file
+                             "class foo (String $foo_1 = \"is foo\"){}"
+                             "foo"
+                             "woo"
+                             "hoo"
+                             "1.0.0")
              expected-response {"modules" [{"name" "foo", "version" "1.0.0"}]
                                 "name" "production"}
              expected-all-response '({"modules"

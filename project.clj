@@ -84,6 +84,7 @@
                  ["snapshots" "https://artifactory.delivery.puppetlabs.net/artifactory/clojure-snapshots__local/"]]
 
   :plugins [[lein-parent "0.3.7"]
+            [jonase/eastwood "1.2.2" :exclusions [org.clojure/clojure]]
             ;; We have to have this, and it needs to agree with clj-parent
             ;; until/unless you can have managed plugin dependencies.
             [puppetlabs/i18n "0.9.2" :hooks false]]
@@ -232,6 +233,11 @@
                    :unit (complement :integration)
                    :multithreaded (complement :single-threaded-only)
                    :singlethreaded (complement :multithreaded-only)}
+
+  :eastwood {:exclude-linters [:unused-meta-on-macro
+                               :reflection
+                               [:suspicious-test :second-arg-is-not-string]]
+             :continue-on-exception true}
 
   :aliases {"gem" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.gem" "--config" "./dev/puppetserver.conf" "--"]
             "ruby" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.ruby" "--config" "./dev/puppetserver.conf" "--"]

@@ -6,7 +6,6 @@
             [clojure.tools.logging :as log]
             [puppetlabs.kitchensink.core :refer [keyset]]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
-            [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
             [schema.core :as schema]
             [clojure.string :as str]
             [puppetlabs.i18n.core :as i18n])

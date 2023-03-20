@@ -19,6 +19,8 @@ dev/user.clj
 ext/packaging
 checkouts
 .beaker
+.clj-kondo/.cache
+.eastwood
 
 # Bundler local state files
 Gemfile.lock

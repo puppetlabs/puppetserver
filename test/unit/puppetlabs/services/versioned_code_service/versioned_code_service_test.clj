@@ -1,11 +1,11 @@
 (ns puppetlabs.services.versioned-code-service.versioned-code-service-test
   (:require
-    [clojure.test :refer :all]
+    [clojure.test :refer [deftest is testing]]
     [puppetlabs.services.versioned-code-service.versioned-code-service :as vcs]
     [puppetlabs.services.protocols.versioned-code :as vc]
     [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
     [puppetlabs.trapperkeeper.app :as tk-app]
-    [puppetlabs.trapperkeeper.testutils.logging :as logging]
+    [puppetlabs.trapperkeeper.testutils.logging :refer [logged?] :as logging]
     [puppetlabs.kitchensink.core :as ks])
   (:import
    (org.apache.commons.io IOUtils)))

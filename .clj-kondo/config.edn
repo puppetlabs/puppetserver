@@ -1,0 +1,34 @@
+{:linters {:use {:level :error}
+           :unresolved-symbol {:level :warning :exclude [(clojure.test/is [thrown+? thrown+-with-msg? logged?])
+                                                         (puppetlabs.puppetserver.bootstrap-testutils/with-puppetserver-running [app])
+                                                         (puppetlabs.puppetserver.bootstrap-testutils/with-puppetserver-running-with-mock-jrubies [app])
+                                                         (puppetlabs.puppetserver.bootstrap-testutils/with-puppetserver-running-with-config [app])
+                                                         (puppetlabs.puppetserver.bootstrap-testutils/with-puppetserver-running-with-mock-jruby-puppet-fn [app])
+                                                         (puppetlabs.puppetserver.bootstrap-testutils/with-puppetserver-running-with-services [app])
+                                                         (puppetlabs.puppetserver.bootstrap-testutils/with-puppetserver-running-with-services-and-mock-jruby-puppet-fn [app])
+                                                         (puppetlabs.puppetserver.ruby.http-client-test/with-scripting-container [sc])
+                                                         (puppetlabs.services.jruby.jruby-metrics-service-test/with-metrics-test-env)
+                                                         (puppetlabs.services.jruby.jruby-puppet-service/with-jruby-puppet [jruby-puppet])
+                                                         (puppetlabs.services.jruby-pool-manager.jruby-core/with-jruby-instance [jruby-instance])
+                                                         (puppetlabs.services.puppet-profiler.puppet-profiler-core-test/with-test-logs [logs])
+                                                         (puppetlabs.trapperkeeper.core/defservice)
+                                                         (puppetlabs.trapperkeeper.core/service)
+                                                         (puppetlabs.trapperkeeper.services/service)
+                                                         (puppetlabs.trapperkeeper.testutils.bootstrap/with-app-with-config [app])
+                                                         (puppetlabs.trapperkeeper.testutils.logging/with-log-output [logs])
+                                                         (puppetlabs.trapperkeeper.testutils.webserver/with-test-webserver [port])
+                                                         (slingshot.slingshot/try+ [&throw-context])]}
+           :invalid-arity {:skip-args [puppetlabs.trapperkeeper.core/service puppetlabs.trapperkeeper.services/service]}
+           :refer-all {:exclude [clojure.test slingshot.test]}}
+ :lint-as {puppetlabs.comidi/GET compojure.core/GET
+           puppetlabs.comidi/PUT compojure.core/PUT
+           puppetlabs.comidi/POST compojure.core/POST
+           puppetlabs.comidi/DELETE compojure.core/DELETE
+           puppetlabs.comidi/PATCH compojure.core/PATCH
+           puppetlabs.comidi/ANY compojure.core/ANY
+           puppetlabs.comidi/HEAD compojure.core/HEAD
+           liberator.core/defresource clojure.core/defn
+           puppetlabs.trapperkeeper.core/defservice clojure.core/def
+           slingshot.slingshot/try+ clojure.core/try}
+ :config-in-call {puppetlabs.services.request-handler.request-handler-core/ssl-auth-info {:linters {:not-empty? {:level :off}}}}
+ :output {:linter-name true}}

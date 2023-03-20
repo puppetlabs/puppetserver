@@ -1,6 +1,5 @@
 (ns puppetlabs.services.analytics.dropsonde
-  (:require [clojure.java.shell :refer [sh]]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
             [puppetlabs.i18n.core :as i18n]
             [puppetlabs.puppetserver.shell-utils :as shell-utils]
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet]))

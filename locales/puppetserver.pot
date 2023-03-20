@@ -362,6 +362,10 @@ msgid "Access to {0} rejected; no client certificate found"
 msgstr ""
 
 #: src/clj/puppetlabs/services/analytics/analytics_service.clj
+msgid "Failed to check for product updates"
+msgstr ""
+
+#: src/clj/puppetlabs/services/analytics/analytics_service.clj
 msgid "Not checking for updates - opt-out setting exists"
 msgstr ""
 

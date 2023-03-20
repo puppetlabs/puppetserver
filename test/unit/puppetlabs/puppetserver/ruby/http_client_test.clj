@@ -6,10 +6,9 @@
            (java.util HashMap)
            (java.io IOException)
            (java.util.zip GZIPInputStream))
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is testing use-fixtures]]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.trapperkeeper.testutils.webserver :as jetty9]
-            [puppetlabs.trapperkeeper.testutils.webserver.common :refer [http-get]]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-puppet-testutils]
             [ring.middleware.basic-authentication :as auth]
             [schema.core :as schema]
@@ -27,12 +26,12 @@
   (str "./dev-resources/puppetlabs/puppetserver/ruby/http_client_test/" filename))
 
 (defn ring-app
-  [req]
+  [_req]
   {:status 200
    :body "hi"})
 
 (defn ring-app-alternate
-  [req]
+  [_req]
   {:status 200
    :body "bye"})
 
@@ -71,9 +70,9 @@
 (defn get-http-client-settings
   [options]
   (let [result (HashMap.)]
-    (if (contains? options :ssl-protocols)
+    (when (contains? options :ssl-protocols)
       (.put result "ssl_protocols" (into-array String (:ssl-protocols options))))
-    (if (contains? options :cipher-suites)
+    (when (contains? options :cipher-suites)
       (.put result "cipher_suites" (into-array String (:cipher-suites options))))
     result))
 
@@ -168,7 +167,7 @@
     (binding [*scripting-container* sc]
       (test-fn))))
 
-(clojure.test/use-fixtures :once http-client-scripting-container-fixture)
+(use-fixtures :once http-client-scripting-container-fixture)
 
 (deftest test-ruby-http-client
   (jetty9/with-test-webserver ring-app port

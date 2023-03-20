@@ -35,7 +35,7 @@
           jruby-service (tk-services/get-service this :JRubyPuppetService)
           master-routes (comidi/context path
                                         (master-core/root-routes handle-request
-                                                                 (partial identity)
+                                                                 identity
                                                                  jruby-service
                                                                  identity
                                                                  (fn [_ _ _]

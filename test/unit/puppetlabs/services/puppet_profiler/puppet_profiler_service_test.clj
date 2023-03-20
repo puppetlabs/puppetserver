@@ -1,7 +1,7 @@
 (ns puppetlabs.services.puppet-profiler.puppet-profiler-service-test
   (:import (com.puppetlabs.puppetserver PuppetProfiler))
-  (:require [clojure.test :refer :all]
-            [puppetlabs.services.puppet-profiler.puppet-profiler-service :refer :all]
+  (:require [clojure.test :refer [deftest is testing]]
+            [puppetlabs.services.puppet-profiler.puppet-profiler-service :refer [puppet-profiler-service]]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty9-service]
             [puppetlabs.trapperkeeper.services.metrics.metrics-service :as metrics-service]
             [puppetlabs.trapperkeeper.services.scheduler.scheduler-service :as scheduler-service]

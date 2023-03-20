@@ -17,17 +17,17 @@
                             (reduce mark-expired! m (keys m)))]
     (reify
       EnvironmentRegistry
-      (registerEnvironment [this env-name]
+      (registerEnvironment [_this env-name]
         (when-not env-name
           (throw (IllegalArgumentException. (i18n/trs "Missing environment name!"))))
         (log/debug (i18n/trs "Registering environment ''{0}''" env-name))
         (swap! state assoc-in [(keyword env-name) :expired] false)
         nil)
-      (isExpired [this env-name]
+      (isExpired [_this env-name]
         (when-not env-name
           (throw (IllegalArgumentException. (i18n/trs "Missing environment name!"))))
         (get-in @state [(keyword env-name) :expired] true))
-      (removeEnvironment [this env-name]
+      (removeEnvironment [_this env-name]
         (when-not env-name
           (throw (IllegalArgumentException. (i18n/trs "Missing environment name!"))))
         (log/debug (i18n/trs "Removing environment ''{0}'' from registry" env-name))
@@ -35,10 +35,10 @@
         nil)
 
       EnvironmentStateContainer
-      (environment-state [this] state)
-      (mark-all-environments-expired! [this]
+      (environment-state [_this] state)
+      (mark-all-environments-expired! [_this]
         (log/info (i18n/trs "Marking all registered environments as expired."))
         (swap! state mark-all-expired!))
-      (mark-environment-expired! [this env-name]
+      (mark-environment-expired! [_this env-name]
         (log/info (i18n/trs "Marking environment ''{0}'' as expired." env-name))
         (swap! state mark-expired! (keyword env-name))))))

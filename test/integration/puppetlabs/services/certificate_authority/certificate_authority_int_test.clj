@@ -1,12 +1,10 @@
 (ns puppetlabs.services.certificate-authority.certificate-authority-int-test
   (:require
-   [clojure.test :refer :all]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [puppetlabs.kitchensink.core :as ks]
-   [puppetlabs.ssl-utils.core :as utils]
    [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
    [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
-   [puppetlabs.puppetserver.testutils :as testutils :refer
-    [ca-cert localhost-cert localhost-key ssl-request-options http-get]]
+   [puppetlabs.puppetserver.testutils :as testutils :refer [http-get]]
    [puppetlabs.trapperkeeper.testutils.logging :as logutils]
    [schema.test :as schema-test]
    [me.raynes.fs :as fs]
@@ -14,9 +12,8 @@
    [puppetlabs.http.client.sync :as http-client]
    [puppetlabs.ssl-utils.core :as ssl-utils]
    [puppetlabs.puppetserver.certificate-authority :as ca]
-   [puppetlabs.services.ca.certificate-authority-core :refer :all]
+   [puppetlabs.services.ca.certificate-authority-core :refer [handle-get-certificate-revocation-list]]
    [ring.mock.request :as mock]
-   [me.raynes.fs :as fs]
    [clj-time.format :as time-format]
    [clj-time.core :as time])
   (:import (javax.net.ssl SSLException)))
@@ -287,7 +284,6 @@
       (let [key-pair (ssl-utils/generate-key-pair)
             subject "crl_reload"
             subject-dn (ssl-utils/cn subject)
-            public-key (ssl-utils/get-public-key key-pair)
             private-key (ssl-utils/get-private-key key-pair)
             private-key-file (ks/temp-file)
             csr (ssl-utils/generate-certificate-request key-pair subject-dn)
@@ -335,7 +331,7 @@
           (let [ssl-exception-for-request? #(try
                                               (client-request)
                                               false
-                                              (catch SSLException e
+                                              (catch SSLException _
                                                 true))]
             (is (loop [times 30]
                   (cond
@@ -364,8 +360,8 @@
             {:certificate-authority {:enable-infra-crl true}}
             (testing "should update infrastructure CRL"
               (let [ca-cert' (ssl-utils/pem->ca-cert ca-cert ca-key)
-                    cm-cert (utils/pem->cert (ca/path-to-cert signed-dir subject))
-                    node-cert (utils/pem->cert (ca/path-to-cert signed-dir node-subject))
+                    cm-cert (ssl-utils/pem->cert (ca/path-to-cert signed-dir subject))
+                    node-cert (ssl-utils/pem->cert (ca/path-to-cert signed-dir node-subject))
                     options {:ssl-cert ca-cert
                              :ssl-key ca-key
                              :ssl-ca-cert ca-cert
@@ -386,12 +382,12 @@
                   (let [revoke-response (cert-status-request "revoked" subject)]
                     ;; If the revocation was successful infra CRL should contain above revoked compiler's cert
                     (is (= 204 (:status revoke-response)))
-                    (is (utils/revoked? (utils/pem->ca-crl infra-crl ca-cert') cm-cert))))
+                    (is (ssl-utils/revoked? (ssl-utils/pem->ca-crl infra-crl ca-cert') cm-cert))))
 
                 (testing "Infra CRL should NOT contain a revoked non-compiler's certificate"
                   (let [revoke-response (cert-status-request "revoked" node-subject)]
                     (is (= 204 (:status revoke-response)))
-                    (is (not (utils/revoked? (utils/pem->ca-crl infra-crl ca-cert') node-cert)))))))
+                    (is (not (ssl-utils/revoked? (ssl-utils/pem->ca-crl infra-crl ca-cert') node-cert)))))))
 
             (testing "Verify correct CRL is returned depending on enable-infra-crl"
               (let [request (mock/request :get "/v1/certificate_revocation_list/mynode")
@@ -468,9 +464,9 @@
        {:certificate-authority {:enable-infra-crl true}}
        (let [subject1 "compile-master"
              cert1-path (ca/path-to-cert (str bootstrap/server-conf-dir "/ca/signed") subject1)
-             cert1 (utils/pem->cert cert1-path)
+             cert1 (ssl-utils/pem->cert cert1-path)
              cert2-path (ca/path-to-cert (str bootstrap/server-conf-dir "/ca/signed") subject2)
-             cert2 (utils/pem->cert cert2-path)]
+             cert2 (ssl-utils/pem->cert cert2-path)]
          (testing "should update infrastructure CRL with multiple certs"
            (let [ca-cert (ssl-utils/pem->ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
                                                  (str bootstrap/server-conf-dir "/ca/ca_key.pem"))
@@ -488,11 +484,11 @@
                                                         "application/json"}}))]
                  ;; If the revocation was successful infra CRL should contain above revoked compiler's cert
                  (is (= 200 (:status revoke-response)))
-                 (is (utils/revoked? (utils/pem->ca-crl
+                 (is (ssl-utils/revoked? (ssl-utils/pem->ca-crl
                                       (str bootstrap/server-conf-dir "/ca/infra_crl.pem")
                                       ca-cert)
                                      cert1))
-                 (is (utils/revoked? (utils/pem->ca-crl
+                 (is (ssl-utils/revoked? (ssl-utils/pem->ca-crl
                                       (str bootstrap/server-conf-dir "/ca/infra_crl.pem")
                                       ca-cert)
                                      cert2))

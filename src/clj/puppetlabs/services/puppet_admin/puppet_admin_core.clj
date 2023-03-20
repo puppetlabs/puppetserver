@@ -1,7 +1,6 @@
 (ns puppetlabs.services.puppet-admin.puppet-admin-core
   (:import (clojure.lang IFn))
-  (:require [puppetlabs.kitchensink.core :as ks]
-            [puppetlabs.puppetserver.ringutils :as ringutils]
+  (:require [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-puppet]
             [puppetlabs.ring-middleware.utils :as middleware-utils]
             [puppetlabs.puppetserver.liberator-utils :as liberator-utils]
@@ -48,7 +47,7 @@
   :new? false
 
   :delete!
-  (fn [context]
+  (fn [_context]
     (if env-name
       (jruby-puppet/mark-environment-expired! jruby-service env-name)
       (jruby-puppet/mark-all-environments-expired! jruby-service))))
@@ -77,8 +76,8 @@
 ;;; Routing
 
 (defn v1-routes
-  [jruby-service]
   "Routes for v1 of the Puppet Admin HTTP API."
+  [jruby-service]
   (comidi/routes
     (comidi/ANY "/environment-cache" request
       (environment-cache-resource jruby-service

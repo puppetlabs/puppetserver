@@ -71,7 +71,7 @@
         "ca"
         (status-core/get-artifact-version "puppetlabs" "puppetserver")
         1
-        (partial core/v1-status))
+        core/v1-status)
       (assoc context :auth-handler auth-handler
                      :watcher watcher)))
 

@@ -1,11 +1,8 @@
 (ns puppetlabs.services.legacy-routes.legacy-routes-core
   (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
             [puppetlabs.comidi :as comidi]
             [ring.util.codec :as ring-codec]
             [ring.util.response :as ring-response]
-            [compojure.route :as route]
-            [clojure.tools.logging :as log]
             [schema.core :as schema])
   (:import (clojure.lang IFn)))
 
@@ -99,8 +96,8 @@
   (let [{{environment :environment} :params
          uri :uri
          query-string :query-string} request
-        path-info (str "/" (-> (str/split uri #"/" 3) (nth 2)))]
-    (let [compat-request
+        path-info (str "/" (-> (str/split uri #"/" 3) (nth 2)))
+        compat-request
           (-> request
               (map-accept-header)
               (assoc :path-info (str "/" api-version path-info)
@@ -111,7 +108,7 @@
                                        "environment" environment)
                                      query-string))
               (dissoc :params :route-params))]
-      (handler compat-request))))
+    (handler compat-request)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Routing
