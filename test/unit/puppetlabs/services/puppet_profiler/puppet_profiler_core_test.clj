@@ -4,8 +4,8 @@
            (ch.qos.logback.classic Logger Level)
            (com.puppetlabs.puppetserver PuppetProfiler)
            (com.codahale.metrics MetricRegistry Timer))
-  (:require [clojure.test :refer :all]
-            [puppetlabs.services.puppet-profiler.puppet-profiler-core :refer :all]
+  (:require [clojure.test :refer [deftest is testing use-fixtures]]
+            [puppetlabs.services.puppet-profiler.puppet-profiler-core :refer [initialize metrics-profiler v1-status]]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]

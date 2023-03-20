@@ -1,5 +1,5 @@
 (ns puppetlabs.services.ca.certificate-authority-disabled-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is testing]]
             [me.raynes.fs :as fs]
             [puppetlabs.services.ca.certificate-authority-disabled-service :as disabled]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]

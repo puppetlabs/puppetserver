@@ -1,5 +1,5 @@
 (ns puppetlabs.puppetserver.auth-conf-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest is testing use-fixtures]]
             [clojure.string :as str]
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
             [puppetlabs.http.client.sync :as http-client]
@@ -12,7 +12,6 @@
             [puppetlabs.puppetserver.testutils :as testutils :refer [http-get]]
             [me.raynes.fs :as fs]
             [ring.util.codec :as ring-codec]
-            [puppetlabs.trapperkeeper.testutils.logging :as logging]
             [cheshire.core :as cheshire])
   (:import (java.io StringWriter)))
 
@@ -186,7 +185,7 @@
 
 (deftest ^:integration custom-oids-passed-to-tk-auth
   (testing "puppet server successfully utilizes custom oid mappings and puppet short names for authorization"
-    (logging/with-test-logging
+    (logutils/with-test-logging
       (bootstrap/with-puppetserver-running-with-mock-jruby-puppet-fn
        "JRuby mocking is safe here because these tests are strictly validating
        the Clojure tk-auth checks."

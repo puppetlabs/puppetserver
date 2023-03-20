@@ -2,11 +2,8 @@
   (:import [clojure.lang IFn])
   (:require [clojure.tools.logging :as log]
             [clj-semver.core :as semver]
-            [ring.util.response :as ring-response]
             [slingshot.slingshot :as sling]
-            [puppetlabs.ring-middleware.core :as middleware]
             [puppetlabs.ring-middleware.utils :as ringutils]
-            [puppetlabs.services.protocols.jruby-puppet :as jruby-puppet]
             [puppetlabs.services.protocols.jruby-metrics :as jruby-metrics]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
             [schema.core :as schema]

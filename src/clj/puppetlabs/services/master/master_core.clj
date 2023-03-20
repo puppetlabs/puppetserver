@@ -323,8 +323,7 @@
   tasks for all environments can be requested, and a given task will list all
   the environments it is found in."
   [info-from-jruby :- [{schema/Any schema/Any}]
-   environment :- schema/Str
-   jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
+   environment :- schema/Str]
   (let [format-task (fn [task-object]
                       {:name (:name task-object)
                        :private (get-in task-object [:metadata :private] false)
@@ -484,8 +483,7 @@
                                              request)
                                            environment))]
         (all-tasks-response! task-info-for-env
-                             environment
-                             jruby-service)
+                             environment)
         (environment-not-found environment)))))
 
 (schema/defn ^:always-validate
@@ -602,8 +600,7 @@
   tasks for all environments can be requested, and a given task will list all
   the environments it is found in."
   [info-from-jruby :- [{schema/Any schema/Any}]
-   environment :- schema/Str
-   jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
+   environment :- schema/Str]
   (let [format-plan (fn [plan-object]
                       {:name (:name plan-object)
                        :environment [{:name environment
@@ -625,8 +622,7 @@
                                              request)
                                            environment))]
         (all-plans-response! plan-info-for-env
-                             environment
-                             jruby-service)
+                             environment)
         (environment-not-found environment)))))
 
 (schema/defn ^:always-validate
@@ -634,7 +630,6 @@
   "Fills in a bare PlanData map by examining the files it refers to,
   returning PlanDetails."
   [plan-data :- PlanData
-   env-name :- schema/Str
    module-name :- schema/Str
    plan-name :- schema/Str]
   (if (:error plan-data)
@@ -660,7 +655,7 @@
                                     module-name
                                     plan-name)
       sort-nested-info-maps
-      (plan-data->plan-details environment-name module-name plan-name)))
+      (plan-data->plan-details module-name plan-name)))
 
 (schema/defn ^:always-validate
   plan-details-fn :- IFn
@@ -912,7 +907,7 @@
    (schema/required-key "code_ast") schema/Str
    (schema/required-key "trusted_facts") {(schema/required-key "values") {schema/Str schema/Any}}
    (schema/required-key "facts") {(schema/required-key "values") {schema/Str schema/Any}}
-   (schema/required-key "variables") {(schema/required-key "values") (schema/either [{schema/Str schema/Any}] {schema/Str schema/Any})}
+   (schema/required-key "variables") {(schema/required-key "values") (schema/cond-pre [{schema/Str schema/Any}] {schema/Str schema/Any})}
   ;;  Both environment and versioned project are technically listed in the schema as
   ;;  "optional" but we will check later that exactly one of them is set.
    (schema/optional-key "environment") schema/Str
@@ -1157,16 +1152,16 @@
    jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
    wrap-with-jruby-queue-limit :- IFn
    current-code-id-fn :- IFn]
-  (let [v4-catalog-handler (v4-catalog-handler
-                             jruby-service
-                             wrap-with-jruby-queue-limit
-                             current-code-id-fn)]
+  (let [v4-catalog-handler' (v4-catalog-handler
+                              jruby-service
+                              wrap-with-jruby-queue-limit
+                              current-code-id-fn)]
     (comidi/context
           "/v4"
           (comidi/wrap-routes
            (comidi/routes
             (comidi/POST "/catalog" request
-                         (v4-catalog-handler request)))
+                         (v4-catalog-handler' request)))
            clojure-request-wrapper))))
 
 (schema/defn ^:always-validate
@@ -1223,8 +1218,8 @@
   []
   (when-let [meminfo-file-content (meminfo-content)]
     (let [heap-size max-heap-size
-          mem-size (Integer. (second (re-find #"MemTotal:\s+(\d+)\s+\S+"
-                                               meminfo-file-content)))
+          mem-size (Integer/parseInt (second (re-find #"MemTotal:\s+(\d+)\s+\S+"
+                                                      meminfo-file-content)))
           required-mem-size (* heap-size 1.1)]
       (when (< mem-size required-mem-size)
         (throw (Error.

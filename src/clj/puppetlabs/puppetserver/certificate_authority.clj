@@ -1,12 +1,13 @@
 (ns puppetlabs.puppetserver.certificate-authority
   (:import [org.apache.commons.io IOUtils]
+           (org.bouncycastle.pkcs PKCS10CertificationRequest)
            [java.util Date]
            [java.io InputStream ByteArrayOutputStream ByteArrayInputStream File StringReader IOException]
-           [java.nio.file Files LinkOption]
+           [java.nio.file Files]
            [java.nio.file.attribute FileAttribute PosixFilePermissions]
            (java.security PrivateKey PublicKey)
            (org.joda.time DateTime)
-           (java.security.cert CRLException CertPathValidatorException X509CRL))
+           (java.security.cert X509Certificate CRLException CertPathValidatorException X509CRL))
   (:require [me.raynes.fs :as fs]
             [schema.core :as schema]
             [clojure.string :as str]
@@ -21,13 +22,18 @@
             [puppetlabs.kitchensink.file :as ks-file]
             [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.ssl-utils.core :as utils]
-            [clojure.set :as cset :refer [union]]
             [clj-yaml.core :as yaml]
             [puppetlabs.puppetserver.shell-utils :as shell-utils]
             [puppetlabs.i18n.core :as i18n]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
+
+(def AutoSignInput
+  (schema/cond-pre schema/Bool schema/Str))
+
+(def CertificateOrCSR
+  (schema/cond-pre X509Certificate PKCS10CertificationRequest))
 
 (def MasterSettings
   "Settings from Puppet that are necessary for SSL initialization on the master.
@@ -60,7 +66,7 @@
    :allow-authorization-extensions   schema/Bool
    :allow-duplicate-certs            schema/Bool
    :allow-subject-alt-names          schema/Bool
-   :autosign                         (schema/either schema/Str schema/Bool)
+   :autosign                         AutoSignInput
    :cacert                           schema/Str
    :cadir                            schema/Str
    :cacrl                            schema/Str
@@ -137,9 +143,6 @@
 
 (def CertificateRevocationList
   (schema/pred utils/certificate-revocation-list?))
-
-(def CertificateRequest
-  (schema/pred utils/certificate-request?))
 
 (def OutcomeInfo
   "Generic map of outcome & message for API consumers"
@@ -248,7 +251,7 @@
 (defn required-ca-files
   "The set of SSL related files that are required on the CA."
   [enable-infra-crl]
-  (union #{:cacert :cacrl :cakey :cert-inventory :serial}
+  (set/union #{:cacert :cacrl :cakey :cert-inventory :serial}
      (if enable-infra-crl #{:infra-nodes-path :infra-crl-path} #{})))
 
 (def max-ca-ttl
@@ -301,20 +304,22 @@
   These paths are necessary during CA initialization for determining what needs
   to be created and where they should be placed."
   [ca-settings :- CaSettings]
-  (-> (dissoc ca-settings
-          :access-control
-          :allow-authorization-extensions
-          :allow-duplicate-certs
-          :allow-subject-alt-names
-          :autosign
-          :ca-name
-          :ca-ttl
-          :keylength
-          :manage-internal-file-permissions
-          :ruby-load-path
-          :gem-path
-          :enable-infra-crl)
-      (dissoc (when-not (:enable-infra-crl ca-settings) :infra-crl-path :infra-node-serials-path))))
+  (let [settings' (dissoc ca-settings
+                    :access-control
+                    :allow-authorization-extensions
+                    :allow-duplicate-certs
+                    :allow-subject-alt-names
+                    :autosign
+                    :ca-name
+                    :ca-ttl
+                    :keylength
+                    :manage-internal-file-permissions
+                    :ruby-load-path
+                    :gem-path
+                    :enable-infra-crl)]
+    (if (:enable-infra-crl ca-settings)
+      settings'
+      (dissoc settings' :infra-crl-path :infra-node-serials-path))))
 
 (schema/defn settings->ssldir-paths
   "Remove all keys from the master settings map which are not file or directory
@@ -377,14 +382,14 @@
 (schema/defn dns-alt-names :- [schema/Str]
   "Get the list of DNS alt names on the provided certificate or CSR.
    Each name will be prepended with 'DNS:'."
-  [cert-or-csr :- (schema/either Certificate CertificateRequest)]
+  [cert-or-csr :- CertificateOrCSR]
   (mapv (partial str "DNS:")
         (utils/get-subject-dns-alt-names cert-or-csr)))
 
 (schema/defn subject-alt-names :- [schema/Str]
   "Get the list of both DNS and IP alt names on the provided certificate or CSR.
    Each name will be prepended with 'DNS:' or 'IP:'."
-  [cert-or-csr :- (schema/either Certificate CertificateRequest)]
+  [cert-or-csr :- CertificateOrCSR]
   (into (mapv (partial str "IP:") (utils/get-subject-ip-alt-names cert-or-csr))
         (mapv (partial str "DNS:") (utils/get-subject-dns-alt-names cert-or-csr))))
 
@@ -392,7 +397,7 @@
   "Get the authorization extensions for the certificate or CSR.
   These are extensions that fall under the ppAuthCert OID arc.
   Returns a map of OIDS to values."
-  [cert-or-csr :- (schema/either Certificate CertificateRequest)]
+  [cert-or-csr :- CertificateOrCSR]
   (let [extensions (utils/get-extensions cert-or-csr)
         auth-exts (filter (fn [{:keys [oid]}]
                             (utils/subtree-of? ppAuthCertExt oid))
@@ -635,7 +640,7 @@
     (line-seq (io/reader infra-file)))
 
 (defn- write-infra-serials-to-writer
-  [writer infra-nodes-path infra-node-serials-path signeddir]
+  [writer infra-nodes-path signeddir]
   (try
     (let [infra-nodes (read-infra-nodes infra-nodes-path)]
       (doseq [infra-node infra-nodes]
@@ -645,13 +650,13 @@
                                  (utils/get-serial))]
             (.write writer (str infra-serial))
             (.newLine writer))
-          (catch java.io.FileNotFoundException ex
+          (catch java.io.FileNotFoundException _
             (log/warn
              (i18n/trs
               (str
                "Failed to find/load certificate for Puppet Infrastructure Node:"
                infra-node)))))))
-    (catch java.io.FileNotFoundException ex
+    (catch java.io.FileNotFoundException _
       (log/warn (i18n/trs (str infra-nodes-path " does not exist"))))))
 
 (schema/defn generate-infra-serials
@@ -662,7 +667,6 @@
   (ks-file/atomic-write infra-node-serials-path
                         #(write-infra-serials-to-writer %
                                                         infra-nodes-path
-                                                        infra-node-serials-path
                                                         signeddir)
                         public-key-perms))
 
@@ -816,8 +820,7 @@
     * Each DNS name does not contain a wildcard character (*)"
   [{value :value} :- Extension]
   (let [name-types (keys value)
-        dns-names (:dns-name value)
-        ip-names (:ip value)]
+        dns-names (:dns-name value)]
     (when-not (every? #{:dns-name :ip} name-types)
       (sling/throw+
         {:kind :invalid-alt-name
@@ -980,7 +983,7 @@
     (do
       (ks/mkdirs! (fs/parent localcacert))
       (fs/copy cacert localcacert))
-    (if-not (fs/exists? localcacert)
+    (when-not (fs/exists? localcacert)
       (throw (IllegalStateException.
                (i18n/trs ":localcacert ({0}) could not be found and no file at :cacert ({1}) to copy it from"
                     localcacert cacert))))))
@@ -1098,9 +1101,9 @@
                        ruby-load-path)
                      (map ks/absolute-path)
                      (str/join (System/getProperty "path.separator")))
-        gempath (->> (if-let [gems (get env "GEM_PATH")]
-                       (str gems (System/getProperty "path.separator") gem-path)
-                       gem-path))
+        gempath (if-let [gems (get env "GEM_PATH")]
+                  (str gems (System/getProperty "path.separator") gem-path)
+                  gem-path)
         results (shell-utils/execute-command
                  executable
                  {:args [subject]
@@ -1153,7 +1156,7 @@
   (let [cert-path (if (= "ca" subject)
                     cacert
                     (path-to-cert signeddir subject))]
-    (if (fs/exists? cert-path)
+    (when (fs/exists? cert-path)
       (slurp cert-path))))
 
 (schema/defn ^:always-validate
@@ -1163,18 +1166,18 @@
   [subject :- schema/Str
    csrdir :- schema/Str]
   (let [cert-request-path (path-to-cert-request csrdir subject)]
-    (if (fs/exists? cert-request-path)
+    (when (fs/exists? cert-request-path)
       (slurp cert-request-path))))
 
 (schema/defn ^:always-validate
   autosign-csr? :- schema/Bool
   "Return true if the CSR should be automatically signed given
   Puppet's autosign setting, and false otherwise."
-  ([autosign :- (schema/either schema/Str schema/Bool)
+  ([autosign :- AutoSignInput
     subject :- schema/Str
     csr-stream :- InputStream]
    (autosign-csr? autosign subject csr-stream [] ""))
-  ([autosign :- (schema/either schema/Str schema/Bool)
+  ([autosign :- AutoSignInput
     subject :- schema/Str
     csr-stream :- InputStream
     ruby-load-path :- [schema/Str]
@@ -1293,7 +1296,7 @@
   (let [extensions (utils/get-extensions csr)]
     (doseq [extension extensions]
       (when (utils/subtree-of? ppAuthCertExt (:oid extension))
-        (if (false? allow-authorization-extensions)
+        (when (false? allow-authorization-extensions)
           (sling/throw+
             {:kind :disallowed-extension
              :msg (format "%s %s %s"
@@ -1310,7 +1313,7 @@
   [csr :- CertificateRequest
    allow-subject-alt-names :- schema/Bool]
   (when-let [subject-alt-names (not-empty (subject-alt-names csr))]
-    (if (false? allow-subject-alt-names)
+    (when (false? allow-subject-alt-names)
       (let [subject (get-csr-subject csr)
             cn-alt-name (str "DNS:" subject)]
         (if (and (= 1 (count subject-alt-names))
@@ -1532,7 +1535,7 @@
 
 (schema/defn certificate-state :- CertificateState
   "Determine the state a certificate is in."
-  [cert-or-csr :- (schema/either Certificate CertificateRequest)
+  [cert-or-csr :- CertificateOrCSR
    crl :- CertificateRevocationList]
   (if (utils/certificate-request? cert-or-csr)
     "requested"
@@ -1543,7 +1546,7 @@
 (schema/defn fingerprint :- schema/Str
   "Calculate the hash of the certificate or CSR using the given
    algorithm, which must be one of SHA-1, SHA-256, or SHA-512."
-  [cert-or-csr :- (schema/either Certificate CertificateRequest)
+  [cert-or-csr :- CertificateOrCSR
    algorithm :- schema/Str]
   (->> (utils/fingerprint cert-or-csr algorithm)
        (partition 2)
@@ -1567,7 +1570,7 @@
   [crl :- CertificateRevocationList
    is-cert? :- schema/Bool
    subject :- schema/Str
-   cert-or-csr :- (schema/either Certificate CertificateRequest)]
+   cert-or-csr :- CertificateOrCSR]
   (let [default-fingerprint (fingerprint cert-or-csr "SHA-256")]
     (merge
       {:name              subject
@@ -1581,7 +1584,7 @@
                            :SHA512  (fingerprint cert-or-csr "SHA-512")
                            :default default-fingerprint}}
       ;; Only certificates have expiry dates
-      (if is-cert?
+      (when is-cert?
         (get-certificate-details cert-or-csr)))))
 
 (schema/defn ^:always-validate get-cert-or-csr-status :- CertificateStatusResult
@@ -1734,7 +1737,7 @@
    certificate policy will not be checked.
    If the CSR is invalid, returns a user-facing message.
    Otherwise, returns nil."
-  [{:keys [csrdir allow-subject-alt-names allow-authorization-extensions] :as settings} :- CaSettings
+  [{:keys [csrdir allow-subject-alt-names allow-authorization-extensions] :as _settings} :- CaSettings
    subject :- schema/Str]
   (let [csr         (utils/pem->csr (path-to-cert-request csrdir subject))
         csr-subject (get-csr-subject csr)

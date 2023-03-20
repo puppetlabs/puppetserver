@@ -29,9 +29,9 @@
 ;;; Private
 
 (defn log-access-denied
-  [uri certificate]
   "Log a message to info stating that the client is not in the
    access control whitelist."
+  [uri certificate]
   (let [subject (ssl-utils/get-cn-from-x509-certificate certificate)]
     (log/info
      (format "%s\n%s" (i18n/trs "Client ''{0}'' access to {1} rejected;" subject uri) (i18n/trs "client not found in whitelist configuration.")))))
@@ -112,7 +112,7 @@
    whitelist-settings :- (schema/maybe WhitelistSettings)]
   (let [handler-with-trapperkeeper-authorization (authorization-fn base-handler)]
     (if-let [handler-with-client-whitelist-authorization
-             (if (or (false? (:authorization-required whitelist-settings))
+             (when (or (false? (:authorization-required whitelist-settings))
                      (not-empty (:client-whitelist whitelist-settings)))
                (wrap-with-cert-whitelist-check base-handler whitelist-settings))]
       (fn [request]

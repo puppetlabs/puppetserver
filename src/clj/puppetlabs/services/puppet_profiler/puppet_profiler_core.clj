@@ -1,14 +1,11 @@
 (ns puppetlabs.services.puppet-profiler.puppet-profiler-core
-  (:import (com.codahale.metrics MetricRegistry Timer)
+  (:import (com.codahale.metrics MetricRegistry)
            (com.puppetlabs.puppetserver MetricsPuppetProfiler PuppetProfiler))
   (:require [clojure.string :as str]
             [schema.core :as schema]
             [puppetlabs.kitchensink.core :as ks]
-            [clojure.tools.logging :as log]
             [puppetlabs.trapperkeeper.services.status.status-core :as status-core]
-            [puppetlabs.metrics :as metrics]
-            [puppetlabs.i18n.core :refer [trs]]))
-
+            [puppetlabs.metrics :as metrics]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
