@@ -11,4 +11,4 @@
  "puppetserver-confdir"=>"/etc/puppetlabs/puppetserver/conf.d",
  "puppetserver-config"=>
   "/etc/puppetlabs/puppetserver/conf.d/puppetserver.conf",
- :puppet_build_version=>"addb5176ee5c870668fe6fc5e77766632887348d"}
+ :puppet_build_version=>"dc2700c793f83cc41c62f54210d6ca7917d2a7f2"}
