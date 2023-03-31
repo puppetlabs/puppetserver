@@ -1,4 +1,4 @@
-(def ps-version "7.10.0")
+(def ps-version "7.10.1-SNAPSHOT")
 
 (defn deploy-info
   [url]
