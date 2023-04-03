@@ -765,8 +765,8 @@
 
 
 (def pattern-match-dot #"\.")
-(def pattern-starts-with-alphanumeric #"^\p{Alnum}.*")
-(def pattern-matches-alphanumeric-with-symbols-string #"^[\p{Alnum}.\-_]+\p{Alnum}$")
+(def pattern-starts-with-alphanumeric-or-underscore #"^[\p{Alnum}_].*")
+(def pattern-matches-alphanumeric-with-symbols-string #"^[\p{Alnum}\-_]*[\p{Alnum}_]$")
 
 (schema/defn validate-subject!
   "Validate the CSR or certificate's subject name.  The subject name must:
@@ -795,15 +795,14 @@
       {:kind :invalid-subject-name
        :msg  (i18n/tru "Subject contains a wildcard, which is not allowed: {0}" subject)}))
 
-  (when (or (str/ends-with? subject ".")
-            (str/ends-with? subject "-"))
+  (when (str/ends-with? subject "-")
     (log/info (i18n/tru "Rejecting subject \"{0}\" as it ends with an invalid character" subject))
     (sling/throw+
      {:kind :invalid-subject-name
       :msg  (i18n/tru "Subject hostname format is invalid")}))
 
   (let [segments (str/split subject pattern-match-dot)]
-    (when-not (re-matches pattern-starts-with-alphanumeric (first segments))
+    (when-not (re-matches pattern-starts-with-alphanumeric-or-underscore (first segments))
       (log/info (i18n/tru "Rejecting subject \"{0}\" as it starts with an invalid character" subject))
       (sling/throw+
         {:kind :invalid-subject-name
