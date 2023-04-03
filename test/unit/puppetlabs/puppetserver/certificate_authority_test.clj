@@ -1662,19 +1662,31 @@
          (ca/validate-subject!
           "rootca..example.org" "rootca..example.org"))))
 
-  (testing "an exception is thrown when the hostnames end in dot"
-    (is (thrown+?
-         [:kind :invalid-subject-name
-          :msg "Subject hostname format is invalid"]
-         (ca/validate-subject!
-          "rootca." "rootca."))))
-
-  (testing "PE-35786 an exception is thrown when hostname ends in a dot"
-    (is (thrown+?
-          [:kind :invalid-subject-name
-           :msg "Subject hostname format is invalid"]
+  (testing "subjects that end end in dot are valid"
+    (is (nil?
           (ca/validate-subject!
-            "aaa1a-aaaaaaaaaaaaa-aaaaa-aaaa00." "aaa1a-aaaaaaaaaaaaa-aaaaa-aaaa00."))))
+           "rootca." "rootca."))))
+
+  (testing "subjects that end in an underscore are valid"
+    (is (nil?
+          (ca/validate-subject!
+            "rootca_" "rootca_"))))
+
+  (testing "subjects that start in an underscore are valid"
+    (is (nil?
+          (ca/validate-subject!
+            "_x-puppet._tcp.example.com" "_x-puppet._tcp.example.com"))))
+
+  (testing "single letter segments are valid"
+    (is (nil?
+          (ca/validate-subject!
+            "a.example.com" "a.example.com")))
+    (is (nil?
+          (ca/validate-subject!
+            "_.example.com" "_.example.com")))
+    (is (nil?
+          (ca/validate-subject!
+            "foo.a.example.com" "foo.a.example.com"))))
 
   (testing "Single word hostnames are allowed"
     (is (nil?
