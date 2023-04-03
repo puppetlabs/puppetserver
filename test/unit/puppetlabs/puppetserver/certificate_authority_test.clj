@@ -1669,6 +1669,13 @@
          (ca/validate-subject!
           "rootca." "rootca."))))
 
+  (testing "PE-35786 an exception is thrown when hostname ends in a dot"
+    (is (thrown+?
+          [:kind :invalid-subject-name
+           :msg "Subject hostname format is invalid"]
+          (ca/validate-subject!
+            "aaa1a-aaaaaaaaaaaaa-aaaaa-aaaa00." "aaa1a-aaaaaaaaaaaaa-aaaaa-aaaa00."))))
+
   (testing "Single word hostnames are allowed"
     (is (nil?
          (ca/validate-subject!

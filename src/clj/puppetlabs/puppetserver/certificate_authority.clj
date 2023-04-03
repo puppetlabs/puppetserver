@@ -763,6 +763,11 @@
       (utils/subject-alt-names {:dns-name (conj default-alt-names host-name)} false)
       (utils/subject-alt-names (update alt-names-list :dns-name conj host-name) false))))
 
+
+(def pattern-match-dot #"\.")
+(def pattern-starts-with-alphanumeric #"^\p{Alnum}.*")
+(def pattern-matches-alphanumeric-with-symbols-string #"^[\p{Alnum}.\-_]+\p{Alnum}$")
+
 (schema/defn validate-subject!
   "Validate the CSR or certificate's subject name.  The subject name must:
     * match the hostname specified in the HTTP request (the `subject` parameter)
@@ -771,12 +776,16 @@
     * not contain the wildcard character (*)"
   [hostname :- schema/Str
    subject :- schema/Str]
+  (log/debug (i18n/trs "Checking \"{0}\" for validity" subject))
+
   (when-not (= hostname subject)
+    (log/infof "Rejecting subject \"%s\" because it doesn't match hostname \"%s\"" subject hostname)
     (sling/throw+
       {:kind :hostname-mismatch
-       :msg  (i18n/tru "Instance name \"{0}\" does not match requested key \"{1}\"" subject hostname)}))
+       :msg  (format "Instance name \"%s\" does not match requested key \"%s\"" subject hostname)}))
 
   (when (contains-uppercase? hostname)
+    (log/info (i18n/tru "Rejecting subject \"{0}\" because all characters must be lowercase" subject))
     (sling/throw+
       {:kind :invalid-subject-name
        :msg  (i18n/tru "Certificate names must be lower case.")}))
@@ -785,11 +794,26 @@
     (sling/throw+
       {:kind :invalid-subject-name
        :msg  (i18n/tru "Subject contains a wildcard, which is not allowed: {0}" subject)}))
-  
-  (when-not (re-matches #"^([a-z0-9](?:(?:[a-z0-9\-_]*|(?<!-)\.(?![\-.]))*[a-z0-9]+)?)$" subject)
+
+  (when (or (str/ends-with? subject ".")
+            (str/ends-with? subject "-"))
+    (log/info (i18n/tru "Rejecting subject \"{0}\" as it ends with an invalid character" subject))
     (sling/throw+
-      {:kind :invalid-subject-name
-       :msg  (i18n/tru "Subject hostname format is invalid")})))
+     {:kind :invalid-subject-name
+      :msg  (i18n/tru "Subject hostname format is invalid")}))
+
+  (let [segments (str/split subject pattern-match-dot)]
+    (when-not (re-matches pattern-starts-with-alphanumeric (first segments))
+      (log/info (i18n/tru "Rejecting subject \"{0}\" as it starts with an invalid character" subject))
+      (sling/throw+
+        {:kind :invalid-subject-name
+         :msg  (i18n/tru "Subject hostname format is invalid")}))
+
+    (when-not (every? #(re-matches pattern-matches-alphanumeric-with-symbols-string %) segments)
+      (log/info (i18n/tru "Rejecting subject \"{0}\" because it contains invalid characters" subject))
+      (sling/throw+
+        {:kind :invalid-subject-name
+         :msg  (i18n/tru "Subject hostname format is invalid")}))))
 
 (schema/defn allowed-extension?
   "A predicate that answers if an extension is allowed or not.
