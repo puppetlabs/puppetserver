@@ -65,8 +65,7 @@
           real-ca-service? (= (namespace (tk-services/service-symbol ca-service))
                               "puppetlabs.services.ca.certificate-authority-service")
           ca-settings (ca/config->ca-settings (get-config))
-          ca-route-handler (-> ca-settings
-                               (ca-core/web-routes)
+          ca-route-handler (-> (ca-core/web-routes ca-settings nil)
                                ((partial comidi/context path))
                                comidi/routes->handler)
           ca-handler-info (when

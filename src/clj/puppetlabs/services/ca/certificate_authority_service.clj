@@ -2,22 +2,25 @@
   (:require [clojure.tools.logging :as log]
             [me.raynes.fs :as fs]
             [puppetlabs.trapperkeeper.core :as tk]
-            [puppetlabs.trapperkeeper.services :as tk-services]
+            [puppetlabs.trapperkeeper.services :refer [maybe-get-service] :as tk-services]
             [puppetlabs.trapperkeeper.services.protocols.filesystem-watch-service :as watch-protocol]
             [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.services.ca.certificate-authority-core :as core]
             [puppetlabs.services.protocols.ca :refer [CaService]]
             [puppetlabs.comidi :as comidi]
             [puppetlabs.i18n.core :as i18n]
-            [puppetlabs.trapperkeeper.services.status.status-core :as status-core]))
+            [puppetlabs.trapperkeeper.services.status.status-core :as status-core]
+            [puppetlabs.rbac-client.protocols.activity :refer [ActivityReportingService] :as activity-proto]))
 
 (tk/defservice certificate-authority-service
   CaService
-  [[:PuppetServerConfigService get-config get-in-config]
-   [:WebroutingService add-ring-handler get-route]
-   [:AuthorizationService wrap-with-authorization-check]
-   [:FilesystemWatchService create-watcher]
-   [:StatusService register-status]]
+   {:required 
+    [[:PuppetServerConfigService get-config get-in-config]
+      [:WebroutingService add-ring-handler get-route]
+      [:AuthorizationService wrap-with-authorization-check]
+      [:FilesystemWatchService create-watcher]
+      [:StatusService register-status]]
+   :optional [ActivityReportingService]}
   (init
     [this context]
     (let [path (get-route this)
@@ -31,14 +34,17 @@
           host-crl-file (.getCanonicalPath (fs/file
                                             (get-in-config [:puppetserver :hostcrl])))
           infra-nodes-file (.getCanonicalPath (fs/file (str (fs/parent ca-crl-file) "/infra_inventory.txt")))
-          watcher (create-watcher {:recursive false})]
+          watcher (create-watcher {:recursive false})
+          report-activity (if-let [activity-reporting-service (maybe-get-service this :ActivityReportingService)]
+                            (partial activity-proto/report-activity! activity-reporting-service)
+                            (constantly nil))]
       (ca/validate-settings! settings)
       (ca/initialize! settings)
       (log/info (i18n/trs "CA Service adding a ring handler"))
       (add-ring-handler
         this
         (core/get-wrapped-handler
-          (-> (core/web-routes settings)
+          (-> (core/web-routes settings report-activity)
               ((partial comidi/context path))
               comidi/routes->handler)
           settings

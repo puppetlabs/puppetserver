@@ -43,7 +43,7 @@
 (defn build-ring-handler
   [settings puppet-version]
   (get-wrapped-handler
-    (-> (web-routes settings)
+    (-> (web-routes settings (constantly nil))
         (comidi/routes->handler))
     settings
     ""
@@ -272,14 +272,16 @@
 (deftest handle-delete-certificate-request!-test
   (let [settings (assoc (testutils/ca-sandbox! cadir)
                         :allow-duplicate-certs true
-                        :autosign false)]
+                        :autosign false)
+        request {:authorization {:name "authname"} :remote-addr "1.1.1.1" }]
     (testing "successful csr deletion"
       (logutils/with-test-logging
         (let [subject "happy-agent"
               csr-stream (gen-csr-input-stream! subject)
-              expected-path (ca/path-to-cert-request (:csrdir settings) subject)]
+              expected-path (ca/path-to-cert-request (:csrdir settings) subject)
+              request (assoc request :route-params {:subject subject} :body csr-stream)]
           (try
-            (handle-put-certificate-request! subject csr-stream settings)
+            (handle-put-certificate-request! settings (constantly nil) request)
             (is (true? (fs/exists? expected-path)))
             (let [response (handle-delete-certificate-request! subject settings)
                   msg-matcher (re-pattern (str "Deleted .* for " subject ".*"))]
@@ -289,7 +291,7 @@
               (is (= "text/plain" (get-in response [:headers "Content-Type"])))
               (is (logged? msg-matcher :debug)))
             (finally
-              (fs/delete expected-path))))))
+              (fs/delete expected-path)))))
     (testing "Attempted deletion of a non-existant CSR"
       (logutils/with-test-logging
         (let [subject "not-found-agent"
@@ -306,9 +308,10 @@
       (logutils/with-test-logging
         (let [subject "err-agent"
               csr-stream (gen-csr-input-stream! subject)
-              expected-path (ca/path-to-cert-request (:csrdir settings) subject)]
+              expected-path (ca/path-to-cert-request (:csrdir settings) subject)
+              request (assoc request :route-params {:subject subject} :body csr-stream)]
           (try
-            (handle-put-certificate-request! subject csr-stream settings)
+            (handle-put-certificate-request! settings (constantly nil) request)
             (is (true? (fs/exists? expected-path)))
             (fs/chmod "-w" (fs/parent expected-path))
             (let [response (handle-delete-certificate-request! subject settings)
@@ -318,12 +321,13 @@
                (is (= "text/plain" (get-in response [:headers "Content-Type"])))
                (is (logged? msg-matcher :error)))
             (finally
-              (fs/chmod "+w" (fs/parent expected-path)))))))))
+              (fs/chmod "+w" (fs/parent expected-path))))))))))
 
 (deftest handle-put-certificate-request!-test
   (let [settings   (assoc (testutils/ca-sandbox! cadir)
                      :allow-duplicate-certs true)
-        static-csr (ca/path-to-cert-request csrdir "test-agent")]
+        static-csr (ca/path-to-cert-request csrdir "test-agent")
+        request {:authorization {:name "ca certname"} :remote-addr "1.1.1.1" :route-params {:subject "test-agent"}}]
     (logutils/with-test-logging
       (testing "when autosign results in true"
         (doseq [value [true
@@ -331,13 +335,14 @@
                        (test-autosign-file "autosign-whitelist.conf")]]
           (let [settings      (assoc settings :autosign value)
                 csr-stream    (io/input-stream static-csr)
-                expected-path (ca/path-to-cert (:signeddir settings) "test-agent")]
+                expected-path (ca/path-to-cert (:signeddir settings) "test-agent")
+                request (assoc request :body csr-stream)]
 
             (testing "it signs the CSR, writes the certificate to disk, and
                       returns a 200 response with empty plaintext body"
               (try
                 (is (false? (fs/exists? expected-path)))
-                (let [response (handle-put-certificate-request! "test-agent" csr-stream settings)]
+                (let [response (handle-put-certificate-request! settings (constantly nil) request)]
                   (is (true? (fs/exists? expected-path)))
                   (is (= 200 (:status response)))
                   (is (= "text/plain" (get-in response [:headers "Content-Type"])))
@@ -352,14 +357,13 @@
                                    (.getEncoded))
               settings (assoc settings :autosign true :cacert ca-cert-file)
               csr-stream (io/input-stream static-csr)
-              expected-path (ca/path-to-cert (:signeddir settings) "test-agent")]
+              expected-path (ca/path-to-cert (:signeddir settings) "test-agent")
+              request (assoc request :body csr-stream)]
 
           (testing "a multi-RDN CA subject is properly set as signed cert's issuer"
             (try
               (is (false? (fs/exists? expected-path)))
-              (let [response (handle-put-certificate-request! "test-agent"
-                                                              csr-stream
-                                                              settings)
+              (let [response (handle-put-certificate-request! settings (constantly nil) request)
                     signed-cert-issuer-bytes (-> (utils/pem->cert expected-path)
                                                  (.getIssuerX500Principal)
                                                  (.getEncoded))]
@@ -378,13 +382,14 @@
                        (test-autosign-file "autosign-whitelist.conf")]]
           (let [settings      (assoc settings :autosign value)
                 csr-stream    (io/input-stream (test-pem-file "foo-agent-csr.pem"))
-                expected-path (ca/path-to-cert-request (:csrdir settings) "foo-agent")]
+                expected-path (ca/path-to-cert-request (:csrdir settings) "foo-agent")
+                request (assoc request :route-params {:subject "foo-agent"} :body csr-stream)]
 
             (testing "it writes the CSR to disk and returns a
                      200 response with empty plaintext body"
               (try
                 (is (false? (fs/exists? expected-path)))
-                (let [response (handle-put-certificate-request! "foo-agent" csr-stream settings)]
+                (let [response (handle-put-certificate-request! settings (constantly nil) request)]
                   (is (true? (fs/exists? expected-path)))
                   (is (false? (fs/exists? (ca/path-to-cert (:signeddir settings) "foo-agent"))))
                   (is (= 200 (:status response)))
@@ -396,10 +401,11 @@
       (testing "when $allow-duplicate-certs is false and we receive a new CSR,
                 return a 400 response and error message"
         (let [settings   (assoc settings :allow-duplicate-certs false)
-              csr-stream (io/input-stream static-csr)]
+              csr-stream (io/input-stream static-csr)
+              request    (assoc request :route-params {:subject "test-agent"} :body csr-stream)]
           ;; Put the duplicate in place
           (fs/copy static-csr (ca/path-to-cert-request (:csrdir settings) "test-agent"))
-          (let [response (handle-put-certificate-request! "test-agent" csr-stream settings)]
+          (let [response (handle-put-certificate-request! settings (constantly nil) request)]
             (is (logged? #"ignoring certificate request" :error))
             (is (= 400 (:status response)))
             (is (true? (.contains (:body response) "ignoring certificate request"))))))
@@ -407,7 +413,8 @@
       (testing "when the subject CN on a CSR does not match the hostname specified
                 in the URL, the response is a 400"
         (let [csr-stream (io/input-stream static-csr)
-              response   (handle-put-certificate-request! "NOT-test-agent" csr-stream settings)]
+              request (assoc request :route-params {:subject "NOT-test-agent"} :body csr-stream)
+              response   (handle-put-certificate-request! settings (constantly nil) request)]
           (is (= 400 (:status response)))
           (is (re-matches
                #"Instance name \"test-agent\" does not match requested key \"NOT-test-agent\""
@@ -416,8 +423,8 @@
       (testing "when the public key on the CSR is bogus, the response is a 400"
         (let [csr-with-bad-public-key (test-pem-file "luke.madstop.com-bad-public-key.pem")
               csr-stream              (io/input-stream csr-with-bad-public-key)
-              response                (handle-put-certificate-request!
-                                       "luke.madstop.com" csr-stream settings)]
+              request                 (assoc request :route-params {:subject "luke.madstop.com"} :body csr-stream)
+              response                (handle-put-certificate-request! settings (constantly nil) request)]
           (is (= 400 (:status response)))
           (is (= "CSR contains a public key that does not correspond to the signing key"
                  (:body response)))))
@@ -425,16 +432,16 @@
       (testing "when the CSR has disallowed extensions on it, the response is a 400"
         (let [csr-with-bad-ext (test-pem-file "meow-bad-extension.pem")
               csr-stream       (io/input-stream csr-with-bad-ext)
-              response         (handle-put-certificate-request!
-                                "meow" csr-stream settings)]
+              request          (assoc request :route-params {:subject "meow"} :body csr-stream)
+              response         (handle-put-certificate-request! settings (constantly nil) request)]
           (is (= 400 (:status response)))
           (is (= "Found extensions that are not permitted: 1.9.9.9.9.9.9"
                  (:body response))))
 
         (let [csr-with-bad-ext (test-pem-file "woof-bad-extensions.pem")
               csr-stream       (io/input-stream csr-with-bad-ext)
-              response         (handle-put-certificate-request!
-                                "woof" csr-stream settings)]
+              request          (assoc request :route-params {:subject "woof"} :body csr-stream)
+              response         (handle-put-certificate-request! settings (constantly nil) request)]
           (is (= 400 (:status response)))
           (is (= "Found extensions that are not permitted: 1.9.9.9.9.9.0, 1.9.9.9.9.9.1"
                  (:body response)))))
@@ -452,8 +459,8 @@
 
           (doseq [{:keys [subject csr]} bad-csrs]
             (let [csr-stream (io/input-stream csr)
-                  response   (handle-put-certificate-request!
-                              subject csr-stream settings)]
+                  request    (assoc request :route-params {:subject subject} :body csr-stream)
+                  response   (handle-put-certificate-request! settings nil request)]
               (is (= 400 (:status response)))
               (is (= "Subject hostname format is invalid"
                      (:body response)))))))
@@ -461,8 +468,8 @@
       (testing "no wildcards allowed"
         (let [csr-with-wildcard (test-pem-file "bad-subject-name-wildcard.pem")
               csr-stream        (io/input-stream csr-with-wildcard)
-              response          (handle-put-certificate-request!
-                                 "foo*bar" csr-stream settings)]
+              request           (assoc request :route-params {:subject "foo*bar"} :body csr-stream)
+              response          (handle-put-certificate-request! settings (constantly nil) request)]
           (is (= 400 (:status response)))
           (is (= "Subject contains a wildcard, which is not allowed: foo*bar"
                  (:body response)))))
@@ -470,17 +477,18 @@
      (testing "a CSR w/ DNS alt-names and disallowed subject-alt-names gets a specific error response"
        (let [csr (io/input-stream (test-pem-file "hostwithaltnames.pem"))
              settings (assoc settings :allow-subject-alt-names false)
-             response (handle-put-certificate-request!
-                       "hostwithaltnames" csr settings)]
+             request (assoc request :route-params {:subject "hostwithaltnames"} :body csr)
+             response (handle-put-certificate-request! settings (constantly nil) request)]
          (is (= 400 (:status response)))
          (is (re-find #"hostwithaltnames.*disallowed" (:body response)))))
 
      (testing "a CSR w/ DNS alt-names and allowed subject-alt-names returns 200"
        (let [csr (io/input-stream (test-pem-file "hostwithaltnames.pem"))
              settings (assoc settings :allow-subject-alt-names true)
-             expected-path (ca/path-to-cert-request (:csrdir settings) "hostwithaltnames")]
+             expected-path (ca/path-to-cert-request (:csrdir settings) "hostwithaltnames")
+             request (assoc request :route-params {:subject "hostwithaltnames"} :body csr)]
          (try
-           (let [response (handle-put-certificate-request! "hostwithaltnames" csr settings)]
+           (let [response (handle-put-certificate-request! settings (constantly nil) request)]
              (is (= 200 (:status response)))
              (is (= "text/plain" (get-in response [:headers "Content-Type"])))
              (is (nil? (:body response))))
@@ -490,17 +498,18 @@
      (testing "a CSR w/ DNS and IP alt-names and disallowed subject-alt-names gets a specific error response"
        (let [csr (io/input-stream (test-pem-file "host-with-ip-and-dns-altnames.pem"))
              settings (assoc settings :allow-subject-alt-names false)
-             response (handle-put-certificate-request!
-                       "host-with-ip-and-dns-altnames" csr settings)]
+             request (assoc request :route-params {:subject "host-with-ip-and-dns-altnames"} :body csr)
+             response (handle-put-certificate-request! settings (constantly nil) request)]
          (is (= 400 (:status response)))
          (is (re-find #"host-with-ip-and-dns-altnames" (:body response)))))
 
      (testing "a CSR w/ DNS and IP alt-names and allowed subject-alt-names returns 200"
        (let [csr (io/input-stream (test-pem-file "host-with-ip-and-dns-altnames.pem"))
              settings (assoc settings :allow-subject-alt-names true)
-             expected-path (ca/path-to-cert-request (:csrdir settings) "host-with-ip-and-dns-altnames")]
+             expected-path (ca/path-to-cert-request (:csrdir settings) "host-with-ip-and-dns-altnames")
+             request (assoc request :route-params {:subject "host-with-ip-and-dns-altnames"} :body csr)]
          (try
-           (let [response (handle-put-certificate-request! "host-with-ip-and-dns-altnames" csr settings)]
+           (let [response (handle-put-certificate-request! settings (constantly nil) request)]
              (is (= 200 (:status response)))
              (is (= "text/plain" (get-in response [:headers "Content-Type"])))
              (is (nil? (:body response))))
@@ -510,9 +519,10 @@
      (testing "a CSR w/ auth extensions and allowed auth extensions returns 200"
        (let [csr (io/input-stream (test-pem-file "csr-auth-extension.pem"))
              settings (assoc settings :allow-authorization-extensions true)
-             expected-path (ca/path-to-cert-request (:csrdir settings) "csr-auth-extension")]
+             expected-path (ca/path-to-cert-request (:csrdir settings) "csr-auth-extension")
+             request (assoc request :route-params {:subject "csr-auth-extension"} :body csr)]
          (try
-           (let [response (handle-put-certificate-request! "csr-auth-extension" csr settings)]
+           (let [response (handle-put-certificate-request! settings (constantly nil) request)]
              (is (= 200 (:status response)))
              (is (= "text/plain" (get-in response [:headers "Content-Type"])))
              (is (nil? (:body response))))
@@ -522,9 +532,54 @@
      (testing "a CSR w/ auth extensions and disallowed auth extensions gets a specific error response"
        (let [csr (io/input-stream (test-pem-file "csr-auth-extension.pem"))
              settings (assoc settings :allow-authorization-extensions false)
-             response (handle-put-certificate-request! "csr-auth-extension" csr settings)]
+             request (assoc request :route-params {:subject "csr-auth-extension"} :body csr)
+             response (handle-put-certificate-request! settings (constantly nil) request)]
          (is (= 400 (:status response)))
-         (is (re-find #"csr-auth-extension.*disallowed" (:body response))))))))
+         (is (re-find #"csr-auth-extension.*disallowed" (:body response)))))
+         
+      (testing "when authname provided on signing"
+        (logutils/with-test-logging
+          (let [csr-stream    (io/input-stream static-csr)
+                signee "authname"
+                certname "test-agent"
+                request {:authorization {:name signee} :remote-addr "1.1.1.1" :body csr-stream :route-params {:subject certname}}
+                msg-matcher (re-pattern (str "Entity " signee " signed 1 certificate: " certname))
+                expected-path (ca/path-to-cert (:signeddir settings) certname)]
+            (try
+              (let [response (handle-put-certificate-request! settings (constantly nil) request)]
+                (is (= 200 (:status response)))
+                (is (logged? msg-matcher :info)))
+            (finally
+              (fs/delete expected-path))))))
+
+      (testing "when rbac-subject provided on signing"
+        (logutils/with-test-logging
+          (let [csr-stream    (io/input-stream static-csr)
+                signee "rbac-subject"
+                certname "test-agent"
+                request {:rbac-subject {:login signee} :remote-addr "1.1.1.1" :body csr-stream :route-params {:subject certname}}
+                msg-matcher (re-pattern (str "Entity " signee " signed 1 certificate: " certname))
+                expected-path (ca/path-to-cert (:signeddir settings) certname)]
+            (try
+              (let [response (handle-put-certificate-request! settings (constantly nil) request)]
+                (is (= 200 (:status response))) 
+                (is (logged? msg-matcher :info)))
+            (finally
+              (fs/delete expected-path))))))
+
+      (testing "when no signee info provided"
+        (logutils/with-test-logging
+          (let [csr-stream    (io/input-stream static-csr)
+                 certname "test-agent"
+                 request {:remote-addr "1.1.1.1" :body csr-stream :route-params {:subject certname}}
+                 msg-matcher (re-pattern (str "Entity CA signed 1 certificate: " certname))
+                 expected-path (ca/path-to-cert (:signeddir settings) certname)]
+            (try
+              (let [response (handle-put-certificate-request! settings (constantly nil) request)]
+                (is (= 200 (:status response)))
+                (is (logged? msg-matcher :info)))
+            (finally
+              (fs/delete expected-path)))))))))
 
 (deftest certificate-status-test
   (testing "read requests"

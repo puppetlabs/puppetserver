@@ -15,7 +15,10 @@
    [puppetlabs.services.ca.certificate-authority-core :refer [handle-get-certificate-revocation-list]]
    [ring.mock.request :as mock]
    [clj-time.format :as time-format]
-   [clj-time.core :as time])
+   [clj-time.core :as time]
+   [puppetlabs.trapperkeeper.services :as tk-services]
+   [puppetlabs.rbac-client.protocols.activity :as act-proto]
+   [puppetlabs.rbac-client.testutils.dummy-rbac-service :refer [dummy-rbac-service]])
   (:import (javax.net.ssl SSLException)))
 
 (def test-resources-dir
@@ -272,6 +275,7 @@
 
 (deftest ^:integration crl-reloaded-without-server-restart
   (testutils/with-stub-puppet-conf
+    (with-redefs [act-proto/report-activity! (fn [_ _] nil)]
     (bootstrap/with-puppetserver-running
       app
       {:jruby-puppet
@@ -339,10 +343,11 @@
                     (zero? times) false
                     :else (do
                             (Thread/sleep 500)
-                            (recur (dec times))))))))))))
+                            (recur (dec times)))))))))))))
 
 (deftest ^:integration revoke-compiler-test
   (testing "Compiler certificate revocation "
+   (with-redefs [act-proto/report-activity! (fn [_ _] nil)]
     (testutils/with-config-dirs
       {(str test-resources-dir "/infracrl_test/master/conf/ssl") (str bootstrap/server-conf-dir "/ssl")
        (str test-resources-dir "/infracrl_test/master/conf/ca") (str bootstrap/server-conf-dir "/ca")}
@@ -445,9 +450,10 @@
                 (is (map? crl-response))
                 (is (= 200 (:status crl-response)))
                 (is (string? crl-response-body))
-                (is (= crl-response-body (slurp ca-crl))))))))))
+                (is (= crl-response-body (slurp ca-crl)))))))))))
 
 (deftest ^:integration clean-infrastructure-certs
+  (with-redefs [act-proto/report-activity! (fn [_ _] nil)]
   (testutils/with-config-dirs
     {(str test-resources-dir "/infracrl_test/master/conf/ssl") (str bootstrap/server-conf-dir "/ssl")
      (str test-resources-dir "/infracrl_test/master/conf/ca") (str bootstrap/server-conf-dir "/ca")}
@@ -493,12 +499,13 @@
                                       ca-cert)
                                      cert2))
                  (is (false? (fs/exists? cert1-path)))
-                 (is (false? (fs/exists? cert2-path))))))))))))
+                 (is (false? (fs/exists? cert2-path)))))))))))))
 
 
 (deftest ^:integration certificate-status-returns-auth-ext-info
   (testing (str "Validates that the certificate_status endpoint"
                 "includes authorization extensions for certs and CSRs")
+    (with-redefs [act-proto/report-activity! (fn [_ _] nil)]
     (let [request-dir (str bootstrap/server-conf-dir "/ca/requests")
           key-pair (ssl-utils/generate-key-pair)
           subjectDN (ssl-utils/cn "test_cert_with_auth_ext")
@@ -551,7 +558,7 @@
             (let [status-body (json/parse-string (:body status-response))]
               (is (= auth-exts (get status-body "authorization_extensions")))
               (is (= "signed" (get status-body "state"))))))))
-    (fs/delete (str bootstrap/server-conf-dir "/ca/signed/test_cert_with_auth_ext.pem"))))
+    (fs/delete (str bootstrap/server-conf-dir "/ca/signed/test_cert_with_auth_ext.pem")))))
 
 (deftest csr-api-test
   (testutils/with-stub-puppet-conf
@@ -598,6 +605,191 @@
            (is (= 204 (:status response)))
            (is (not (fs/exists? saved-csr)))))
        (fs/delete csr-file)))))
+
+(deftest csr-activity-service-cert
+  (let [reported-activity (atom [])
+        test-service (tk-services/service
+                  act-proto/ActivityReportingService
+                  []
+                  (report-activity! [_this body]
+                    (swap! reported-activity conj body)))
+        cert-path (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")
+        key-path (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
+        ca-cert-path (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+        crl-path (str bootstrap/server-conf-dir "/ssl/crl.pem")]
+
+    (testutils/with-stub-puppet-conf
+        (bootstrap/with-puppetserver-running-with-services
+          app
+          (concat (bootstrap/services-from-dev-bootstrap) [test-service])
+          (bootstrap/load-dev-config-with-overrides
+          {:jruby-puppet
+            {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
+           :webserver
+            {:ssl-cert cert-path
+             :ssl-key key-path
+             :ssl-ca-cert ca-cert-path
+             :ssl-crl-path crl-path}})
+          (let [certname "test_cert"
+                csr (ssl-utils/generate-certificate-request
+                     (ssl-utils/generate-key-pair)
+                     (ssl-utils/cn certname))
+                csr-path (str bootstrap/server-conf-dir "/ca/requests/" certname ".pem")
+                status-url (str "https://localhost:8140/puppet-ca/v1/certificate_status/" certname)
+                request-opts {:ssl-cert cert-path
+                              :ssl-key key-path
+                              :ssl-ca-cert ca-cert-path}
+                requester-name (-> (ssl-utils/pem->ca-cert cert-path key-path)
+                                   (ssl-utils/get-subject-from-x509-certificate)
+                                   (ssl-utils/x500-name->CN))]
+
+
+            (ssl-utils/obj->pem! csr csr-path)
+
+            (testing "Sign the waiting CSR"
+              (let [response (http-client/put
+                              status-url
+                              (merge request-opts
+                                     {:body "{\"desired_state\": \"signed\"}"
+                                      :headers {"content-type" "application/json"}}))
+                    activity-events (get-in (first @reported-activity) [:commit :events])
+                    msg-matcher (re-pattern (str "Entity " requester-name " signed 1 certificate: " certname))]
+                (is (= 204 (:status response)))
+                (is (re-find msg-matcher (:message (first activity-events))))
+                (is (= 1 (count @reported-activity)))))
+
+            (testing "Revoke the cert"
+              (let [response (http-client/put
+                              status-url
+                              (merge request-opts
+                                     {:body "{\"desired_state\": \"revoked\"}"
+                                      :headers {"content-type" "application/json"}}))
+                    activity-events (get-in (second @reported-activity) [:commit :events])
+                    msg-matcher (re-pattern (str "Entity " requester-name " revoked 1 certificate: " certname))]
+                (is (= 204 (:status response)))
+                (is (re-find msg-matcher (:message (first activity-events))))
+                (is (= 2 (count @reported-activity)))))
+
+            (fs/delete csr-path))))))
+
+(deftest csr-activity-service-token
+
+  (let [reported-activity (atom [])
+        test-service (tk-services/service
+                  act-proto/ActivityReportingService
+                  []
+                  (report-activity! [_this body]
+                    (swap! reported-activity conj body)))]
+
+  (testutils/with-stub-puppet-conf
+      (bootstrap/with-puppetserver-running-with-services
+        app
+        (concat (bootstrap/services-from-dev-bootstrap) [test-service dummy-rbac-service])
+        (bootstrap/load-dev-config-with-overrides
+        {:jruby-puppet
+          {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
+          :webserver
+          {:ssl-cert (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")
+          :ssl-key (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
+          :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+          :ssl-crl-path (str bootstrap/server-conf-dir "/ssl/crl.pem")}
+         :authorization {:version 1
+                        :rules [{:match-request
+                                {:path "/"
+                                  :type "path"}
+                        :allow [{:rbac {:permission "cert_requests:accept_reject:*"}}]
+                        :sort-order 1
+                        :name "cert"}]}})
+        (let [request-dir (str bootstrap/server-conf-dir "/ca/requests")
+              key-pair (ssl-utils/generate-key-pair)
+              certname "test_cert"
+              subjectDN (ssl-utils/cn certname)
+              csr (ssl-utils/generate-certificate-request key-pair subjectDN)
+              saved-csr (str request-dir "/test_cert.pem")
+              status-url (str "https://localhost:8140/puppet-ca/v1/certificate_status/" certname)
+              request-opts {:ssl-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                            :ssl-key (str bootstrap/server-conf-dir "/ca/ca_key.pem")
+                            :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")}]
+              (ssl-utils/obj->pem! csr saved-csr)
+
+              (testing "Sign the waiting CSR"
+                (let [response (http-client/put
+                                status-url
+                                (merge request-opts {:body "{\"desired_state\": \"signed\"}"
+                                                      :headers {"content-type" "application/json" "X-Authentication" "test"}}))
+                      activity-events (get-in (first @reported-activity) [:commit :events])
+                      msg-matcher (re-pattern (str "Entity test_user signed 1 certificate: " certname))]
+                  (is (= 204 (:status response)))
+                  (is (re-find msg-matcher (:message (first activity-events))))
+                  (is (= 1 (count @reported-activity)))))
+
+              (testing "Revoke the cert"
+                (let [response (http-client/put
+                  status-url
+                  (merge request-opts {:body "{\"desired_state\": \"revoked\"}"
+                                        :headers {"content-type" "application/json" "X-Authentication" "test"}}))
+                      activity-events (get-in (second @reported-activity) [:commit :events])
+                      msg-matcher (re-pattern (str "Entity test_user revoked 1 certificate: " certname))]
+                  
+                  (is (= 204 (:status response)))
+                  (is (re-find msg-matcher (:message (first activity-events))))
+                  (is (= 2 (count @reported-activity)))))
+              
+              (fs/delete saved-csr))))))
+
+(deftest csr-activity-service-default
+
+  (let [reported-activity (atom [])
+        test-service (tk-services/service
+                  act-proto/ActivityReportingService
+                  []
+                  (report-activity! [_this body]
+                    (swap! reported-activity conj body)))]
+
+  (testutils/with-stub-puppet-conf
+      (bootstrap/with-puppetserver-running-with-services
+        app
+        (concat (bootstrap/services-from-dev-bootstrap) [test-service])
+
+        (update-in (bootstrap/load-dev-config-with-overrides
+        {:jruby-puppet
+          {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
+           :webserver {:host "0.0.0.0"
+                       :port 8140}}) [:webserver] dissoc :ssl-host :ssl-port)
+
+        (let [request-dir (str bootstrap/server-conf-dir "/ca/requests")
+              key-pair (ssl-utils/generate-key-pair)
+              certname "test_cert"
+              subjectDN (ssl-utils/cn certname)
+              csr (ssl-utils/generate-certificate-request key-pair subjectDN)
+              saved-csr (str request-dir "/test_cert.pem")
+              status-url (str "http://localhost:8140/puppet-ca/v1/certificate_status/" certname)
+              request-opts {}]
+          (ssl-utils/obj->pem! csr saved-csr)
+
+          (testing "Sign the waiting CSR"
+            (let [response (http-client/put
+                            status-url
+                            (merge request-opts {:body "{\"desired_state\": \"signed\"}"
+                                                  :headers {"content-type" "application/json"}}))
+                  activity-events (get-in (first @reported-activity) [:commit :events])
+                  msg-matcher (re-pattern (str "Entity CA signed 1 certificate: " certname))]
+              (is (= 204 (:status response)))
+              (is (re-find msg-matcher (:message (first activity-events))))
+              (is (= 1 (count @reported-activity)))))
+
+          (testing "Revoke the cert"
+            (let [response (http-client/put
+              status-url
+              (merge request-opts {:body "{\"desired_state\": \"revoked\"}"
+                                    :headers {"content-type" "application/json"}}))
+              activity-events (get-in (second @reported-activity) [:commit :events])
+              msg-matcher (re-pattern (str "Entity CA revoked 1 certificate: " certname))]
+              (is (= 204 (:status response)))
+              (is (re-find msg-matcher (:message (first activity-events))))
+              (is (= 2 (count @reported-activity)))))
+              
+              (fs/delete saved-csr))))))
 
 (deftest ca-expirations-endpoint-test
   (testing "returns expiration dates for all CA certs and CRLs"
