@@ -69,7 +69,11 @@ msgid "Initializing SSL for the CA; settings:"
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
-msgid "Instance name \"{0}\" does not match requested key \"{1}\""
+msgid "Checking \"{0}\" for validity"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Rejecting subject \"{0}\" because all characters must be lowercase"
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
@@ -81,7 +85,19 @@ msgid "Subject contains a wildcard, which is not allowed: {0}"
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Rejecting subject \"{0}\" as it ends with an invalid character"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 msgid "Subject hostname format is invalid"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Rejecting subject \"{0}\" as it starts with an invalid character"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Rejecting subject \"{0}\" because it contains invalid characters"
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj

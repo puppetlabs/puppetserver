@@ -1,4 +1,4 @@
-(def ps-version "7.10.1-SNAPSHOT")
+(def ps-version "7.11.1-SNAPSHOT")
 
 (defn deploy-info
   [url]
@@ -95,6 +95,7 @@
                        :group "puppet"
                        :numeric-uid-gid 52
                        :build-type "foss"
+                       :puppet-platform-version 7
                        :java-args ~(str "-Xms2g -Xmx2g "
                                      "-Djruby.logger.class=com.puppetlabs.jruby_utils.jruby.Slf4jLogger")
                        :create-dirs ["/opt/puppetlabs/server/data/puppetserver/jars"]
@@ -172,7 +173,7 @@
                                                [puppetlabs/jruby-utils :exclusions [puppetlabs/jruby-deps]]
                                                [puppetlabs/puppetserver ~ps-version]
                                                [puppetlabs/trapperkeeper-webserver-jetty9]]
-                      :plugins [[puppetlabs/lein-ezbake "2.3.2"]]
+                      :plugins [[puppetlabs/lein-ezbake "2.4.1"]]
                       :name "puppetserver"}
              :uberjar {:dependencies [[org.bouncycastle/bcpkix-jdk18on]
                                       [puppetlabs/trapperkeeper-webserver-jetty9]]
