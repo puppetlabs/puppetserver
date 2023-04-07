@@ -95,7 +95,7 @@
                        :group "puppet"
                        :numeric-uid-gid 52
                        :build-type "foss"
-                       :puppet-platform-version 7
+                       :puppet-platform-version 8
                        :java-args ~(str "-Xms2g -Xmx2g "
                                      "-Djruby.logger.class=com.puppetlabs.jruby_utils.jruby.Slf4jLogger")
                        :create-dirs ["/opt/puppetlabs/server/data/puppetserver/jars"]
