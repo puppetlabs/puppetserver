@@ -92,6 +92,7 @@
                        :group "puppet"
                        :numeric-uid-gid 52
                        :build-type "foss"
+                       :puppet-platform-version 7
                        :java-args ~(str "-Xms2g -Xmx2g "
                                      "-Djruby.logger.class=com.puppetlabs.jruby_utils.jruby.Slf4jLogger")
                        :create-dirs ["/opt/puppetlabs/server/data/puppetserver/jars"]
@@ -168,7 +169,7 @@
                                                [puppetlabs/jruby-utils]
                                                [puppetlabs/puppetserver ~ps-version]
                                                [puppetlabs/trapperkeeper-webserver-jetty9]]
-                      :plugins [[puppetlabs/lein-ezbake "2.3.2"]]
+                      :plugins [[puppetlabs/lein-ezbake "2.4.1"]]
                       :name "puppetserver"}
              :uberjar {:dependencies [[org.bouncycastle/bcpkix-jdk18on]
                                       [puppetlabs/trapperkeeper-webserver-jetty9]]
