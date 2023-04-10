@@ -1,9 +1,9 @@
 source ENV['GEM_SOURCE'] || 'https://artifactory.delivery.puppetlabs.net/artifactory/api/gems/rubygems/'
 
 def location_for(place, fake_version = nil)
-  if place =~ /^(git[:@][^#]*)#(.*)/
+  if place.is_a?(String) && place =~ /^(git[:@][^#]*)#(.*)/
     [fake_version, { :git => $1, :branch => $2, :require => false }].compact
-  elsif place =~ /^file:\/\/(.*)/
+  elsif place.is_a?(String) && place =~ /^file:\/\/(.*)/
     ['>= 0', { :path => File.expand_path($1), :require => false }]
   else
     [place, { :require => false }]
@@ -31,6 +31,6 @@ group :test do
   gem 'docker-api', '1.31.0'
 end
 
-if File.exists? "#{__FILE__}.local"
+if File.exist? "#{__FILE__}.local"
   eval(File.read("#{__FILE__}.local"), binding)
 end
