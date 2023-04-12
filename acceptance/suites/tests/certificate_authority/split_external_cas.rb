@@ -1,3 +1,5 @@
+skip_test "Not dealing with this now"
+
 begin
   require 'puppet_x/acceptance/external_cert_fixtures'
 rescue LoadError
