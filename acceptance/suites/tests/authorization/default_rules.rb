@@ -46,7 +46,7 @@ end
 
 def report_query(node)
   curl = "/puppet/v3/report/#{node}?environment=production "
-  curl += '-X PUT -H "Content-Type: text/pson" '
+  curl += '-X PUT -H "Content-Type: application/json" '
   curl += '--data "{\"host\":\"' + node
   curl += '\",\"metrics\":{},\"logs\":[],\"resource_statuses\":{}}"'
 end
