@@ -12,7 +12,7 @@ test_name "Ensure Puppet Server's HTTP client may use external cert chains" do
   generate_self_signed_cert = "openssl req -new -newkey rsa:2048 -days 365 -nodes -x509 -keyout #{server_key} -out #{server_cert} -batch -addext 'subjectAltName = DNS:#{master}'"
   run_server = "/opt/puppetlabs/puppet/bin/ruby #{server_rb} &"
   kill_server = 'ps -ef | grep server.rb | grep -v grep | ruby -ne \'puts $_.split[1]\' | xargs -r kill' # `xargs -r` is a GNUism.
-  wait_for_server = "while [[ 0 -ne `curl -ksw '%{exitcode}' 'https://#{master}:7777/' | tail -1` ]]; do echo 'sleeping and waiting'; sleep 2; done"
+  wait_for_server = "for i in {1..40}; do if [[ 0 -ne `curl -ksw '%{exitcode}' 'https://#{master}:7777/' | tail -1` ]]; then echo 'sleeping and waiting'; sleep 2; else break; fi; done"
 
   server_script = <<EOF
     require 'webrick'
