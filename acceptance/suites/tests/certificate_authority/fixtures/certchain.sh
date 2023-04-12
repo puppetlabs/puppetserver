@@ -142,7 +142,7 @@ OPENSSL_TMP
                  
                 default_crl_days = 7300
                 default_days = 7300
-                default_md = sha1
+                default_md = sha256
                  
                 policy = root_ca_policy
                 x509_extensions = root_ca_exts
@@ -168,7 +168,7 @@ OPENSSL_TMP
                  
                 default_crl_days = 7300
                 default_days = 7300
-                default_md = sha1
+                default_md = sha256
                  
                 policy = master_ca_policy
                 x509_extensions = master_ca_exts
@@ -183,7 +183,7 @@ OPENSSL_TMP
                  
                 default_crl_days = 7300
                 default_days = 7300
-                default_md = sha1
+                default_md = sha256
                  
                 email_in_dn = yes
 
@@ -272,7 +272,11 @@ create_leaf_cert() {
     local dir="${B}/leaves"
     local fname="${fqdn}.issued_by.${ca}"
 
-    [ -n "$exts" ] && exts="-extensions $exts"
+    if [[ -n "$exts" ]]; then
+        exts="-extensions $exts"
+    else
+        exts=
+    fi
 
     mkdir -p "${dir}"
     (   cd "${dir}"
@@ -281,7 +285,7 @@ create_leaf_cert() {
         openssl req -subj "/CN=${fqdn}" -new -key "${fname}.key" -out "${fname}.csr"
         CN="${fqdn}" SAN="DNS:${fqdn}, DNS:${fqdn%%.*}, DNS:puppet, DNS:puppetmaster" \
           openssl ca -config "${B}/${ca}/openssl.conf" -in "${fname}.csr" -notext \
-          -out "${fname}.crt" -batch "$exts"
+          -out "${fname}.crt" -batch $exts
     )
     show_cert "${dir}/${fname}.crt"
 }
@@ -311,6 +315,12 @@ create_leaf_email_cert() {
     local dir="${B}/leaves"
     local fname="${fqdn}.issued_by.${ca}"
 
+    if [[ -n "$exts" ]]; then
+        exts="-extensions $exts"
+    else
+        exts=
+    fi
+
     mkdir -p "${dir}"
     (   cd "${dir}"
 
@@ -318,7 +328,7 @@ create_leaf_email_cert() {
         openssl req -subj "/CN=${fqdn}/emailAddress=test@example.com" -new -key "${fname}.key" -out "${fname}.csr"
 
         openssl ca -config "${B}/${ca}/openssl.conf" -name master_ca_email_config \
-          -in "${fname}.csr" -notext -out "${fname}.crt" -batch "$exts_arg"
+          -in "${fname}.csr" -notext -out "${fname}.crt" -batch $exts
     )
     show_cert "${dir}/${fname}.crt"
 }
