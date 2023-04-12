@@ -1,15 +1,6 @@
-skip_test "Not dealing with this now"
-
-begin
-  require 'puppet_x/acceptance/external_cert_fixtures'
-rescue LoadError
-  $LOAD_PATH.unshift(File.expand_path('../../../lib', __FILE__))
-  require 'puppet_x/acceptance/external_cert_fixtures'
-end
+require 'puppet_x/acceptance/external_cert_fixtures'
 
 confine :except, :type => 'pe'
-
-skip_test "Test only supported on Jetty" unless @options[:is_puppetserver]
 
 # Verify that a trivial manifest can be run to completion.
 # Supported Setup: Single, Root CA
