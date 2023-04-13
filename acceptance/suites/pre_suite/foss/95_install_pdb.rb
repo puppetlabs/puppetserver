@@ -15,7 +15,6 @@ step 'Install Puppet nightly repo' do
 end
 
 step 'Update EL 8 postgresql repos' do
-  puts master.platform
   if master.platform =~ /el-8/
     # work around for testing on rhel8 and the repos on the image not finding the pg packages it needs
     on master, "dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-8-x86_64/pgdg-redhat-repo-latest.noarch.rpm"
@@ -50,5 +49,3 @@ SITEPP
     on(master, puppet_agent("--test --server #{master}"), :acceptable_exit_codes => [0,2])
   end
 end
-
-on master, "rpm -qa | grep puppet"
