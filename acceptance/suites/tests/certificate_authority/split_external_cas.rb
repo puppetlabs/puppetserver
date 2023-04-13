@@ -1,13 +1,6 @@
-begin
-  require 'puppet_x/acceptance/external_cert_fixtures'
-rescue LoadError
-  $LOAD_PATH.unshift(File.expand_path('../../../lib', __FILE__))
-  require 'puppet_x/acceptance/external_cert_fixtures'
-end
+require 'puppet_x/acceptance/external_cert_fixtures'
 
 confine :except, :type => 'pe'
-
-skip_test "Test only supported on Jetty" unless @options[:is_puppetserver]
 
 # Verify that a trivial manifest can be run to completion.
 # Supported Setup: Single, Root CA
@@ -159,20 +152,5 @@ with_puppet_running_on(master, master_opts) do
     assert exit_code == 1
   end
 end
-
-create_remote_file master, "#{jetty_confdir}/webserver.conf",
-                   fixtures.jetty_webserver_conf_for_rogue_master
-
-# The error messaging around this has changed with the merge of
-# PUP-9094. This should be uncommented and updated once that is fixed.
-#with_puppet_running_on(master, master_opts) do
-#  step "Agent refuses to connect to a rogue master"
-#  on master, puppet_agent("#{agent_cmd_prefix} --ssl_client_ca_auth=#{testdir}/ca_master.crt --test"), :acceptable_exit_codes => (0..255) do
-#    assert_no_match /Creating a new SSL key/, stdout
-#    assert_match /certificate verify failed/i, stderr
-#    assert_match /The server presented a SSL certificate chain which does not include a CA listed in the ssl_client_ca_auth file/i, stderr
-#    assert exit_code == 1
-#  end
-#end
 
 step "Finished testing External Certificates"

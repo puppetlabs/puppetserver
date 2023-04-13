@@ -62,12 +62,14 @@ module PuppetServerExtensions
   # and the running of the PuppetDB test(s).
   def puppetdb_supported_platforms()
     [
-      /debian-8/,
-      /debian-9/,
-      /el-6/,
+      /debian-11/,
+      /debian-10/,
       /el-7/,
-      /ubuntu-16.04/,
-      /ubuntu-18.04/
+      /el-8/,
+      /sles-12/,
+      /sles-15/,
+      /ubuntu-18.04/,
+      /ubuntu-20.04/
     ]
   end
 

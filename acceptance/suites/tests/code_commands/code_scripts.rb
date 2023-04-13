@@ -171,7 +171,7 @@ YAML
 forge 'forge.puppetlabs.com'
 
 # Forge Modules
-mod 'puppetlabs/ntp', '9.1.0'
+mod 'puppetlabs/ntp'
 mod 'puppetlabs/stdlib'
 EOF
   create_remote_file(master, "#{git_local_repo}/Puppetfile", puppetfile)

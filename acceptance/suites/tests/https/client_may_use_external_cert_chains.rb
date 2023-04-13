@@ -12,7 +12,8 @@ test_name "Ensure Puppet Server's HTTP client may use external cert chains" do
   generate_self_signed_cert = "openssl req -new -newkey rsa:2048 -days 365 -nodes -x509 -keyout #{server_key} -out #{server_cert} -batch -addext 'subjectAltName = DNS:#{master}'"
   run_server = "/opt/puppetlabs/puppet/bin/ruby #{server_rb} &"
   kill_server = 'ps -ef | grep server.rb | grep -v grep | ruby -ne \'puts $_.split[1]\' | xargs -r kill' # `xargs -r` is a GNUism.
-  wait_for_server = "while [[ 0 -ne `curl -ksw '%{exitcode}' 'https://#{master}:7777/' | tail -1` ]]; do echo 'sleeping and waiting'; sleep 2; done"
+  wait_for_server = "for i in {1..40}; do if [[ 0 -ne `curl -ksw '%{exitcode}' 'https://#{master}:7777/' | tail -1` ]]; then echo 'sleeping and waiting'; sleep 2; else break; fi; done"
+  check_for_webrick = %q{/opt/puppetlabs/puppet/bin/ruby -e "require 'webrick'"}
 
   server_script = <<EOF
     require 'webrick'
@@ -64,6 +65,11 @@ EOF
   on master, generate_self_signed_cert
   # required so Puppet Server can read generated cert
   on master, "chmod +rx #{reports_tmpdir}"
+  exit_code = on(master, check_for_webrick, acceptable_exit_codes: [0, 1]).exit_code
+  if exit_code == 1
+    on master, '/opt/puppetlabs/puppet/bin/gem install webrick'
+  end
+
   create_remote_file(master, server_rb, server_script)
   on master, "mkdir #{directory_to_serve}"
   on master, run_server
