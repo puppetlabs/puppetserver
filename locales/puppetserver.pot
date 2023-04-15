@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: a06ca1846201da2bef1f728cb0905b17855086e4\n"
+"X-Git-Ref: e4f4a76cdf287869ab0ce838bf2db473c92648ed\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -194,8 +194,10 @@ msgid ""
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
-msgid "Signed certificate request for {0}"
-msgstr ""
+msgid "Entity {1} {2} 1 certificate: {3}."
+msgid_plural "Entity {1} {2} {0} certificates: {3}."
+msgstr[0] ""
+msgstr[1] ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 msgid "Saving CSR to ''{0}''"
@@ -310,12 +312,6 @@ msgstr ""
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 msgid "No revoke action needed. The certs are already in the CRL."
 msgstr ""
-
-#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
-msgid "Revoked 1 certificate: {1}"
-msgid_plural "Revoked {0} certificates: {1}"
-msgstr[0] ""
-msgstr[1] ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 msgid "No revoke action needed. The infra certs are already in the infra CRL"
