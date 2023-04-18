@@ -99,8 +99,8 @@
                        :java-args ~(str "-Xms2g -Xmx2g "
                                      "-Djruby.logger.class=com.puppetlabs.jruby_utils.jruby.Slf4jLogger")
                        :create-dirs ["/opt/puppetlabs/server/data/puppetserver/jars"]
-                       :repo-target "puppet7"
-                       :nonfinal-repo-target "puppet7-nightly"
+                       :repo-target "puppet8"
+                       :nonfinal-repo-target "puppet8-nightly"
                        :bootstrap-source :services-d
                        :logrotate-enabled false}
                 :resources {:dir "tmp/ezbake-resources"}
