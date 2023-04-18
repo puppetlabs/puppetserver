@@ -1,6 +1,6 @@
 language: clojure
 lein: 2.9.10
-dist: focal
+dist: jammy
 os: linux
 
 script:
