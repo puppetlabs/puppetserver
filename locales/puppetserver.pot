@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: b16f78a2b80ec98ef199cc2f117c6afe6197ef56\n"
+"X-Git-Ref: 62a076cf32b585bfefd5a57d0eae1905ad8e3456\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -70,6 +70,15 @@ msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 msgid "Checking \"{0}\" for validity"
+msgstr ""
+
+#. see https://github.com/puppetlabs/clj-i18n/blob/main/README.md#single-quotes-in-messages for reasoning with double quote
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Rejecting subject \"{0}\" because it doesn''t match hostname \"{1}\""
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Instance name \"{0}\" does not match requested key \"{1}\""
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
