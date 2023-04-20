@@ -79,10 +79,7 @@
                status-url (str "https://localhost:8140/puppet-ca/v1/certificate_status/" certname)
                request-opts {:ssl-cert cert-path
                              :ssl-key key-path
-                             :ssl-ca-cert ca-cert-path}
-               requester-name (-> (ssl-utils/pem->ca-cert cert-path key-path)
-                                  (ssl-utils/get-subject-from-x509-certificate)
-                                  (ssl-utils/x500-name->CN))]
+                             :ssl-ca-cert ca-cert-path}]
 
            (ssl-utils/obj->pem! csr csr-path)
            (testing "Sign the waiting CSR"
@@ -93,8 +90,10 @@
                                       {:body "{\"desired_state\": \"signed\"}"
                                        :headers {"content-type" "application/json"}}))]
                  (is (= 204 (:status response)))
-                 (is (logged? #"Entity localhost signed 1 certificate"))
-                 (is (fs/exists? signed-cert-path)))))
+                 (is (logged? #"Reporting CA event failed with: Foo" :error))
+                 (is (logged? #"Payload.*commit" :error))
+                 (is (fs/exists? signed-cert-path))
+                 (is (logged? #"Entity localhost signed 1 certificate.*" :info)))))
 
            (testing "Revoke the cert"
              (logutils/with-test-logging
@@ -104,7 +103,9 @@
                                       {:body "{\"desired_state\": \"revoked\"}"
                                        :headers {"content-type" "application/json" "X-Authentication" "test"}}))]
                  (is (= 204 (:status response)))
-                 (is (logged? #"Entity localhost revoked 1 certificate")))))))))))
+                 (is (logged? #"Reporting CA event failed with: Foo" :error))
+                 (is (logged? #"Payload.*commit" :error))
+                 (is (logged? #"Entity localhost revoked 1 certificate.*" :info)))))))))))
 
 (deftest ^:integration cert-on-whitelist-test
   (testing "requests made when cert is on whitelist"
