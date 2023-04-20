@@ -779,10 +779,11 @@
   (log/debug (i18n/trs "Checking \"{0}\" for validity" subject))
 
   (when-not (= hostname subject)
-    (log/infof "Rejecting subject \"%s\" because it doesn't match hostname \"%s\"" subject hostname)
+    ;; see https://github.com/puppetlabs/clj-i18n/blob/main/README.md#single-quotes-in-messages for reasoning with double quote
+    (log/info (i18n/tru "Rejecting subject \"{0}\" because it doesn''t match hostname \"{1}\"" subject hostname))
     (sling/throw+
       {:kind :hostname-mismatch
-       :msg  (format "Instance name \"%s\" does not match requested key \"%s\"" subject hostname)}))
+       :msg  (i18n/tru "Instance name \"{0}\" does not match requested key \"{1}\"" subject hostname)}))
 
   (when (contains-uppercase? hostname)
     (log/info (i18n/tru "Rejecting subject \"{0}\" because all characters must be lowercase" subject))
