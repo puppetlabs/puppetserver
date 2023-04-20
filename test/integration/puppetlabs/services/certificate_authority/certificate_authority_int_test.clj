@@ -48,6 +48,64 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tests
 
+(deftest reporting-activity-handles-errors
+  (let [cert-path (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")
+        key-path (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
+        ca-cert-path (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+        crl-path (str bootstrap/server-conf-dir "/ssl/crl.pem")
+        test-service (tk-services/service
+                      act-proto/ActivityReportingService
+                      []
+                      (report-activity! [_this body]
+                        (throw (Exception. "Foo"))))]
+    (testing "returns expiration dates for all CA certs and CRLs"
+      (testutils/with-stub-puppet-conf
+        (bootstrap/with-puppetserver-running-with-services
+         app
+         (concat (bootstrap/services-from-dev-bootstrap) [test-service])
+         {:jruby-puppet
+          {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
+          :webserver
+          {:ssl-cert cert-path
+           :ssl-key key-path
+           :ssl-ca-cert ca-cert-path
+           :ssl-crl-path crl-path}}
+         (let [certname "test_cert"
+               csr (ssl-utils/generate-certificate-request
+                    (ssl-utils/generate-key-pair)
+                    (ssl-utils/cn certname))
+               csr-path (str bootstrap/server-conf-dir "/ca/requests/" certname ".pem")
+               signed-cert-path (str bootstrap/server-conf-dir "/ca/signed/" certname ".pem")
+               status-url (str "https://localhost:8140/puppet-ca/v1/certificate_status/" certname)
+               request-opts {:ssl-cert cert-path
+                             :ssl-key key-path
+                             :ssl-ca-cert ca-cert-path}
+               requester-name (-> (ssl-utils/pem->ca-cert cert-path key-path)
+                                  (ssl-utils/get-subject-from-x509-certificate)
+                                  (ssl-utils/x500-name->CN))]
+
+           (ssl-utils/obj->pem! csr csr-path)
+           (testing "Sign the waiting CSR"
+             (logutils/with-test-logging
+               (let [response (http-client/put
+                               status-url
+                               (merge request-opts
+                                      {:body "{\"desired_state\": \"signed\"}"
+                                       :headers {"content-type" "application/json"}}))]
+                 (is (= 204 (:status response)))
+                 (is (logged? #"Entity localhost signed 1 certificate"))
+                 (is (fs/exists? signed-cert-path)))))
+
+           (testing "Revoke the cert"
+             (logutils/with-test-logging
+               (let [response (http-client/put
+                               status-url
+                               (merge request-opts
+                                      {:body "{\"desired_state\": \"revoked\"}"
+                                       :headers {"content-type" "application/json" "X-Authentication" "test"}}))]
+                 (is (= 204 (:status response)))
+                 (is (logged? #"Entity localhost revoked 1 certificate")))))))))))
+
 (deftest ^:integration cert-on-whitelist-test
   (testing "requests made when cert is on whitelist"
     (logutils/with-test-logging
