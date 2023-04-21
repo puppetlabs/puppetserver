@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: 3418e9d1c77436e32969df65eaa2a4b61657c3a0\n"
+"X-Git-Ref: b570bb36651ef1bdb127ab75d12c3f874b494307\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -464,6 +464,10 @@ msgstr ""
 
 #: src/clj/puppetlabs/services/ca/certificate_authority_disabled_service.clj
 msgid "CA disabled; ignoring retrieval of CA CRL"
+msgstr ""
+
+#: src/clj/puppetlabs/services/ca/certificate_authority_service.clj
+msgid "Reporting CA event failed with: {0}nPayload: {1}"
 msgstr ""
 
 #: src/clj/puppetlabs/services/ca/certificate_authority_service.clj
