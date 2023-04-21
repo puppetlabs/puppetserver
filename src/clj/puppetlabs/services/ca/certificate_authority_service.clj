@@ -36,7 +36,14 @@
           infra-nodes-file (.getCanonicalPath (fs/file (str (fs/parent ca-crl-file) "/infra_inventory.txt")))
           watcher (create-watcher {:recursive false})
           report-activity (if-let [activity-reporting-service (maybe-get-service this :ActivityReportingService)]
-                            (partial activity-proto/report-activity! activity-reporting-service)
+                            (fn [& payload]
+                              (try
+                                (activity-proto/report-activity! activity-reporting-service (first payload))
+                              (catch Exception e
+                                (log/error
+                                  (i18n/trs "Reporting CA event failed with: {0}\nPayload: {1}"
+                                            (.getMessage e)
+                                            (first payload))))))
                             (constantly nil))]
       (ca/validate-settings! settings)
       (ca/initialize! settings)

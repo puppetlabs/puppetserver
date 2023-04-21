@@ -1297,9 +1297,9 @@
                                              csr
                                              cacert))
         [msg signee certnames ip] (generate-cert-message-from-request request [subject] "signed")]
-    (report-cert-event report-activity msg signee certnames ip "signed")
     (write-cert-to-inventory! signed-cert cert-inventory)
-    (write-cert signed-cert (path-to-cert signeddir subject))))
+    (write-cert signed-cert (path-to-cert signeddir subject))
+    (report-cert-event report-activity msg signee certnames ip "signed")))
 
 (schema/defn ^:always-validate
   save-certificate-request!
@@ -1730,17 +1730,16 @@
                                                           (utils/get-serial))
                                                      subjects)
                                                 our-full-crl)
-        serial-count (count serials)]
+        serial-count (count serials)
+        [msg signee certnames ip] (generate-cert-message-from-request request subjects "revoked")]
     (if (= 0 serial-count)
       (log/info (i18n/trs "No revoke action needed. The certs are already in the CRL."))
       (let [new-full-crl (utils/revoke-multiple our-full-crl
                                                 (utils/pem->private-key cakey)
                                                 (.getPublicKey (utils/pem->ca-cert cacert cakey))
                                                 serials)
-            new-full-chain (cons new-full-crl (vec rest-of-full-chain))
-            [msg signee certnames ip] (generate-cert-message-from-request request subjects "revoked")]
-        (write-crls new-full-chain cacrl)
-        (report-cert-event report-activity msg signee certnames ip "revoked")))
+            new-full-chain (cons new-full-crl (vec rest-of-full-chain))]
+        (write-crls new-full-chain cacrl)))
 
     ;; Publish infra-crl if an infra node is getting revoked.
     (when (and enable-infra-crl (fs/exists? infra-node-serials-path))
@@ -1757,7 +1756,9 @@
                                                          new-infra-revocations)
                     full-infra-chain (cons new-infra-crl (vec rest-of-infra-chain))]
                 (write-crls full-infra-chain infra-crl-path)
-                (log/info (i18n/trs "Infra node certificate(s) being revoked; publishing updated infra CRL"))))))))))
+                (log/info (i18n/trs "Infra node certificate(s) being revoked; publishing updated infra CRL"))))))))
+
+    (report-cert-event report-activity msg signee certnames ip "revoked")))
 
 (schema/defn ^:always-validate set-certificate-status!
   "Sign or revoke the certificate for the given subject."
