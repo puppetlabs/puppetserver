@@ -1,5 +1,6 @@
 (ns puppetlabs.puppetserver.certificate-authority
-  (:import [org.apache.commons.io IOUtils]
+  (:import (java.util.concurrent.locks ReentrantReadWriteLock)
+           [org.apache.commons.io IOUtils]
            (org.bouncycastle.pkcs PKCS10CertificationRequest)
            [java.util Date]
            [java.io InputStream ByteArrayOutputStream ByteArrayInputStream File StringReader IOException]
@@ -20,6 +21,7 @@
             [slingshot.slingshot :as sling]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.kitchensink.file :as ks-file]
+            [puppetlabs.puppetserver.common :as common]
             [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.ssl-utils.core :as utils]
             [clj-yaml.core :as yaml]
@@ -58,6 +60,15 @@
    Currently we only control access to the certificate_status(es) endpoints."
   {(schema/optional-key :certificate-status) ringutils/WhitelistSettings})
 
+(defn positive-integer?
+  [i]
+  (and (integer? i)
+       (pos? i)))
+
+(def PosInt
+  "Any integer z in Z where z > 0."
+  (schema/pred positive-integer? 'positive-integer?))
+
 (def CaSettings
   "Settings from Puppet that are necessary for CA initialization
    and request handling during normal Puppet operation.
@@ -92,7 +103,9 @@
    :infra-crl-path                   schema/Str
    ;; Option to continue using full CRL instead of infra CRL if desired
    ;; Infra CRL would be enabled by default.
-   :enable-infra-crl                 schema/Bool})
+   :enable-infra-crl                 schema/Bool
+   :serial-lock                      ReentrantReadWriteLock
+   :serial-lock-timeout-seconds      PosInt})
 
 (def DesiredCertificateState
   "The pair of states that may be submitted to the certificate
@@ -158,6 +171,8 @@
 (def default-allow-auth-extensions
   false)
 
+(def default-serial-lock-timeout-seconds
+  5)
 (schema/defn ^:always-validate initialize-ca-config
   "Adds in default ca config keys/values, which may be overwritten if a value for
   any of those keys already exists in the ca-data"
@@ -168,7 +183,8 @@
                   :infra-crl-path (str cadir "/infra_crl.pem")
                   :enable-infra-crl false
                   :allow-subject-alt-names default-allow-subj-alt-names
-                  :allow-authorization-extensions default-allow-auth-extensions}]
+                  :allow-authorization-extensions default-allow-auth-extensions
+                  :serial-lock-timeout-seconds default-serial-lock-timeout-seconds}]
     (merge defaults ca-data)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -316,7 +332,9 @@
                     :manage-internal-file-permissions
                     :ruby-load-path
                     :gem-path
-                    :enable-infra-crl)]
+                    :enable-infra-crl
+                    :serial-lock-timeout-seconds
+                    :serial-lock)]
     (if (:enable-infra-crl ca-settings)
       settings'
       (dissoc settings' :infra-crl-path :infra-node-serials-path))))
@@ -461,11 +479,11 @@
   (ks-file/atomic-write path (partial utils/obj->pem! csr) public-key-perms))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Serial number functions + lock
+;;; Serial number functions
 
-(def serial-file-lock
-  "The lock used to prevent concurrent access to the serial number file."
-  (new Object))
+(def serial-lock-descriptor
+  "Text used in exceptions to help identify locking issues"
+  "serial-file")
 
 (schema/defn parse-serial-number :- schema/Int
   "Parses a serial number from its format on disk.  See `format-serial-number`
@@ -475,11 +493,12 @@
 
 (schema/defn get-serial-number! :- schema/Int
   "Reads the serial number file from disk and returns the serial number."
-  [serial-file :- schema/Str]
-  (-> serial-file
-      (slurp)
-      (.trim)
-      (parse-serial-number)))
+  [{:keys [serial serial-lock serial-lock-timeout-seconds]} :- CaSettings]
+  (common/with-safe-read-lock serial-lock serial-lock-descriptor serial-lock-timeout-seconds
+    (-> serial
+        (slurp)
+        (.trim)
+        (parse-serial-number))))
 
 (schema/defn format-serial-number :- schema/Str
   "Converts a serial number to the format it needs to be written in on disk.
@@ -497,20 +516,21 @@
   Reads the serial number as a hex value from the given file and replaces the
   contents of `serial-file` with the next serial number for a subsequent call.
   Puppet's $serial setting defines the location of the serial number file."
-  [serial-file :- schema/Str]
-  (locking serial-file-lock
-    (let [serial-number (get-serial-number! serial-file)]
-      (ks-file/atomic-write-string serial-file
+  [{:keys [serial serial-lock serial-lock-timeout-seconds] :as ca-settings} :- CaSettings]
+  (common/with-safe-write-lock serial-lock serial-lock-descriptor serial-lock-timeout-seconds
+    (let [serial-number (get-serial-number! ca-settings)]
+      (ks-file/atomic-write-string serial
                                    (format-serial-number (inc serial-number))
                                    serial-file-permissions)
       serial-number)))
 
 (schema/defn initialize-serial-file!
   "Initializes the serial number file on disk.  Serial numbers start at 1."
-  [path :- schema/Str]
-  (ks-file/atomic-write-string path
-                               (format-serial-number 1)
-                               serial-file-permissions))
+  [{:keys [serial serial-lock serial-lock-timeout-seconds]} :- CaSettings]
+  (common/with-safe-write-lock serial-lock serial-lock-descriptor serial-lock-timeout-seconds
+    (ks-file/atomic-write-string serial
+                                 (format-serial-number 1)
+                                 serial-file-permissions)))
 
 (schema/defn write-local-cacrl! :- (schema/maybe Exception)
   "Spits the contents of 'cacrl-contents' string to the 'localcacrl' file
@@ -701,7 +721,7 @@
   (create-parent-directories! (vals (settings->cadir-paths ca-settings)))
   (-> ca-settings :csrdir fs/file ks/mkdirs!)
   (-> ca-settings :signeddir fs/file ks/mkdirs!)
-  (initialize-serial-file! (:serial ca-settings))
+  (initialize-serial-file! ca-settings)
   (-> ca-settings :infra-nodes-path fs/file fs/create)
   (generate-infra-serials ca-settings)
   (let [keypair     (utils/generate-key-pair (:keylength ca-settings))
@@ -709,7 +729,7 @@
         private-key (utils/get-private-key keypair)
         x500-name   (utils/cn (:ca-name ca-settings))
         validity    (cert-validity-dates (:ca-ttl ca-settings))
-        serial      (next-serial-number! (:serial ca-settings))
+        serial      (next-serial-number! ca-settings)
         ;; Since this is a self-signed cert, the issuer key and the
         ;; key for this cert are the same
         ca-exts     (create-ca-extensions public-key
@@ -928,14 +948,14 @@
     (fs/exists? hostpubkey)
     (throw
      (IllegalStateException.
-      (i18n/trs "Found master public key ''{0}'' but master private key ''{1}'' is missing"
+      ^String (i18n/trs "Found master public key ''{0}'' but master private key ''{1}'' is missing"
                 hostpubkey
                 hostprivkey)))
 
     :else
     (throw
      (IllegalStateException.
-      (i18n/trs "Found master private key ''{0}'' but master public key ''{1}'' is missing"
+      ^String (i18n/trs "Found master private key ''{0}'' but master public key ''{1}'' is missing"
                 hostprivkey
                 hostpubkey)))))
 
@@ -955,7 +975,7 @@
   (-> settings :requestdir fs/file ks/mkdirs!)
   (let [ca-cert        (utils/pem->ca-cert (:cacert ca-settings) (:cakey ca-settings))
         ca-private-key (utils/pem->private-key (:cakey ca-settings))
-        next-serial    (next-serial-number! (:serial ca-settings))
+        next-serial    (next-serial-number! ca-settings)
         public-key     (generate-master-ssl-keys! settings)
         extensions     (create-master-extensions certname
                                                  public-key
@@ -990,9 +1010,9 @@
     (fs/exists? hostcert)
     (throw
      (IllegalStateException.
-      (i18n/trs "Found master cert ''{0}'' but master private key ''{1}'' is missing"
-           hostcert
-           hostprivkey)))
+      ^String (i18n/trs "Found master cert ''{0}'' but master private key ''{1}'' is missing"
+                hostcert
+                hostprivkey)))
 
     :else
     (generate-master-ssl-files! settings certname ca-settings)))
@@ -1009,8 +1029,8 @@
       (fs/copy cacert localcacert))
     (when-not (fs/exists? localcacert)
       (throw (IllegalStateException.
-               (i18n/trs ":localcacert ({0}) could not be found and no file at :cacert ({1}) to copy it from"
-                    localcacert cacert))))))
+               ^String (i18n/trs ":localcacert ({0}) could not be found and no file at :cacert ({1}) to copy it from"
+                         localcacert cacert))))))
 
 (schema/defn ^:always-validate retrieve-ca-crl!
   "Ensure a local copy of the CA CRL, if one exists, is available on disk.
@@ -1156,11 +1176,12 @@
   (-> (select-keys puppetserver (keys CaSettings))
       (merge (select-keys certificate-authority (keys CaSettings)))
       (initialize-ca-config)
-      (assoc :ruby-load-path (:ruby-load-path jruby-puppet))
-      (assoc :gem-path (str/join (System/getProperty "path.separator")
-                                 (:gem-path jruby-puppet)))
-      (assoc :access-control (select-keys certificate-authority
-                                          [:certificate-status]))))
+      (assoc :ruby-load-path (:ruby-load-path jruby-puppet)
+             :gem-path (str/join (System/getProperty "path.separator")
+                                 (:gem-path jruby-puppet))
+             :access-control (select-keys certificate-authority
+                                          [:certificate-status])
+             :serial-lock (ReentrantReadWriteLock.))))
 
 (schema/defn ^:always-validate
   config->master-settings :- MasterSettings
@@ -1279,7 +1300,7 @@
   from Puppet, auto-sign the request and write the certificate to disk."
   [subject :- schema/Str
    csr :- CertificateRequest
-   {:keys [cacert cakey signeddir ca-ttl serial cert-inventory]} :- CaSettings
+   {:keys [cacert cakey signeddir ca-ttl cert-inventory] :as ca-settings} :- CaSettings
    report-activity
    request]
   (let [validity    (cert-validity-dates ca-ttl)
@@ -1288,7 +1309,7 @@
         signed-cert (utils/sign-certificate (utils/get-subject-from-x509-certificate
                                              cacert)
                                             (utils/pem->private-key cakey)
-                                            (next-serial-number! serial)
+                                            (next-serial-number! ca-settings)
                                             (:not-before validity)
                                             (:not-after validity)
                                             (utils/cn subject)

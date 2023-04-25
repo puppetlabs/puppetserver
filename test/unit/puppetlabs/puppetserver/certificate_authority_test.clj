@@ -439,7 +439,7 @@
                                (ca/path-to-cert-request "test-agent")
                                (utils/pem->csr))
         expected-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")
-        request [:authorization [:name "authname"] :remote-addr "1.1.1.1" ]]
+        request [:authorization [:name "authname"] :remote-addr "1.1.1.1"]]
     ;; Fix the value of "now" so we can reliably test the dates
     (time/do-at now
       (ca/autosign-certificate-request! "test-agent" csr settings (constantly nil) request))
@@ -1020,19 +1020,21 @@
   (is (= (ca/format-serial-number 42) "002A")))
 
 (deftest next-serial-number!-test
-  (let [serial-file (str (ks/temp-file))]
+  (let [serial-file (str (ks/temp-file))
+        ca-settings (assoc (testutils/ca-settings (ks/temp-dir))
+                      :serial serial-file)]
     (testing "Serial file is initialized to 1"
-      (ca/initialize-serial-file! serial-file)
-      (is (= (ca/next-serial-number! serial-file) 1)))
+      (ca/initialize-serial-file! ca-settings)
+      (is (= (ca/next-serial-number! ca-settings) 1)))
 
     (testing "The serial number file should contain the next serial number"
       (is (= "0002" (slurp serial-file))))
 
     (testing "subsequent calls produce increasing serial numbers"
-      (is (= (ca/next-serial-number! serial-file) 2))
+      (is (= (ca/next-serial-number! ca-settings) 2))
       (is (= "0003" (slurp serial-file)))
 
-      (is (= (ca/next-serial-number! serial-file) 3))
+      (is (= (ca/next-serial-number! ca-settings) 3))
       (is (= "0004" (slurp serial-file))))))
 
 ;; If the locking is deleted from `next-serial-number!`, this test will hang,
@@ -1044,14 +1046,15 @@
             never returns a duplicate serial number"
     (let [serial-file (doto (str (ks/temp-file)) (spit "0001"))
           serials     (atom [])
-
+          ca-settings (assoc (testutils/ca-settings (ks/temp-dir))
+                        :serial serial-file)
           ;; spin off a new thread for each CPU
           promises    (for [_ (range (ks/num-cpus))]
                         (let [p (promise)]
                           (future
                             ;; get a bunch of serial numbers and keep track of them
                             (dotimes [_ 100]
-                              (let [serial-number (ca/next-serial-number! serial-file)]
+                              (let [serial-number (ca/next-serial-number! ca-settings)]
                                 (swap! serials conj serial-number)))
                             (deliver p 'done))
                           p))
@@ -1062,7 +1065,31 @@
       (doseq [p promises] (deref p))
 
       (is (false? (contains-duplicates? @serials))
-          "Got a duplicate serial number"))))
+          "Got a duplicate serial number")))
+  (testing "next-serial-number! will timeout if lock is held"
+    (let
+      [serial-file (str (ks/temp-file))
+       ca-settings (assoc (testutils/ca-settings (ks/temp-dir))
+                     :serial serial-file
+                     :serial-lock-timeout-seconds 1)
+       write-lock  (.writeLock (:serial-lock ca-settings))
+       completed (promise)
+       caught-timeout (promise)]
+      ;; acquire and hold the lock
+      (.lock write-lock)
+      ;; in a separate thread, try to increment the serial number
+      (deref
+        (future
+          (try
+            (ca/next-serial-number! ca-settings)
+            ;; we should never get here because the lock is held, and timeout should occur
+            (deliver completed true)
+            (catch Exception _e
+              ;; timeout occurred
+              (deliver caught-timeout false)))))
+      (.unlock write-lock)
+      (is (not (realized? completed)))
+      (is (realized? caught-timeout)))))
 
 (defn verify-inventory-entry!
   [inventory-entry serial-number not-before not-after subject]
@@ -1104,7 +1131,7 @@
   (let [settings (assoc (testutils/ca-sandbox! cadir) :autosign false)]
     (testing "when false"
       (let [settings (assoc settings :allow-duplicate-certs false)
-            request [:authorization [:name "authname"] :remote-addr "1.1.1.1" ]]
+            request [:authorization [:name "authname"] :remote-addr "1.1.1.1"]]
         (testing "throws exception if CSR already exists"
           (is (thrown+?
                [:kind :duplicate-cert
@@ -1131,7 +1158,7 @@
 
     (testing "when true"
       (let [settings (assoc settings :allow-duplicate-certs true)
-            request [:authorization [:name "authname"] :remote-addr "1.1.1.1" ]]
+            request [:authorization [:name "authname"] :remote-addr "1.1.1.1"]]
         (testing "new CSR overwrites existing one"
           (let [csr-path (ca/path-to-cert-request (:csrdir settings) "test-agent")
                 csr      (ByteArrayInputStream. (.getBytes (slurp csr-path)))]
@@ -1154,7 +1181,7 @@
 
 (deftest process-csr-submission!-test
   (let [settings (testutils/ca-sandbox! cadir)
-        request [:authorization [:name "authname"] :remote-addr "1.1.1.1" ]]
+        request [:authorization [:name "authname"] :remote-addr "1.1.1.1"]]
     (testing "CSR validation policies"
       (testing "when autosign is false"
         (let [settings (assoc settings :autosign false)]
