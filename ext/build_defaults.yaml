@@ -1,5 +1,5 @@
 ---
 project: 'puppetserver'
 
-repo_name: 'puppet7'
-nonfinal_repo_name: 'puppet7-nightly'
+repo_name: 'puppet8'
+nonfinal_repo_name: 'puppet8-nightly'
