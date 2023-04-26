@@ -4,7 +4,8 @@
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.kitchensink.file :as ks-file]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils])
-  (:import (java.io ByteArrayInputStream)))
+  (:import (java.io ByteArrayInputStream)
+           (java.util.concurrent.locks ReentrantReadWriteLock)))
 
 (defn assert-subject [o subject]
   (is (= subject (-> o .getSubjectX500Principal .getName))))
@@ -72,7 +73,9 @@
    :infra-nodes-path                 (str cadir "/ca/infra_inventory.txt")
    :infra-node-serials-path          (str cadir "/infra_serials")
    :infra-crl-path                   (str cadir "/infra_crl.pem")
-   :enable-infra-crl                 false})
+   :enable-infra-crl                 false
+   :serial-lock                      (new ReentrantReadWriteLock)
+   :serial-lock-timeout-seconds      5})
 
 (defn ca-sandbox!
   "Copy the `cadir` to a temporary directory and return
