@@ -106,7 +106,11 @@
    ;; Infra CRL would be enabled by default.
    :enable-infra-crl                 schema/Bool
    :serial-lock                      ReentrantReadWriteLock
-   :serial-lock-timeout-seconds      PosInt})
+   :serial-lock-timeout-seconds      PosInt
+   :crl-lock                         ReentrantReadWriteLock
+   :crl-lock-timeout-seconds         PosInt
+   :infra-crl-lock                   ReentrantReadWriteLock
+   :infra-crl-lock-timeout-seconds   PosInt})
 
 (def DesiredCertificateState
   "The pair of states that may be submitted to the certificate
@@ -175,6 +179,12 @@
 (def default-serial-lock-timeout-seconds
   5)
 
+(def default-crl-lock-timeout-seconds
+  5)
+
+(def default-infra-crl-lock-timeout-seconds
+  5)
+
 (schema/defn ^:always-validate initialize-ca-config
   "Adds in default ca config keys/values, which may be overwritten if a value for
   any of those keys already exists in the ca-data"
@@ -186,7 +196,9 @@
                   :enable-infra-crl false
                   :allow-subject-alt-names default-allow-subj-alt-names
                   :allow-authorization-extensions default-allow-auth-extensions
-                  :serial-lock-timeout-seconds default-serial-lock-timeout-seconds}]
+                  :serial-lock-timeout-seconds default-serial-lock-timeout-seconds
+                  :crl-lock-timeout-seconds default-crl-lock-timeout-seconds
+                  :infra-crl-lock-timeout-seconds default-infra-crl-lock-timeout-seconds}]
     (merge defaults ca-data)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -336,7 +348,11 @@
                     :gem-path
                     :enable-infra-crl
                     :serial-lock-timeout-seconds
-                    :serial-lock)]
+                    :serial-lock
+                    :crl-lock-timeout-seconds
+                    :crl-lock
+                    :infra-crl-lock-timeout-seconds
+                    :infra-crl-lock)]
     (if (:enable-infra-crl ca-settings)
       settings'
       (dissoc settings' :infra-crl-path :infra-node-serials-path))))
@@ -486,6 +502,14 @@
 (def serial-lock-descriptor
   "Text used in exceptions to help identify locking issues"
   "serial-file")
+
+(def crl-lock-descriptor
+  "Text used in exceptions to help identify locking issues"
+  "crl-file")
+
+(def infra-crl-lock-descriptor
+  "Text used in exceptions to help identify locking issues"
+  "infra-crl-file")
 
 (schema/defn parse-serial-number :- schema/Int
   "Parses a serial number from its format on disk.  See `format-serial-number`
@@ -1207,7 +1231,9 @@
                                  (:gem-path jruby-puppet))
              :access-control (select-keys certificate-authority
                                           [:certificate-status])
-             :serial-lock (ReentrantReadWriteLock.))))
+             :serial-lock (new ReentrantReadWriteLock)
+             :crl-lock (new ReentrantReadWriteLock)
+             :infra-crl-lock (new ReentrantReadWriteLock))))
 
 (schema/defn ^:always-validate
   config->master-settings :- MasterSettings
@@ -1567,30 +1593,34 @@
   all CRLs are currently valid."
   [incoming-crls :- [X509CRL]
    crl-path :- schema/Str
-   cert-chain-path :- schema/Str]
+   cert-chain-path :- schema/Str
+   lock :- ReentrantReadWriteLock
+   lock-descriptor :- schema/Str
+   lock-timeout :- PosInt]
   (log/info (i18n/trs "Processing update to CRL at {0}" crl-path))
-  (let [current-crls (utils/pem->crls crl-path)
-        cert-chain (utils/pem->certs cert-chain-path)
-        ca-cert-key (utils/get-extension-value (first cert-chain)
-                                               utils/subject-key-identifier-oid)
-        external-crl-chain (remove #(= ca-cert-key
-                                       (:key-identifier (utils/get-extension-value % utils/authority-key-identifier-oid)))
-                                   current-crls)
-        ca-crl (first (filter
-                       #(= ca-cert-key
-                           (:key-identifier (utils/get-extension-value % utils/authority-key-identifier-oid)))
-                       current-crls))
-        incoming-crls-by-key-id (->> incoming-crls
-                                     ;; just in case we're given multiple copies
-                                     ;; of the same CRL, deduplicate so we can
-                                     ;; identify the newest CRL
-                                     set
-                                     (group-by get-auth-key-id))
-        new-ext-crl-chain (cons ca-crl (map #(maybe-replace-crl % incoming-crls-by-key-id)
-                                            external-crl-chain))]
-    (validate-certs-and-crls cert-chain new-ext-crl-chain)
-    (write-crls new-ext-crl-chain crl-path)
-    (log/info (i18n/trs "Successfully updated CRL at {0}" crl-path))))
+  (common/with-safe-write-lock lock lock-descriptor lock-timeout
+    (let [current-crls (utils/pem->crls crl-path)
+          cert-chain (utils/pem->certs cert-chain-path)
+          ca-cert-key (utils/get-extension-value (first cert-chain)
+                                                 utils/subject-key-identifier-oid)
+          external-crl-chain (remove #(= ca-cert-key
+                                         (:key-identifier (utils/get-extension-value % utils/authority-key-identifier-oid)))
+                                     current-crls)
+          ca-crl (first (filter
+                         #(= ca-cert-key
+                             (:key-identifier (utils/get-extension-value % utils/authority-key-identifier-oid)))
+                         current-crls))
+          incoming-crls-by-key-id (->> incoming-crls
+                                       ;; just in case we're given multiple copies
+                                       ;; of the same CRL, deduplicate so we can
+                                       ;; identify the newest CRL
+                                       set
+                                       (group-by get-auth-key-id))
+          new-ext-crl-chain (cons ca-crl (map #(maybe-replace-crl % incoming-crls-by-key-id)
+                                              external-crl-chain))]
+      (validate-certs-and-crls cert-chain new-ext-crl-chain)
+      (write-crls new-ext-crl-chain crl-path)
+      (log/info (i18n/trs "Successfully updated CRL at {0}" crl-path)))))
 
 (schema/defn ensure-directories-exist!
   "Create any directories used by the CA if they don't already exist."

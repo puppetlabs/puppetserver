@@ -97,7 +97,8 @@
 
 (schema/defn handle-put-certificate-revocation-list!
   [incoming-crl-pem :- InputStream
-   {:keys [cacrl cacert enable-infra-crl infra-crl-path]} :- ca/CaSettings]
+   {:keys [cacrl cacert crl-lock crl-lock-timeout-seconds
+           infra-crl-lock infra-crl-lock-timeout-seconds enable-infra-crl infra-crl-path]} :- ca/CaSettings]
   (locking crl-write-serializer
     (try
       (let [byte-stream (-> incoming-crl-pem
@@ -110,9 +111,9 @@
             (middleware-utils/plain-response 400 "No valid CRLs submitted."))
 
           (do
-            (ca/update-crls incoming-crls cacrl cacert)
+            (ca/update-crls incoming-crls cacrl cacert crl-lock ca/crl-lock-descriptor crl-lock-timeout-seconds)
             (when enable-infra-crl
-              (ca/update-crls incoming-crls infra-crl-path cacert))
+              (ca/update-crls incoming-crls infra-crl-path cacert infra-crl-lock ca/infra-crl-lock-descriptor infra-crl-lock-timeout-seconds))
             (middleware-utils/plain-response 200 "Successfully updated CRLs."))))
       (catch IllegalArgumentException e
         (let [error-msg (.getMessage e)]
