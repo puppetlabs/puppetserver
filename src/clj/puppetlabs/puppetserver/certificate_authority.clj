@@ -1522,9 +1522,13 @@
   get-crl-last-modified :- DateTime
   "Given the value of the 'cacrl' setting from Puppet, return
   a Joda DateTime instance of when the CRL file was last modified."
-  [cacrl :- schema/Str]
-  (let [last-modified-milliseconds (.lastModified (io/file cacrl))]
-       (time-coerce/from-long last-modified-milliseconds)))
+  [cacrl :- schema/Str
+   lock :- ReentrantReadWriteLock
+   lock-descriptor :- schema/Str
+   lock-timeout :- PosInt]
+  (common/with-safe-read-lock lock lock-descriptor lock-timeout
+    (let [last-modified-milliseconds (.lastModified (io/file cacrl))]
+         (time-coerce/from-long last-modified-milliseconds))))
 
 (schema/defn ^:always-validate reject-delta-crl
   [crl :- CertificateRevocationList]

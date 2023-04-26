@@ -3,6 +3,7 @@
            (clojure.lang IFn)
            (org.joda.time DateTime))
   (:require [puppetlabs.puppetserver.certificate-authority :as ca]
+            [puppetlabs.puppetserver.common :as common]
             [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.ring-middleware.core :as middleware]
             [puppetlabs.ring-middleware.utils :as middleware-utils]
@@ -94,21 +95,24 @@
 (defn handle-get-certificate-revocation-list
   "Always return the crl if no 'If-Modified-Since' header is provided or
   if that header is not in correct http-date format. If the header is
-  present and has correct format, only return the crl if the master
+  present and has correct format, only return the crl if the server
   cacrl is newer than the agent crl."
   [request ca-settings]
   (let [agent-crl-last-modified-val (rr/get-header request "If-Modified-Since")
         agent-crl-last-modified-date-time (format-http-date agent-crl-last-modified-val)
-        crl-info (resolve-crl-information ca-settings)
-        crl-last-modified-date-time (ca/get-crl-last-modified (:path crl-info))]
-    (if (or (nil? agent-crl-last-modified-date-time)
-            (time/after? crl-last-modified-date-time agent-crl-last-modified-date-time))
-      (-> (ca/get-certificate-revocation-list (:path crl-info) (:lock crl-info) (:descriptor crl-info) (:timeout crl-info))
-          (rr/response)
-          (rr/content-type "text/plain"))
-      (-> (rr/response nil)
-          (rr/status 304)
-          (rr/content-type "text/plain")))))
+        {:keys [path lock descriptor timeout]} (resolve-crl-information ca-settings)]
+    ;; Since the locks are reentrant, obtain the read lock to prevent modification during the
+    ;; window of time between when the last-modified is read and when the crl content is potentially read.
+    (common/with-safe-read-lock lock descriptor timeout
+        (if (or (nil? agent-crl-last-modified-date-time)
+                (time/after? (ca/get-crl-last-modified path lock descriptor timeout)
+                             agent-crl-last-modified-date-time))
+          (-> (ca/get-certificate-revocation-list path lock descriptor timeout)
+              (rr/response)
+              (rr/content-type "text/plain"))
+          (-> (rr/response nil)
+              (rr/status 304)
+              (rr/content-type "text/plain"))))))
 
 (schema/defn handle-put-certificate-revocation-list!
   [incoming-crl-pem :- InputStream
