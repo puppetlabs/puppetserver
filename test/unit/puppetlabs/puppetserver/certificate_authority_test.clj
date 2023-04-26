@@ -550,7 +550,10 @@
       (is (true? (revoked? cert2))))))
 
 (deftest filter-already-revoked-serials-test
-  (let [crl (-> (ca/get-certificate-revocation-list cacrl)
+  (let [lock (new ReentrantReadWriteLock)
+        descriptor "test-crl"
+        timeout 1
+        crl (-> (ca/get-certificate-revocation-list cacrl lock descriptor timeout)
                 StringReader.
                 utils/pem->crl)]
    (testing "Return an empty vector when all supplied serials are already in CRL"
@@ -570,7 +573,10 @@
 
 (deftest get-certificate-revocation-list-test
   (testing "`get-certificate-revocation-list` returns a valid CRL file."
-    (let [crl (-> (ca/get-certificate-revocation-list cacrl)
+    (let [lock (new ReentrantReadWriteLock)
+          descriptor "test-crl"
+          timeout 1
+          crl (-> (ca/get-certificate-revocation-list cacrl lock descriptor timeout)
                   StringReader.
                   utils/pem->crl)]
       (testutils/assert-issuer crl "CN=Puppet CA: localhost"))))
@@ -1888,7 +1894,10 @@
       (is (= "2016-10-11T06:40:47UTC" (get expiration-map "intermediateca.example.org"))))))
 
 (deftest get-cert-or-csr-statuses-test
-  (let [crl (-> (ca/get-certificate-revocation-list cacrl)
+  (let [lock (new ReentrantReadWriteLock)
+        descriptor "test-crl"
+        timeout 1
+        crl (-> (ca/get-certificate-revocation-list cacrl lock descriptor timeout)
                 StringReader.
                 utils/pem->crl)]
     (testing "returns a collection of 'requested' statuses when queried for CSR"

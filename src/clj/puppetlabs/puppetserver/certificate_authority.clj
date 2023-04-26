@@ -1511,8 +1511,12 @@
   get-certificate-revocation-list :- schema/Str
   "Given the value of the 'cacrl' setting from Puppet,
   return the CRL from the .pem file on disk."
-  [cacrl :- schema/Str]
-  (slurp cacrl))
+  [cacrl :- schema/Str
+   lock :- ReentrantReadWriteLock
+   lock-descriptor :- schema/Str
+   lock-timeout :- PosInt]
+  (common/with-safe-read-lock lock lock-descriptor lock-timeout
+    (slurp cacrl)))
 
 (schema/defn ^:always-validate
   get-crl-last-modified :- DateTime

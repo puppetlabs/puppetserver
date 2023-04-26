@@ -76,19 +76,34 @@
       (catch IllegalArgumentException _
         nil))))
 
+(schema/defn resolve-crl-information
+  "Create a map that has the appropriate path, lock, timeout and descriptor for the crl being used"
+  [{:keys [enable-infra-crl] :as ca-settings} :- ca/CaSettings]
+  (if (true? enable-infra-crl)
+    (let [{:keys [infra-crl-path infra-crl-lock infra-crl-lock-timeout-seconds]} ca-settings]
+      {:path infra-crl-path
+       :lock infra-crl-lock
+       :descriptor ca/infra-crl-lock-descriptor
+       :timeout infra-crl-lock-timeout-seconds})
+    (let [{:keys [cacrl crl-lock crl-lock-timeout-seconds]} ca-settings]
+      {:path cacrl
+       :lock crl-lock
+       :descriptor ca/crl-lock-descriptor
+       :timeout crl-lock-timeout-seconds})))
+
 (defn handle-get-certificate-revocation-list
   "Always return the crl if no 'If-Modified-Since' header is provided or
   if that header is not in correct http-date format. If the header is
   present and has correct format, only return the crl if the master
   cacrl is newer than the agent crl."
-  [request {:keys [cacrl infra-crl-path enable-infra-crl]}]
+  [request ca-settings]
   (let [agent-crl-last-modified-val (rr/get-header request "If-Modified-Since")
         agent-crl-last-modified-date-time (format-http-date agent-crl-last-modified-val)
-        master-crl-to-use (if (true? enable-infra-crl) infra-crl-path cacrl)
-        master-crl-last-modified-date-time (ca/get-crl-last-modified master-crl-to-use)]
+        crl-info (resolve-crl-information ca-settings)
+        crl-last-modified-date-time (ca/get-crl-last-modified (:path crl-info))]
     (if (or (nil? agent-crl-last-modified-date-time)
-            (time/after? master-crl-last-modified-date-time agent-crl-last-modified-date-time))
-      (-> (ca/get-certificate-revocation-list master-crl-to-use)
+            (time/after? crl-last-modified-date-time agent-crl-last-modified-date-time))
+      (-> (ca/get-certificate-revocation-list (:path crl-info) (:lock crl-info) (:descriptor crl-info) (:timeout crl-info))
           (rr/response)
           (rr/content-type "text/plain"))
       (-> (rr/response nil)

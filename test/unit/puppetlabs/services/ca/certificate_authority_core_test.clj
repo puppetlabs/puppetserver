@@ -150,8 +150,12 @@
   (testing "implementation of the CRL endpoint with no 'If-Modified-Since' header"
     (let [request  (mock/request :get
                                  "/v1/certificate_revocation_list/mynode")
+          ca-settings (testutils/ca-settings cadir)
           response (handle-get-certificate-revocation-list
-                    request {:cacrl (test-pem-file "crl.pem") :infra-crl-path (test-pem-file "crl.pem") :enable-infra-crl false})]
+                    request (assoc ca-settings
+                              :cacrl (test-pem-file "crl.pem")
+                              :infra-crl-path (test-pem-file "crl.pem")
+                              :enable-infra-crl false))]
       (is (map? response))
       (is (= 200 (:status response)))
       (is (= "text/plain" (get-in response [:headers "Content-Type"])))
@@ -273,7 +277,7 @@
   (let [settings (assoc (testutils/ca-sandbox! cadir)
                         :allow-duplicate-certs true
                         :autosign false)
-        request {:authorization {:name "authname"} :remote-addr "1.1.1.1" }]
+        request {:authorization {:name "authname"} :remote-addr "1.1.1.1"}]
     (testing "successful csr deletion"
       (logutils/with-test-logging
         (let [subject "happy-agent"
@@ -291,7 +295,7 @@
               (is (= "text/plain" (get-in response [:headers "Content-Type"])))
               (is (logged? msg-matcher :debug)))
             (finally
-              (fs/delete expected-path)))))
+              (fs/delete expected-path))))))
     (testing "Attempted deletion of a non-existant CSR"
       (logutils/with-test-logging
         (let [subject "not-found-agent"
@@ -321,7 +325,7 @@
                (is (= "text/plain" (get-in response [:headers "Content-Type"])))
                (is (logged? msg-matcher :error)))
             (finally
-              (fs/chmod "+w" (fs/parent expected-path))))))))))
+              (fs/chmod "+w" (fs/parent expected-path)))))))))
 
 (deftest handle-put-certificate-request!-test
   (let [settings   (assoc (testutils/ca-sandbox! cadir)
@@ -535,7 +539,7 @@
              request (assoc request :route-params {:subject "csr-auth-extension"} :body csr)
              response (handle-put-certificate-request! settings (constantly nil) request)]
          (is (= 400 (:status response)))
-         (is (re-find #"csr-auth-extension.*disallowed" (:body response)))))
+         (is (re-find #"csr-auth-extension.*disallowed" (:body response))))
          
       (testing "when authname provided on signing"
         (logutils/with-test-logging
@@ -549,8 +553,8 @@
               (let [response (handle-put-certificate-request! settings (constantly nil) request)]
                 (is (= 200 (:status response)))
                 (is (logged? msg-matcher :info)))
-            (finally
-              (fs/delete expected-path))))))
+              (finally
+                (fs/delete expected-path))))))
 
       (testing "when rbac-subject provided on signing"
         (logutils/with-test-logging
@@ -564,8 +568,8 @@
               (let [response (handle-put-certificate-request! settings (constantly nil) request)]
                 (is (= 200 (:status response))) 
                 (is (logged? msg-matcher :info)))
-            (finally
-              (fs/delete expected-path))))))
+              (finally
+                (fs/delete expected-path))))))
 
       (testing "when no signee info provided"
         (logutils/with-test-logging
@@ -578,8 +582,8 @@
               (let [response (handle-put-certificate-request! settings (constantly nil) request)]
                 (is (= 200 (:status response)))
                 (is (logged? msg-matcher :info)))
-            (finally
-              (fs/delete expected-path)))))))))
+              (finally
+                (fs/delete expected-path))))))))))
 
 (deftest certificate-status-test
   (testing "read requests"
