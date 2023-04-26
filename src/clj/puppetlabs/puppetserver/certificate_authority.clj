@@ -1,14 +1,14 @@
 (ns puppetlabs.puppetserver.certificate-authority
-  (:import (java.util.concurrent.locks ReentrantReadWriteLock)
-           [org.apache.commons.io IOUtils]
-           (org.bouncycastle.pkcs PKCS10CertificationRequest)
-           [java.util Date]
-           [java.io InputStream ByteArrayOutputStream ByteArrayInputStream File StringReader IOException]
-           [java.nio.file Files]
-           [java.nio.file.attribute FileAttribute PosixFilePermissions]
+  (:import (java.io InputStream ByteArrayOutputStream ByteArrayInputStream File StringReader IOException)
+           (java.nio.file Files)
+           (java.nio.file.attribute FileAttribute PosixFilePermissions)
            (java.security PrivateKey PublicKey)
-           (org.joda.time DateTime)
-           (java.security.cert X509Certificate CRLException CertPathValidatorException X509CRL))
+           (java.security.cert X509Certificate CRLException CertPathValidatorException X509CRL)
+           (java.util Date)
+           (java.util.concurrent.locks ReentrantReadWriteLock)
+           (org.apache.commons.io IOUtils)
+           (org.bouncycastle.pkcs PKCS10CertificationRequest)
+           (org.joda.time DateTime))
   (:require [me.raynes.fs :as fs]
             [schema.core :as schema]
             [clojure.string :as str]
@@ -173,6 +173,7 @@
 
 (def default-serial-lock-timeout-seconds
   5)
+
 (schema/defn ^:always-validate initialize-ca-config
   "Adds in default ca config keys/values, which may be overwritten if a value for
   any of those keys already exists in the ca-data"
