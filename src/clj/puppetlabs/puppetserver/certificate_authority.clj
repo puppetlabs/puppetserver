@@ -2,7 +2,7 @@
   (:import [org.apache.commons.io IOUtils]
            (org.bouncycastle.pkcs PKCS10CertificationRequest)
            [java.util Date]
-           [java.io InputStream ByteArrayOutputStream ByteArrayInputStream File StringReader IOException]
+           [java.io FileNotFoundException InputStream ByteArrayOutputStream ByteArrayInputStream File Reader StringReader IOException]
            [java.nio.file Files]
            [java.nio.file.attribute FileAttribute PosixFilePermissions]
            (java.security PrivateKey PublicKey)
@@ -636,27 +636,28 @@
 
 (schema/defn read-infra-nodes
     "Returns a list of infra nodes or infra node serials from the specified file organized as one item per line."
-    [infra-file :- schema/Str]
-    (line-seq (io/reader infra-file)))
+    [infra-file-reader :- Reader]
+    (line-seq (io/reader infra-file-reader)))
 
 (defn- write-infra-serials-to-writer
   [writer infra-nodes-path signeddir]
   (try
-    (let [infra-nodes (read-infra-nodes infra-nodes-path)]
-      (doseq [infra-node infra-nodes]
-        (try
-          (let [infra-serial (-> (path-to-cert signeddir infra-node)
-                                 (utils/pem->cert)
-                                 (utils/get-serial))]
-            (.write writer (str infra-serial))
-            (.newLine writer))
-          (catch java.io.FileNotFoundException _
-            (log/warn
-             (i18n/trs
-              (str
-               "Failed to find/load certificate for Puppet Infrastructure Node:"
-               infra-node)))))))
-    (catch java.io.FileNotFoundException _
+    (with-open [infra-nodes-reader (io/reader infra-nodes-path)]
+      (let [infra-nodes (read-infra-nodes infra-nodes-reader)]
+        (doseq [infra-node infra-nodes]
+          (try
+            (let [infra-serial (-> (path-to-cert signeddir infra-node)
+                                   (utils/pem->cert)
+                                   (utils/get-serial))]
+              (.write writer (str infra-serial))
+              (.newLine writer))
+            (catch FileNotFoundException _
+              (log/warn
+               (i18n/trs
+                (str
+                 "Failed to find/load certificate for Puppet Infrastructure Node:"
+                 infra-node))))))))
+    (catch FileNotFoundException _
       (log/warn (i18n/trs (str infra-nodes-path " does not exist"))))))
 
 (schema/defn generate-infra-serials
@@ -1706,20 +1707,21 @@
 
     ;; Publish infra-crl if an infra node is getting revoked.
     (when (and enable-infra-crl (fs/exists? infra-node-serials-path))
-      (let [infra-nodes (set (map biginteger (read-infra-nodes infra-node-serials-path)))
-            infra-revocations (vec (set/intersection infra-nodes (set serials)))]
-        (when (seq infra-revocations)
-          (let [[our-infra-crl & rest-of-infra-chain] (utils/pem->crls infra-crl-path)
-                new-infra-revocations (filter-already-revoked-serials infra-revocations our-infra-crl)]
-            (if (= 0 new-infra-revocations)
-              (log/info (i18n/trs "No revoke action needed. The infra certs are already in the infra CRL"))
-              (let [new-infra-crl (utils/revoke-multiple our-infra-crl
-                                                         (utils/pem->private-key cakey)
-                                                         (.getPublicKey (utils/pem->ca-cert cacert cakey))
-                                                         new-infra-revocations)
-                    full-infra-chain (cons new-infra-crl (vec rest-of-infra-chain))]
-                (write-crls full-infra-chain infra-crl-path)
-                (log/info (i18n/trs "Infra node certificate(s) being revoked; publishing updated infra CRL"))))))))))
+      (with-open [infra-nodes-serial-path-reader (io/reader infra-node-serials-path)]
+        (let [infra-nodes (set (map biginteger (read-infra-nodes infra-nodes-serial-path-reader)))
+              infra-revocations (vec (set/intersection infra-nodes (set serials)))]
+          (when (seq infra-revocations)
+            (let [[our-infra-crl & rest-of-infra-chain] (utils/pem->crls infra-crl-path)
+                  new-infra-revocations (filter-already-revoked-serials infra-revocations our-infra-crl)]
+              (if (= 0 new-infra-revocations)
+                (log/info (i18n/trs "No revoke action needed. The infra certs are already in the infra CRL"))
+                (let [new-infra-crl (utils/revoke-multiple our-infra-crl
+                                                           (utils/pem->private-key cakey)
+                                                           (.getPublicKey (utils/pem->ca-cert cacert cakey))
+                                                           new-infra-revocations)
+                      full-infra-chain (cons new-infra-crl (vec rest-of-infra-chain))]
+                  (write-crls full-infra-chain infra-crl-path)
+                  (log/info (i18n/trs "Infra node certificate(s) being revoked; publishing updated infra CRL")))))))))))
 
 (schema/defn ^:always-validate set-certificate-status!
   "Sign or revoke the certificate for the given subject."
