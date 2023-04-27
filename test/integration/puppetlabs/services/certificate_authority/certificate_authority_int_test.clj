@@ -619,6 +619,59 @@
               (is (= "signed" (get status-body "state"))))))))
     (fs/delete (str bootstrap/server-conf-dir "/ca/signed/test_cert_with_auth_ext.pem")))))
 
+(deftest ^:integration certificate-inventory-file-management
+  (testing (str "Validates that the certificate_status endpoint"
+                "includes authorization extensions for certs and CSRs")
+    (with-redefs [act-proto/report-activity! (fn [_ _] nil)]
+      (let [inventory-path (str bootstrap/server-conf-dir "/ca/inventory.txt")
+            inventory-content (slurp inventory-path)
+            request-dir (str bootstrap/server-conf-dir "/ca/requests")
+            key-pair (ssl-utils/generate-key-pair)
+            subjectDN (ssl-utils/cn "test_cert_with_auth_ext")
+            auth-ext-short-name {:oid (:pp_auth_role ca/puppet-short-names)
+                                 :critical false
+                                 :value "true"}
+            auth-ext-oid {:oid "1.3.6.1.4.1.34380.1.3.1.2"
+                          :critical false
+                          :value "true"}
+            csr (ssl-utils/generate-certificate-request key-pair
+                                                        subjectDN
+                                                        [auth-ext-short-name
+                                                         auth-ext-oid])]
+        (fs/mkdirs request-dir)
+        (ssl-utils/obj->pem! csr (str request-dir "/test_cert_with_auth_ext.pem"))
+        (bootstrap/with-puppetserver-running-with-mock-jrubies
+          "JRuby mocking is safe here because all of the requests are to the CA
+          endpoints, which are implemented in Clojure."
+          app
+          {:jruby-puppet
+           {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
+           :webserver
+           {:ssl-cert (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")
+            :ssl-key (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
+            :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+            :ssl-crl-path (str bootstrap/server-conf-dir "/ssl/crl.pem")}
+           :certificate-authority {:allow-authorization-extensions true}}
+          (testing "Adding to a very large inventory file works correctly"
+            (spit inventory-path inventory-content)
+            ;; internally the inventory append uses a 64K buffer, so make sure it is larger than that.
+            (loop [hostnames (map #(format "host-%d-name.thing.to.take-up-spaces\n" %) (range 0 10000))
+                   hostname (first hostnames)]
+              (when hostname
+                (spit inventory-path hostname :append true)
+                (recur (rest hostnames)
+                       (second hostnames))))
+
+            (let [sign-response (http-client/put
+                                  (str "https://localhost:8140/"
+                                       "puppet-ca/v1/certificate_status/test_cert_with_auth_ext")
+                                  (cert-status-request-params "{\"desired_state\": \"signed\"}"))]
+              (is (= 204 (:status sign-response)))
+              ;; inventory file should have "test_cert_with_auth_ext" in it
+              (let [new-inventory-contents (slurp inventory-path)]
+                (is (re-find #"test_cert_with_auth_ext" new-inventory-contents)))))))
+      (fs/delete (str bootstrap/server-conf-dir "/ca/signed/test_cert_with_auth_ext.pem")))))
+
 (deftest csr-api-test
   (testutils/with-stub-puppet-conf
     (bootstrap/with-puppetserver-running-with-config
