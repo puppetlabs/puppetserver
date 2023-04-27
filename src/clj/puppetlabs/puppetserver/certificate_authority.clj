@@ -1,5 +1,6 @@
 (ns puppetlabs.puppetserver.certificate-authority
-  (:import (java.io InputStream ByteArrayOutputStream ByteArrayInputStream File StringReader IOException)
+  (:import (java.io BufferedReader BufferedWriter FileNotFoundException InputStream ByteArrayOutputStream ByteArrayInputStream File StringReader IOException)
+           (java.nio CharBuffer)
            (java.nio.file Files)
            (java.nio.file.attribute FileAttribute PosixFilePermissions)
            (java.security PrivateKey PublicKey)
@@ -564,6 +565,8 @@
     (time-format/formatter "YYY-MM-dd'T'HH:mm:ssz")
     (time-coerce/from-date date-time)))
 
+(def buffer-copy-size (* 64 1024))
+
 (schema/defn ^:always-validate
   write-cert-to-inventory!
   "Writes an entry into Puppet's inventory file for a given certificate.
@@ -591,8 +594,29 @@
                           (.getNotAfter)
                           (format-date-time))
         subject       (utils/get-subject-from-x509-certificate cert)
-        entry (str serial-number " " not-before " " not-after " /" subject "\n")]
-    (spit inventory-file entry :append true)))
+        entry (str serial-number " " not-before " " not-after " /" subject "\n")
+        stream-content-fn (fn [^BufferedWriter writer]
+                            (log/trace (i18n/trs "Begin append to inventory file."))
+                            (let [copy-buffer (CharBuffer/allocate buffer-copy-size)]
+                              (try
+                                (with-open [^BufferedReader reader (io/reader inventory-file)]
+                                  ;; copy all the existing content
+                                  (loop [read-length (.read reader copy-buffer)]
+                                    (when (< 0 read-length)
+                                        (when (pos? read-length)
+                                          (.write writer (.array copy-buffer) 0 read-length))
+                                        (.clear copy-buffer)
+                                        (recur (.read reader copy-buffer)))))
+                                (catch FileNotFoundException _e
+                                  (log/trace (i18n/trs "Inventory file not found.  Assume empty.")))
+                                (catch Throwable e
+                                  (log/error e (i18n/trs "Error while appending to inventory file."))
+                                  (throw e))))
+                            (.write writer entry)
+                            (.flush writer)
+                            (log/trace (i18n/trs "Finish append to inventory file. ")))]
+    (log/debug (i18n/trs "Append \"{1}\" to inventory file {0}" inventory-file entry))
+    (ks-file/atomic-write inventory-file stream-content-fn)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Initialization
