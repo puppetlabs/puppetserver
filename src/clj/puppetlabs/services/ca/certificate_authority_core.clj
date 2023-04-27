@@ -35,9 +35,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; 'handler' functions for HTTP endpoints
 
-;; Perhaps this could/should be in the tk context somewhere, and of
-;; course it'll need to be used to guard any competing writes.
-(def crl-write-serializer (Object.))
 
 (defn handle-get-certificate
   [subject {:keys [cacert signeddir]}]
@@ -118,26 +115,25 @@
   [incoming-crl-pem :- InputStream
    {:keys [cacrl cacert crl-lock crl-lock-timeout-seconds
            infra-crl-lock infra-crl-lock-timeout-seconds enable-infra-crl infra-crl-path]} :- ca/CaSettings]
-  (locking crl-write-serializer
-    (try
-      (let [byte-stream (-> incoming-crl-pem
-                            ca/input-stream->byte-array
-                            ByteArrayInputStream.)
-            incoming-crls (utils/pem->crls byte-stream)]
-        (if (empty? incoming-crls)
-          (do
-            (log/info (i18n/trs "No valid CRLs submitted, nothing will be updated."))
-            (middleware-utils/plain-response 400 "No valid CRLs submitted."))
+  (try
+    (let [byte-stream (-> incoming-crl-pem
+                          ca/input-stream->byte-array
+                          ByteArrayInputStream.)
+          incoming-crls (utils/pem->crls byte-stream)]
+      (if (empty? incoming-crls)
+        (do
+          (log/info (i18n/trs "No valid CRLs submitted, nothing will be updated."))
+          (middleware-utils/plain-response 400 "No valid CRLs submitted."))
 
-          (do
-            (ca/update-crls incoming-crls cacrl cacert crl-lock ca/crl-lock-descriptor crl-lock-timeout-seconds)
-            (when enable-infra-crl
-              (ca/update-crls incoming-crls infra-crl-path cacert infra-crl-lock ca/infra-crl-lock-descriptor infra-crl-lock-timeout-seconds))
-            (middleware-utils/plain-response 200 "Successfully updated CRLs."))))
-      (catch IllegalArgumentException e
-        (let [error-msg (.getMessage e)]
-          (log/error error-msg)
-          (middleware-utils/plain-response 400 error-msg))))))
+        (do
+          (ca/update-crls incoming-crls cacrl cacert crl-lock ca/crl-lock-descriptor crl-lock-timeout-seconds)
+          (when enable-infra-crl
+            (ca/update-crls incoming-crls infra-crl-path cacert infra-crl-lock ca/infra-crl-lock-descriptor infra-crl-lock-timeout-seconds))
+          (middleware-utils/plain-response 200 "Successfully updated CRLs."))))
+    (catch IllegalArgumentException e
+      (let [error-msg (.getMessage e)]
+        (log/error error-msg)
+        (middleware-utils/plain-response 400 error-msg)))))
 
 (schema/defn handle-delete-certificate-request!
   [subject :- String
@@ -389,13 +385,12 @@
   (fn [context]
      (let [desired-state (get-desired-state context)
            request (:request context)]
-       (locking crl-write-serializer          
-          (ca/set-certificate-status!
-            (merge-request-settings settings context)
-            subject
-            desired-state
-            report-activity
-            request))
+       (ca/set-certificate-status!
+         (merge-request-settings settings context)
+         subject
+         desired-state
+         report-activity
+         request)
        (-> context
          (assoc-in [:representation :media-type] "text/plain")))))
 
