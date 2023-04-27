@@ -76,18 +76,11 @@
 
 (schema/defn resolve-crl-information
   "Create a map that has the appropriate path, lock, timeout and descriptor for the crl being used"
-  [{:keys [enable-infra-crl] :as ca-settings} :- ca/CaSettings]
-  (if (true? enable-infra-crl)
-    (let [{:keys [infra-crl-path infra-crl-lock infra-crl-lock-timeout-seconds]} ca-settings]
-      {:path infra-crl-path
-       :lock infra-crl-lock
-       :descriptor ca/infra-crl-lock-descriptor
-       :timeout infra-crl-lock-timeout-seconds})
-    (let [{:keys [cacrl crl-lock crl-lock-timeout-seconds]} ca-settings]
-      {:path cacrl
-       :lock crl-lock
-       :descriptor ca/crl-lock-descriptor
-       :timeout crl-lock-timeout-seconds})))
+  [{:keys [enable-infra-crl cacrl infra-crl-path crl-lock crl-lock-timeout-seconds]} :- ca/CaSettings]
+  {:path (if (true? enable-infra-crl) infra-crl-path cacrl)
+   :lock crl-lock
+   :descriptor ca/crl-lock-descriptor
+   :timeout crl-lock-timeout-seconds})
 
 (defn handle-get-certificate-revocation-list
   "Always return the crl if no 'If-Modified-Since' header is provided or
@@ -113,8 +106,7 @@
 
 (schema/defn handle-put-certificate-revocation-list!
   [incoming-crl-pem :- InputStream
-   {:keys [cacrl cacert crl-lock crl-lock-timeout-seconds
-           infra-crl-lock infra-crl-lock-timeout-seconds enable-infra-crl infra-crl-path]} :- ca/CaSettings]
+   {:keys [cacrl cacert] :as ca-settings} :- ca/CaSettings]
   (try
     (let [byte-stream (-> incoming-crl-pem
                           ca/input-stream->byte-array
@@ -124,11 +116,8 @@
         (do
           (log/info (i18n/trs "No valid CRLs submitted, nothing will be updated."))
           (middleware-utils/plain-response 400 "No valid CRLs submitted."))
-
         (do
-          (ca/update-crls incoming-crls cacrl cacert crl-lock ca/crl-lock-descriptor crl-lock-timeout-seconds)
-          (when enable-infra-crl
-            (ca/update-crls incoming-crls infra-crl-path cacert infra-crl-lock ca/infra-crl-lock-descriptor infra-crl-lock-timeout-seconds))
+          (ca/update-crls! incoming-crls cacrl cacert ca-settings)
           (middleware-utils/plain-response 200 "Successfully updated CRLs."))))
     (catch IllegalArgumentException e
       (let [error-msg (.getMessage e)]

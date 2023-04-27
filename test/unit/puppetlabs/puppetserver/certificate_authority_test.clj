@@ -585,16 +585,13 @@
   (let [update-crl-fixture-dir (str test-resources-dir "/update_crls/")
         cert-chain-path (str update-crl-fixture-dir "ca_crt.pem")
         crl-path (str update-crl-fixture-dir "ca_crl.pem")
-        crl-backup-path (str update-crl-fixture-dir "ca_crl.pem.bak")
-        crl-lock (ReentrantReadWriteLock.)
-        crl-lock-descriptor "test-crl"
-        crl-lock-timeout 1]
+        crl-backup-path (str update-crl-fixture-dir "ca_crl.pem.bak")]
     (logutils/with-test-logging
      (testing "a single newer CRL is used"
        (let [new-crl-path (str update-crl-fixture-dir "new_root_crl.pem")
              incoming-crls (utils/pem->crls new-crl-path)]
          (testutils/with-backed-up-crl crl-path crl-backup-path
-           (ca/update-crls incoming-crls crl-path cert-chain-path crl-lock crl-lock-descriptor crl-lock-timeout)
+           (ca/update-crls incoming-crls crl-path cert-chain-path)
            (let [old-crls (utils/pem->crls crl-backup-path)
                  new-crls (utils/pem->crls crl-path)
                  old-number (utils/get-crl-number (last old-crls))
@@ -604,7 +601,7 @@
        (let [multiple-new-crls-path (str update-crl-fixture-dir "multiple_new_root_crls.pem")
              incoming-crls (utils/pem->crls multiple-new-crls-path)]
          (testutils/with-backed-up-crl crl-path crl-backup-path
-           (ca/update-crls incoming-crls crl-path cert-chain-path crl-lock crl-lock-descriptor crl-lock-timeout)
+           (ca/update-crls incoming-crls crl-path cert-chain-path)
            (let [old-crls (utils/pem->crls crl-backup-path)
                  new-crls (utils/pem->crls crl-path)
                  old-number (utils/get-crl-number (last old-crls))
@@ -617,7 +614,7 @@
              three-newer-crls-path (str update-crl-fixture-dir "three_newer_crl_chain.pem")
              incoming-crls (utils/pem->crls three-newer-crls-path)]
          (testutils/with-backed-up-crl three-crl-path crl-backup-path
-           (ca/update-crls incoming-crls three-crl-path three-cert-path crl-lock crl-lock-descriptor crl-lock-timeout)
+           (ca/update-crls incoming-crls three-crl-path three-cert-path)
            (let [old-crls (utils/pem->crls crl-backup-path)
                  new-crls (utils/pem->crls three-crl-path)]
              (is (> (utils/get-crl-number (.get new-crls 2))
@@ -631,7 +628,7 @@
        (let [new-and-unrelated-crls-path (str update-crl-fixture-dir "new_crls_and_unrelated_crls.pem")
              incoming-crls (utils/pem->crls new-and-unrelated-crls-path)]
          (testutils/with-backed-up-crl crl-path crl-backup-path
-           (ca/update-crls incoming-crls crl-path cert-chain-path crl-lock crl-lock-descriptor crl-lock-timeout)
+           (ca/update-crls incoming-crls crl-path cert-chain-path)
            (let [old-crls (utils/pem->crls crl-backup-path)
                  new-crls (utils/pem->crls crl-path)]
                (is (> (utils/get-crl-number (last new-crls))
@@ -648,7 +645,7 @@
        (let [unrelated-crls-path (str update-crl-fixture-dir "unrelated_crls.pem")
              incoming-crls (utils/pem->crls unrelated-crls-path)]
          (testutils/with-backed-up-crl crl-path crl-backup-path
-           (ca/update-crls incoming-crls crl-path cert-chain-path crl-lock crl-lock-descriptor crl-lock-timeout)
+           (ca/update-crls incoming-crls crl-path cert-chain-path)
            (let [old-crls (utils/pem->crls crl-backup-path)
                  new-crls (utils/pem->crls crl-path)]
              (is (= (count old-crls) (count new-crls)))
@@ -658,22 +655,10 @@
              old-root-crl-path (str update-crl-fixture-dir "old_root_crl.pem")
              incoming-crls (utils/pem->crls old-root-crl-path)]
          (testutils/with-backed-up-crl new-root-crl-chain-path crl-backup-path
-           (ca/update-crls incoming-crls new-root-crl-chain-path cert-chain-path crl-lock crl-lock-descriptor crl-lock-timeout)
+           (ca/update-crls incoming-crls new-root-crl-chain-path cert-chain-path)
            (let [old-crls (utils/pem->crls crl-backup-path)
                  new-crls (utils/pem->crls new-root-crl-chain-path)]
                (is (= (set new-crls) (set old-crls)))))))
-     (testing "update-crls will timeout if lock is held"
-       (let [new-root-crl-chain-path (str update-crl-fixture-dir "chain_with_new_root.pem")
-             old-root-crl-path (str update-crl-fixture-dir "old_root_crl.pem")
-             incoming-crls (utils/pem->crls old-root-crl-path)
-             lock (.writeLock crl-lock)]
-         (.lock lock)
-         (testutils/with-backed-up-crl new-root-crl-chain-path crl-backup-path
-           (is (thrown+?
-                 [:kind :lock-acquisition-timeout]
-                 ;; execute the request in a separate thread as the same thread will allow the lock
-                 @(future (ca/update-crls incoming-crls new-root-crl-chain-path cert-chain-path crl-lock crl-lock-descriptor crl-lock-timeout)))))
-         (.unlock lock)))
 
      (let [multiple-newest-crls-path (str update-crl-fixture-dir "multiple_newest_root_crls.pem")
            delta-crl-path (str test-resources-dir "/update_crls/delta_crl.pem")
@@ -686,7 +671,7 @@
            (let [incoming-crls (utils/pem->crls path)]
              (testutils/with-backed-up-crl crl-path crl-backup-path
                (is (thrown-with-msg? IllegalArgumentException error-message
-                                     (ca/update-crls incoming-crls crl-path cert-chain-path crl-lock crl-lock-descriptor crl-lock-timeout)))
+                                     (ca/update-crls incoming-crls crl-path cert-chain-path)))
                (let [old-crls (utils/pem->crls crl-backup-path)
                      new-crls (utils/pem->crls crl-path)]
                  (is (= (set old-crls) (set new-crls))))))))))))

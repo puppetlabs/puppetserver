@@ -77,9 +77,7 @@
    :serial-lock                      (new ReentrantReadWriteLock)
    :serial-lock-timeout-seconds      5
    :crl-lock                         (new ReentrantReadWriteLock)
-   :crl-lock-timeout-seconds         5
-   :infra-crl-lock                   (new ReentrantReadWriteLock)
-   :infra-crl-lock-timeout-seconds   5})
+   :crl-lock-timeout-seconds         5})
 
 (defn ca-sandbox!
   "Copy the `cadir` to a temporary directory and return
