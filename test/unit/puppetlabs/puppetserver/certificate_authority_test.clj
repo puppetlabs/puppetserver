@@ -1111,9 +1111,12 @@
   (testing "Certs can be written to an inventory file."
     (let [first-cert     (utils/pem->cert cacert)
           second-cert    (utils/pem->cert (ca/path-to-cert signeddir "localhost"))
-          inventory-file (str (ks/temp-file))]
-      (ca/write-cert-to-inventory! first-cert inventory-file)
-      (ca/write-cert-to-inventory! second-cert inventory-file)
+          inventory-file (str (ks/temp-file))
+          ca-settings (assoc
+                        (testutils/ca-settings cadir)
+                        :cert-inventory inventory-file)]
+      (ca/write-cert-to-inventory! first-cert ca-settings)
+      (ca/write-cert-to-inventory! second-cert ca-settings)
 
       (testing "The format of a cert in the inventory matches the existing
                 format used by the ruby puppet code."

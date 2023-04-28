@@ -5,7 +5,7 @@
             [puppetlabs.kitchensink.file :as ks-file]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils])
   (:import (java.io ByteArrayInputStream)
-           (java.util.concurrent.locks ReentrantReadWriteLock)))
+           (java.util.concurrent.locks ReentrantReadWriteLock ReentrantLock)))
 
 (defn assert-subject [o subject]
   (is (= subject (-> o .getSubjectX500Principal .getName))))
@@ -77,7 +77,9 @@
    :serial-lock                      (new ReentrantReadWriteLock)
    :serial-lock-timeout-seconds      5
    :crl-lock                         (new ReentrantReadWriteLock)
-   :crl-lock-timeout-seconds         5})
+   :crl-lock-timeout-seconds         5
+   :inventory-lock                   (new ReentrantLock)
+   :inventory-lock-timeout-seconds   5})
 
 (defn ca-sandbox!
   "Copy the `cadir` to a temporary directory and return

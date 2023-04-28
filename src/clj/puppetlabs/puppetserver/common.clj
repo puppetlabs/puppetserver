@@ -69,3 +69,26 @@
          (sling/throw+
            {:kind :lock-acquisition-timeout
             :msg (i18n/tru "Failed to acquire write lock \"{0}\" within {1} seconds" descriptor# timeout#)})))))
+
+(defmacro with-safe-lock
+  "Given a ReentrantLock, acquire the lock, and hold it for the length of the execution of the body.
+  If the lock can't be acquired, throw an exception to indicate a timeout.  Log behaviors at trace level to aid with
+  supportability"
+  [reentrant-lock descriptor timeout-in-seconds & body]
+  `(let [l# ~reentrant-lock
+         descriptor# ~descriptor
+         timeout# ~timeout-in-seconds]
+     (log/trace (i18n/trs "Attempt to acquire lock \"{0}\"" descriptor#))
+     (if (.tryLock l# timeout# TimeUnit/SECONDS)
+       (try
+         (log/trace (i18n/trs "Acquired lock \"{0}\"" descriptor#))
+         (do
+           ~@body)
+         (finally
+           (.unlock l#)
+           (log/trace (i18n/trs "Released lock \"{0}\"" descriptor#))))
+       (do
+         (log/info (i18n/trs "Lock acquisition timed out \"{0}\"" descriptor#))
+         (sling/throw+
+           {:kind :lock-acquisition-timeout
+            :msg (i18n/tru "Failed to acquire lock \"{0}\" within {1} seconds" descriptor# timeout#)})))))
