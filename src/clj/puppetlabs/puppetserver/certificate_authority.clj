@@ -637,7 +637,7 @@
 (schema/defn read-infra-nodes
     "Returns a list of infra nodes or infra node serials from the specified file organized as one item per line."
     [infra-file-reader :- Reader]
-    (line-seq (io/reader infra-file-reader)))
+    (line-seq infra-file-reader))
 
 (defn- write-infra-serials-to-writer
   [writer infra-nodes-path signeddir]
