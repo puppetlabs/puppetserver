@@ -75,7 +75,9 @@
    :infra-crl-path                   (str cadir "/infra_crl.pem")
    :enable-infra-crl                 false
    :serial-lock                      (new ReentrantReadWriteLock)
-   :serial-lock-timeout-seconds      5})
+   :serial-lock-timeout-seconds      5
+   :crl-lock                         (new ReentrantReadWriteLock)
+   :crl-lock-timeout-seconds         5})
 
 (defn ca-sandbox!
   "Copy the `cadir` to a temporary directory and return

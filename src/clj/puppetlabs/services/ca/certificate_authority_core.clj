@@ -3,6 +3,7 @@
            (clojure.lang IFn)
            (org.joda.time DateTime))
   (:require [puppetlabs.puppetserver.certificate-authority :as ca]
+            [puppetlabs.puppetserver.common :as common]
             [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.ring-middleware.core :as middleware]
             [puppetlabs.ring-middleware.utils :as middleware-utils]
@@ -34,9 +35,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; 'handler' functions for HTTP endpoints
 
-;; Perhaps this could/should be in the tk context somewhere, and of
-;; course it'll need to be used to guard any competing writes.
-(def crl-write-serializer (Object.))
 
 (defn handle-get-certificate
   [subject {:keys [cacert signeddir]}]
@@ -76,48 +74,55 @@
       (catch IllegalArgumentException _
         nil))))
 
+(schema/defn resolve-crl-information
+  "Create a map that has the appropriate path, lock, timeout and descriptor for the crl being used"
+  [{:keys [enable-infra-crl cacrl infra-crl-path crl-lock crl-lock-timeout-seconds]} :- ca/CaSettings]
+  {:path (if (true? enable-infra-crl) infra-crl-path cacrl)
+   :lock crl-lock
+   :descriptor ca/crl-lock-descriptor
+   :timeout crl-lock-timeout-seconds})
+
 (defn handle-get-certificate-revocation-list
   "Always return the crl if no 'If-Modified-Since' header is provided or
   if that header is not in correct http-date format. If the header is
-  present and has correct format, only return the crl if the master
+  present and has correct format, only return the crl if the server
   cacrl is newer than the agent crl."
-  [request {:keys [cacrl infra-crl-path enable-infra-crl]}]
+  [request ca-settings]
   (let [agent-crl-last-modified-val (rr/get-header request "If-Modified-Since")
         agent-crl-last-modified-date-time (format-http-date agent-crl-last-modified-val)
-        master-crl-to-use (if (true? enable-infra-crl) infra-crl-path cacrl)
-        master-crl-last-modified-date-time (ca/get-crl-last-modified master-crl-to-use)]
-    (if (or (nil? agent-crl-last-modified-date-time)
-            (time/after? master-crl-last-modified-date-time agent-crl-last-modified-date-time))
-      (-> (ca/get-certificate-revocation-list master-crl-to-use)
-          (rr/response)
-          (rr/content-type "text/plain"))
-      (-> (rr/response nil)
-          (rr/status 304)
-          (rr/content-type "text/plain")))))
+        {:keys [path lock descriptor timeout]} (resolve-crl-information ca-settings)]
+    ;; Since the locks are reentrant, obtain the read lock to prevent modification during the
+    ;; window of time between when the last-modified is read and when the crl content is potentially read.
+    (common/with-safe-read-lock lock descriptor timeout
+        (if (or (nil? agent-crl-last-modified-date-time)
+                (time/after? (ca/get-crl-last-modified path lock descriptor timeout)
+                             agent-crl-last-modified-date-time))
+          (-> (ca/get-certificate-revocation-list path lock descriptor timeout)
+              (rr/response)
+              (rr/content-type "text/plain"))
+          (-> (rr/response nil)
+              (rr/status 304)
+              (rr/content-type "text/plain"))))))
 
 (schema/defn handle-put-certificate-revocation-list!
   [incoming-crl-pem :- InputStream
-   {:keys [cacrl cacert enable-infra-crl infra-crl-path]} :- ca/CaSettings]
-  (locking crl-write-serializer
-    (try
-      (let [byte-stream (-> incoming-crl-pem
-                            ca/input-stream->byte-array
-                            ByteArrayInputStream.)
-            incoming-crls (utils/pem->crls byte-stream)]
-        (if (empty? incoming-crls)
-          (do
-            (log/info (i18n/trs "No valid CRLs submitted, nothing will be updated."))
-            (middleware-utils/plain-response 400 "No valid CRLs submitted."))
-
-          (do
-            (ca/update-crls incoming-crls cacrl cacert)
-            (when enable-infra-crl
-              (ca/update-crls incoming-crls infra-crl-path cacert))
-            (middleware-utils/plain-response 200 "Successfully updated CRLs."))))
-      (catch IllegalArgumentException e
-        (let [error-msg (.getMessage e)]
-          (log/error error-msg)
-          (middleware-utils/plain-response 400 error-msg))))))
+   {:keys [cacrl cacert] :as ca-settings} :- ca/CaSettings]
+  (try
+    (let [byte-stream (-> incoming-crl-pem
+                          ca/input-stream->byte-array
+                          ByteArrayInputStream.)
+          incoming-crls (utils/pem->crls byte-stream)]
+      (if (empty? incoming-crls)
+        (do
+          (log/info (i18n/trs "No valid CRLs submitted, nothing will be updated."))
+          (middleware-utils/plain-response 400 "No valid CRLs submitted."))
+        (do
+          (ca/update-crls! incoming-crls cacrl cacert ca-settings)
+          (middleware-utils/plain-response 200 "Successfully updated CRLs."))))
+    (catch IllegalArgumentException e
+      (let [error-msg (.getMessage e)]
+        (log/error error-msg)
+        (middleware-utils/plain-response 400 error-msg)))))
 
 (schema/defn handle-delete-certificate-request!
   [subject :- String
@@ -369,13 +374,12 @@
   (fn [context]
      (let [desired-state (get-desired-state context)
            request (:request context)]
-       (locking crl-write-serializer          
-          (ca/set-certificate-status!
-            (merge-request-settings settings context)
-            subject
-            desired-state
-            report-activity
-            request))
+       (ca/set-certificate-status!
+         (merge-request-settings settings context)
+         subject
+         desired-state
+         report-activity
+         request)
        (-> context
          (assoc-in [:representation :media-type] "text/plain")))))
 

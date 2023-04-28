@@ -106,7 +106,9 @@
    ;; Infra CRL would be enabled by default.
    :enable-infra-crl                 schema/Bool
    :serial-lock                      ReentrantReadWriteLock
-   :serial-lock-timeout-seconds      PosInt})
+   :serial-lock-timeout-seconds      PosInt
+   :crl-lock                         ReentrantReadWriteLock
+   :crl-lock-timeout-seconds         PosInt})
 
 (def DesiredCertificateState
   "The pair of states that may be submitted to the certificate
@@ -175,6 +177,10 @@
 (def default-serial-lock-timeout-seconds
   5)
 
+(def default-crl-lock-timeout-seconds
+  ;; for large crls, and a slow disk a longer timeout is needed
+  60)
+
 (schema/defn ^:always-validate initialize-ca-config
   "Adds in default ca config keys/values, which may be overwritten if a value for
   any of those keys already exists in the ca-data"
@@ -186,7 +192,8 @@
                   :enable-infra-crl false
                   :allow-subject-alt-names default-allow-subj-alt-names
                   :allow-authorization-extensions default-allow-auth-extensions
-                  :serial-lock-timeout-seconds default-serial-lock-timeout-seconds}]
+                  :serial-lock-timeout-seconds default-serial-lock-timeout-seconds
+                  :crl-lock-timeout-seconds default-crl-lock-timeout-seconds}]
     (merge defaults ca-data)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -336,7 +343,9 @@
                     :gem-path
                     :enable-infra-crl
                     :serial-lock-timeout-seconds
-                    :serial-lock)]
+                    :serial-lock
+                    :crl-lock-timeout-seconds
+                    :crl-lock)]
     (if (:enable-infra-crl ca-settings)
       settings'
       (dissoc settings' :infra-crl-path :infra-node-serials-path))))
@@ -468,9 +477,10 @@
 
 (schema/defn write-crls
   "Encode a list of CRLS to PEM format and write it to a file atomically and
-  with appropriate permissions."
+  with appropriate permissions.  Note, assumes proper locking is done."
   [crls :- [CertificateRevocationList]
    path :- schema/Str]
+  ;; use an atomic write for crash safety.
   (ks-file/atomic-write path (partial utils/objs->pem! crls) public-key-perms))
 
 (schema/defn write-csr
@@ -486,6 +496,10 @@
 (def serial-lock-descriptor
   "Text used in exceptions to help identify locking issues"
   "serial-file")
+
+(def crl-lock-descriptor
+  "Text used in exceptions to help identify locking issues"
+  "crl-file")
 
 (schema/defn parse-serial-number :- schema/Int
   "Parses a serial number from its format on disk.  See `format-serial-number`
@@ -1207,7 +1221,8 @@
                                  (:gem-path jruby-puppet))
              :access-control (select-keys certificate-authority
                                           [:certificate-status])
-             :serial-lock (ReentrantReadWriteLock.))))
+             :serial-lock (new ReentrantReadWriteLock)
+             :crl-lock (new ReentrantReadWriteLock))))
 
 (schema/defn ^:always-validate
   config->master-settings :- MasterSettings
@@ -1365,7 +1380,7 @@
    {:kind :duplicate-cert
     :msg  <specific error message>}"
   [csr :- CertificateRequest
-   {:keys [allow-duplicate-certs cacert cacrl cakey csrdir signeddir]} :- CaSettings]
+   {:keys [allow-duplicate-certs cacert cacrl crl-lock crl-lock-timeout-seconds cakey csrdir signeddir]} :- CaSettings]
   (let [subject (get-csr-subject csr)
         cert (path-to-cert signeddir subject)
         existing-cert? (fs/exists? cert)
@@ -1373,7 +1388,8 @@
     (when (or existing-cert? existing-csr?)
       (let [status (if existing-cert?
                      (if (utils/revoked?
-                          (utils/pem->ca-crl cacrl (utils/pem->ca-cert cacert cakey))
+                           (common/with-safe-read-lock crl-lock crl-lock-descriptor crl-lock-timeout-seconds
+                             (utils/pem->ca-crl cacrl (utils/pem->ca-cert cacert cakey)))
                           (utils/pem->cert cert))
                        "revoked"
                        "signed")
@@ -1485,16 +1501,24 @@
   get-certificate-revocation-list :- schema/Str
   "Given the value of the 'cacrl' setting from Puppet,
   return the CRL from the .pem file on disk."
-  [cacrl :- schema/Str]
-  (slurp cacrl))
+  [cacrl :- schema/Str
+   lock :- ReentrantReadWriteLock
+   lock-descriptor :- schema/Str
+   lock-timeout :- PosInt]
+  (common/with-safe-read-lock lock lock-descriptor lock-timeout
+    (slurp cacrl)))
 
 (schema/defn ^:always-validate
   get-crl-last-modified :- DateTime
   "Given the value of the 'cacrl' setting from Puppet, return
   a Joda DateTime instance of when the CRL file was last modified."
-  [cacrl :- schema/Str]
-  (let [last-modified-milliseconds (.lastModified (io/file cacrl))]
-       (time-coerce/from-long last-modified-milliseconds)))
+  [cacrl :- schema/Str
+   lock :- ReentrantReadWriteLock
+   lock-descriptor :- schema/Str
+   lock-timeout :- PosInt]
+  (common/with-safe-read-lock lock lock-descriptor lock-timeout
+    (let [last-modified-milliseconds (.lastModified (io/file cacrl))]
+         (time-coerce/from-long last-modified-milliseconds))))
 
 (schema/defn ^:always-validate reject-delta-crl
   [crl :- CertificateRevocationList]
@@ -1564,7 +1588,8 @@
 
 (schema/defn ^:always-validate update-crls
   "Given a collection of CRLs, update the CRL chain and confirm that
-  all CRLs are currently valid."
+  all CRLs are currently valid.
+  NOTE: assumes appropriate locking is in place"
   [incoming-crls :- [X509CRL]
    crl-path :- schema/Str
    cert-chain-path :- schema/Str]
@@ -1591,6 +1616,17 @@
     (validate-certs-and-crls cert-chain new-ext-crl-chain)
     (write-crls new-ext-crl-chain crl-path)
     (log/info (i18n/trs "Successfully updated CRL at {0}" crl-path))))
+
+(schema/defn update-crls!
+  "Apply write locking to the crls, and update the crls as appropriate."
+  [incoming-crls :- [X509CRL]
+   crl-path :- schema/Str
+   cacert :- schema/Str
+   {:keys [crl-lock crl-lock-timeout-seconds enable-infra-crl infra-crl-path]}  :- CaSettings]
+  (common/with-safe-write-lock crl-lock crl-lock-descriptor crl-lock-timeout-seconds
+    (update-crls incoming-crls crl-path cacert)
+    (when enable-infra-crl
+      (update-crls incoming-crls infra-crl-path cacert))))
 
 (schema/defn ensure-directories-exist!
   "Create any directories used by the CA if they don't already exist."
@@ -1767,45 +1803,49 @@
   "Revoke the subjects' certificates. Note this does not destroy the certificates.
    The certificates will remain in the signed directory despite being revoked."
   [{:keys [signeddir cacert cacrl cakey infra-crl-path
+           crl-lock crl-lock-timeout-seconds
            infra-node-serials-path enable-infra-crl]} :- CaSettings
    subjects :- [schema/Str]
    report-activity
    request]
-  (let [[our-full-crl & rest-of-full-chain] (utils/pem->crls cacrl)
-        serials (filter-already-revoked-serials (map #(-> (path-to-cert signeddir %)
-                                                          (utils/pem->cert)
-                                                          (utils/get-serial))
-                                                     subjects)
-                                                our-full-crl)
-        serial-count (count serials)
-        [msg signee certnames ip] (generate-cert-message-from-request request subjects "revoked")]
-    (if (= 0 serial-count)
-      (log/info (i18n/trs "No revoke action needed. The certs are already in the CRL."))
-      (let [new-full-crl (utils/revoke-multiple our-full-crl
-                                                (utils/pem->private-key cakey)
-                                                (.getPublicKey (utils/pem->ca-cert cacert cakey))
-                                                serials)
-            new-full-chain (cons new-full-crl (vec rest-of-full-chain))]
-        (write-crls new-full-chain cacrl)))
+  ;; because we need the crl to be consistent for the serials, maintain a write lock on the crl
+  ;; as reentrant read-write locks do not allow upgrading from a read lock to a write lock
+  (common/with-safe-write-lock crl-lock crl-lock-descriptor crl-lock-timeout-seconds
+    (let [[our-full-crl & rest-of-full-chain] (utils/pem->crls cacrl)
+          serials (filter-already-revoked-serials (map #(-> (path-to-cert signeddir %)
+                                                            (utils/pem->cert)
+                                                            (utils/get-serial))
+                                                       subjects)
+                                                  our-full-crl)
+          serial-count (count serials)
+          [msg signee certnames ip] (generate-cert-message-from-request request subjects "revoked")]
+      (if (= 0 serial-count)
+        (log/info (i18n/trs "No revoke action needed. The certs are already in the CRL."))
+        (let [new-full-crl (utils/revoke-multiple our-full-crl
+                                                  (utils/pem->private-key cakey)
+                                                  (.getPublicKey (utils/pem->ca-cert cacert cakey))
+                                                  serials)
+              new-full-chain (cons new-full-crl (vec rest-of-full-chain))]
+          (write-crls new-full-chain cacrl)))
 
-    ;; Publish infra-crl if an infra node is getting revoked.
-    (when (and enable-infra-crl (fs/exists? infra-node-serials-path))
-      (with-open [infra-nodes-serial-path-reader (io/reader infra-node-serials-path)]
-        (let [infra-nodes (set (map biginteger (read-infra-nodes infra-nodes-serial-path-reader)))
-              infra-revocations (vec (set/intersection infra-nodes (set serials)))]
-          (when (seq infra-revocations)
-            (let [[our-infra-crl & rest-of-infra-chain] (utils/pem->crls infra-crl-path)
-                  new-infra-revocations (filter-already-revoked-serials infra-revocations our-infra-crl)]
-              (if (= 0 new-infra-revocations)
-                (log/info (i18n/trs "No revoke action needed. The infra certs are already in the infra CRL"))
-                (let [new-infra-crl (utils/revoke-multiple our-infra-crl
-                                                           (utils/pem->private-key cakey)
-                                                           (.getPublicKey (utils/pem->ca-cert cacert cakey))
-                                                           new-infra-revocations)
-                      full-infra-chain (cons new-infra-crl (vec rest-of-infra-chain))]
-                  (write-crls full-infra-chain infra-crl-path)
-                  (log/info (i18n/trs "Infra node certificate(s) being revoked; publishing updated infra CRL")))))))))
-    (report-cert-event report-activity msg signee certnames ip "revoked")))
+      ;; Publish infra-crl if an infra node is getting revoked.
+      (when (and enable-infra-crl (fs/exists? infra-node-serials-path))
+        (with-open [infra-nodes-serial-path-reader (io/reader infra-node-serials-path)]
+          (let [infra-nodes (set (map biginteger (read-infra-nodes infra-nodes-serial-path-reader)))
+                infra-revocations (vec (set/intersection infra-nodes (set serials)))]
+            (when (seq infra-revocations)
+              (let [[our-infra-crl & rest-of-infra-chain] (utils/pem->crls infra-crl-path)
+                    new-infra-revocations (filter-already-revoked-serials infra-revocations our-infra-crl)]
+                (if (= 0 new-infra-revocations)
+                  (log/info (i18n/trs "No revoke action needed. The infra certs are already in the infra CRL"))
+                  (let [new-infra-crl (utils/revoke-multiple our-infra-crl
+                                                             (utils/pem->private-key cakey)
+                                                             (.getPublicKey (utils/pem->ca-cert cacert cakey))
+                                                             new-infra-revocations)
+                        full-infra-chain (cons new-infra-crl (vec rest-of-infra-chain))]
+                    (write-crls full-infra-chain infra-crl-path)
+                    (log/info (i18n/trs "Infra node certificate(s) being revoked; publishing updated infra CRL")))))))))
+      (report-cert-event report-activity msg signee certnames ip "revoked"))))
 
 (schema/defn ^:always-validate set-certificate-status!
   "Sign or revoke the certificate for the given subject."

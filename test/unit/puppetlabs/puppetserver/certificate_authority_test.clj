@@ -5,6 +5,7 @@
                     ByteArrayOutputStream)
            (com.puppetlabs.ssl_utils SSLUtils)
            (java.security PublicKey MessageDigest)
+           (java.util.concurrent.locks ReentrantReadWriteLock)
            (org.joda.time DateTime Period)
            (org.bouncycastle.asn1.x509 SubjectPublicKeyInfo))
   (:require [puppetlabs.puppetserver.certificate-authority :as ca]
@@ -549,7 +550,10 @@
       (is (true? (revoked? cert2))))))
 
 (deftest filter-already-revoked-serials-test
-  (let [crl (-> (ca/get-certificate-revocation-list cacrl)
+  (let [lock (new ReentrantReadWriteLock)
+        descriptor "test-crl"
+        timeout 1
+        crl (-> (ca/get-certificate-revocation-list cacrl lock descriptor timeout)
                 StringReader.
                 utils/pem->crl)]
    (testing "Return an empty vector when all supplied serials are already in CRL"
@@ -569,7 +573,10 @@
 
 (deftest get-certificate-revocation-list-test
   (testing "`get-certificate-revocation-list` returns a valid CRL file."
-    (let [crl (-> (ca/get-certificate-revocation-list cacrl)
+    (let [lock (new ReentrantReadWriteLock)
+          descriptor "test-crl"
+          timeout 1
+          crl (-> (ca/get-certificate-revocation-list cacrl lock descriptor timeout)
                   StringReader.
                   utils/pem->crl)]
       (testutils/assert-issuer crl "CN=Puppet CA: localhost"))))
@@ -652,6 +659,7 @@
            (let [old-crls (utils/pem->crls crl-backup-path)
                  new-crls (utils/pem->crls new-root-crl-chain-path)]
                (is (= (set new-crls) (set old-crls)))))))
+
      (let [multiple-newest-crls-path (str update-crl-fixture-dir "multiple_newest_root_crls.pem")
            delta-crl-path (str test-resources-dir "/update_crls/delta_crl.pem")
            missing-auth-id-crl-path (str test-resources-dir "/update_crls/missing_auth_id_crl.pem")
@@ -1871,7 +1879,10 @@
       (is (= "2016-10-11T06:40:47UTC" (get expiration-map "intermediateca.example.org"))))))
 
 (deftest get-cert-or-csr-statuses-test
-  (let [crl (-> (ca/get-certificate-revocation-list cacrl)
+  (let [lock (new ReentrantReadWriteLock)
+        descriptor "test-crl"
+        timeout 1
+        crl (-> (ca/get-certificate-revocation-list cacrl lock descriptor timeout)
                 StringReader.
                 utils/pem->crl)]
     (testing "returns a collection of 'requested' statuses when queried for CSR"

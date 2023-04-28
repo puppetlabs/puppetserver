@@ -13,6 +13,7 @@
    [puppetlabs.ssl-utils.core :as ssl-utils]
    [puppetlabs.puppetserver.certificate-authority :as ca]
    [puppetlabs.services.ca.certificate-authority-core :refer [handle-get-certificate-revocation-list]]
+   [puppetlabs.services.ca.ca-testutils :as ca-test-utils]
    [ring.mock.request :as mock]
    [clj-time.format :as time-format]
    [clj-time.core :as time]
@@ -455,15 +456,18 @@
 
             (testing "Verify correct CRL is returned depending on enable-infra-crl"
               (let [request (mock/request :get "/v1/certificate_revocation_list/mynode")
+                    ca-settings (ca-test-utils/ca-settings "")
                     infra-crl-response (handle-get-certificate-revocation-list
-                                        request {:cacrl ca-crl
-                                                 :infra-crl-path infra-crl
-                                                 :enable-infra-crl true})
+                                        request (assoc ca-settings
+                                                  :cacrl ca-crl
+                                                  :infra-crl-path infra-crl
+                                                  :enable-infra-crl true))
                     infra-crl-response-body (:body infra-crl-response)
                     full-crl-response (handle-get-certificate-revocation-list
-                                       request {:cacrl ca-crl
-                                                :infra-crl-path infra-crl
-                                                :enable-infra-crl false})
+                                        request (assoc ca-settings
+                                                 :cacrl ca-crl
+                                                 :infra-crl-path infra-crl
+                                                 :enable-infra-crl false))
                     full-crl-response-body (:body full-crl-response)]
                 (is (map? infra-crl-response))
                 (is (= 200 (:status infra-crl-response)))
