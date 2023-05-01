@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: 2ee28e7f396e94c9b1863250deac8885ba309e3c\n"
+"X-Git-Ref: 09a5cd47517a64ac95a32bb3a2ef924ee7762df8\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -414,6 +414,26 @@ msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/common.clj
 msgid "Failed to acquire write lock \"{0}\" within {1} seconds"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/common.clj
+msgid "Attempt to acquire lock \"{0}\""
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/common.clj
+msgid "Acquired lock \"{0}\""
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/common.clj
+msgid "Released lock \"{0}\""
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/common.clj
+msgid "Lock acquisition timed out \"{0}\""
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/common.clj
+msgid "Failed to acquire lock \"{0}\" within {1} seconds"
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/jruby_request.clj
