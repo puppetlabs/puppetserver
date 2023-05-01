@@ -6,7 +6,7 @@
            (java.security PrivateKey PublicKey)
            (java.security.cert X509Certificate CRLException CertPathValidatorException X509CRL)
            (java.util Date)
-           (java.util.concurrent.locks ReentrantReadWriteLock)
+           (java.util.concurrent.locks ReentrantReadWriteLock ReentrantLock)
            (org.apache.commons.io IOUtils)
            (org.bouncycastle.pkcs PKCS10CertificationRequest)
            (org.joda.time DateTime))
@@ -108,7 +108,9 @@
    :serial-lock                      ReentrantReadWriteLock
    :serial-lock-timeout-seconds      PosInt
    :crl-lock                         ReentrantReadWriteLock
-   :crl-lock-timeout-seconds         PosInt})
+   :crl-lock-timeout-seconds         PosInt
+   :inventory-lock                   ReentrantLock
+   :inventory-lock-timeout-seconds   PosInt})
 
 (def DesiredCertificateState
   "The pair of states that may be submitted to the certificate
@@ -181,6 +183,9 @@
   ;; for large crls, and a slow disk a longer timeout is needed
   60)
 
+(def default-inventory-lock-timeout-seconds
+  60)
+
 (schema/defn ^:always-validate initialize-ca-config
   "Adds in default ca config keys/values, which may be overwritten if a value for
   any of those keys already exists in the ca-data"
@@ -193,7 +198,8 @@
                   :allow-subject-alt-names default-allow-subj-alt-names
                   :allow-authorization-extensions default-allow-auth-extensions
                   :serial-lock-timeout-seconds default-serial-lock-timeout-seconds
-                  :crl-lock-timeout-seconds default-crl-lock-timeout-seconds}]
+                  :crl-lock-timeout-seconds default-crl-lock-timeout-seconds
+                  :inventory-lock-timeout-seconds default-inventory-lock-timeout-seconds}]
     (merge defaults ca-data)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -345,7 +351,9 @@
                     :serial-lock-timeout-seconds
                     :serial-lock
                     :crl-lock-timeout-seconds
-                    :crl-lock)]
+                    :crl-lock
+                    :inventory-lock
+                    :inventory-lock-timeout-seconds)]
     (if (:enable-infra-crl ca-settings)
       settings'
       (dissoc settings' :infra-crl-path :infra-node-serials-path))))
@@ -501,6 +509,10 @@
   "Text used in exceptions to help identify locking issues"
   "crl-file")
 
+(def inventory-lock-descriptor
+  "Text used in exceptions to help identify locking issues"
+  "inventory-file")
+
 (schema/defn parse-serial-number :- schema/Int
   "Parses a serial number from its format on disk.  See `format-serial-number`
   for the awful, gory details."
@@ -596,7 +608,7 @@
     * $NA = The 'not after' field of the cert, as a date/timestamp in UTC.
     * $S  = The distinguished name of the cert's subject."
   [cert :- Certificate
-   inventory-file :- schema/Str]
+   {:keys [cert-inventory inventory-lock inventory-lock-timeout-seconds]} :- CaSettings]
   (let [serial-number (->> cert
                            (.getSerialNumber)
                            (format-serial-number)
@@ -613,7 +625,7 @@
                             (log/trace (i18n/trs "Begin append to inventory file."))
                             (let [copy-buffer (CharBuffer/allocate buffer-copy-size)]
                               (try
-                                (with-open [^BufferedReader reader (io/reader inventory-file)]
+                                (with-open [^BufferedReader reader (io/reader cert-inventory)]
                                   ;; copy all the existing content
                                   (loop [read-length (.read reader copy-buffer)]
                                     (when (< 0 read-length)
@@ -629,8 +641,9 @@
                             (.write writer entry)
                             (.flush writer)
                             (log/trace (i18n/trs "Finish append to inventory file. ")))]
-    (log/debug (i18n/trs "Append \"{1}\" to inventory file {0}" inventory-file entry))
-    (ks-file/atomic-write inventory-file stream-content-fn)))
+    (common/with-safe-lock inventory-lock inventory-lock-descriptor inventory-lock-timeout-seconds
+      (log/debug (i18n/trs "Append \"{1}\" to inventory file {0}" cert-inventory entry))
+      (ks-file/atomic-write cert-inventory stream-content-fn))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Initialization
@@ -789,7 +802,7 @@
         infra-crl (utils/generate-crl (.getIssuerX500Principal cacert)
                                       private-key
                                       public-key)]
-    (write-cert-to-inventory! cacert (:cert-inventory ca-settings))
+    (write-cert-to-inventory! cacert ca-settings)
     (write-public-key public-key (:capub ca-settings))
     (write-private-key private-key (:cakey ca-settings))
     (write-cert cacert (:cacert ca-settings))
@@ -1032,7 +1045,7 @@
                                                x500-name
                                                public-key
                                                extensions)]
-    (write-cert-to-inventory! hostcert (:cert-inventory ca-settings))
+    (write-cert-to-inventory! hostcert ca-settings)
     (write-cert hostcert (:hostcert settings))
     (write-cert hostcert (path-to-cert (:signeddir ca-settings) certname))))
 
@@ -1222,7 +1235,8 @@
              :access-control (select-keys certificate-authority
                                           [:certificate-status])
              :serial-lock (new ReentrantReadWriteLock)
-             :crl-lock (new ReentrantReadWriteLock))))
+             :crl-lock (new ReentrantReadWriteLock)
+             :inventory-lock (new ReentrantLock))))
 
 (schema/defn ^:always-validate
   config->master-settings :- MasterSettings
@@ -1341,7 +1355,7 @@
   from Puppet, auto-sign the request and write the certificate to disk."
   [subject :- schema/Str
    csr :- CertificateRequest
-   {:keys [cacert cakey signeddir ca-ttl cert-inventory] :as ca-settings} :- CaSettings
+   {:keys [cacert cakey signeddir ca-ttl] :as ca-settings} :- CaSettings
    report-activity
    request]
   (let [validity    (cert-validity-dates ca-ttl)
@@ -1359,7 +1373,7 @@
                                              csr
                                              cacert))
         [msg signee certnames ip] (generate-cert-message-from-request request [subject] "signed")]
-    (write-cert-to-inventory! signed-cert cert-inventory)
+    (write-cert-to-inventory! signed-cert ca-settings)
     (write-cert signed-cert (path-to-cert signeddir subject))
     (report-cert-event report-activity msg signee certnames ip "signed")))
 
