@@ -51,8 +51,7 @@
                  ;; send their logs to logstash, so we include it in the jar.
                  [net.logstash.logback/logstash-logback-encoder]
 
-                 [puppetlabs/jruby-deps "9.4.2.0-1"]
-                 [puppetlabs/jruby-utils :exclusions [puppetlabs/jruby-deps]]
+                 [puppetlabs/jruby-utils]
                  [puppetlabs/clj-shell-utils]
                  [puppetlabs/trapperkeeper]
                  [puppetlabs/trapperkeeper-webserver-jetty9]
