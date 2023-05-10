@@ -11,6 +11,7 @@
   (:require [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.trapperkeeper.testutils.logging :refer [logged?] :as logutils]
             [puppetlabs.ssl-utils.core :as utils]
+            [puppetlabs.ssl-utils.simple :as simple]
             [puppetlabs.services.ca.ca-testutils :as testutils]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.kitchensink.core :as ks]
@@ -1902,3 +1903,45 @@
       (is (thrown?
            java.lang.ClassCastException
            (ca/get-cert-or-csr-statuses signeddir crl false))))))
+
+(defn create-ca-cert
+  [name serial]
+  (let [keypair (utils/generate-key-pair)
+        public-key (utils/get-public-key keypair)
+        private-key (utils/get-private-key keypair)
+        x500-name (utils/cn name)
+        validity (ca/cert-validity-dates 3600)
+        ca-exts (ca/create-ca-extensions public-key public-key)]
+    {:public-key public-key
+     :private-key private-key
+     :x500-name x500-name
+     :certname name
+     :cert (utils/sign-certificate
+             x500-name
+             private-key
+             serial
+             (:not-before validity)
+             (:not-after validity)
+             x500-name
+             public-key
+             ca-exts)}))
+
+(deftest cert-authority-id-match-ca-subject-id?-test
+  (let [ca-cert-1 (create-ca-cert "ca1" 1)
+        ca-cert-2 (create-ca-cert "ca2" 2)
+        ca-cert-3 (create-ca-cert "ca3" 3)
+        cert-1 (simple/gen-cert "foo" ca-cert-1 4 {:extensions [(utils/authority-key-identifier (:cert ca-cert-1))]})
+        cert-2 (simple/gen-cert "foo" ca-cert-2 5 {:extensions [(utils/authority-key-identifier (:cert ca-cert-2))]})
+        cert-3 (simple/gen-cert "foo" ca-cert-3 5 {:extensions [(utils/authority-key-identifier (:cert ca-cert-3))]})]
+    (testing "Certificates that match CA report as matching"
+      (is (true? (ca/cert-authority-id-match-ca-subject-id? (:cert cert-1) (:cert ca-cert-1))))
+      (is (true? (ca/cert-authority-id-match-ca-subject-id? (:cert cert-2) (:cert ca-cert-2))))
+      (is (true? (ca/cert-authority-id-match-ca-subject-id? (:cert cert-3) (:cert ca-cert-3)))))
+    (testing "Certificates that don't match CA report as not matching"
+      (is (false? (ca/cert-authority-id-match-ca-subject-id? (:cert cert-1) (:cert ca-cert-2))))
+      (is (false? (ca/cert-authority-id-match-ca-subject-id? (:cert cert-1) (:cert ca-cert-3))))
+      (is (false? (ca/cert-authority-id-match-ca-subject-id? (:cert cert-2) (:cert ca-cert-1))))
+      (is (false? (ca/cert-authority-id-match-ca-subject-id? (:cert cert-2) (:cert ca-cert-3))))
+      (is (false? (ca/cert-authority-id-match-ca-subject-id? (:cert cert-3) (:cert ca-cert-1))))
+      (is (false? (ca/cert-authority-id-match-ca-subject-id? (:cert cert-3) (:cert ca-cert-2)))))))
+
