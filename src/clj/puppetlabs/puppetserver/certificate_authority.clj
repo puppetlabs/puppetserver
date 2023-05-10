@@ -1987,3 +1987,14 @@
                     (format-date-time))))
             {}
             crl-chain)))
+(schema/defn cert-authority-id-match-ca-subject-id? :- schema/Bool
+  "Given a certificate, and the ca-cert, validate that the certificate was signed by the CA provided"
+  [incoming-cert :- X509Certificate
+   ca-cert :- X509Certificate]
+  (let [incoming-key-id (utils/get-extension-value incoming-cert utils/authority-key-identifier-oid)
+        ca-key-id (utils/get-extension-value ca-cert utils/subject-key-identifier-oid)]
+    (if incoming-key-id
+      ;; incoming are byte-arrays, convert to seq for simple comparisons
+      (= (seq (:key-identifier incoming-key-id)) (seq ca-key-id))
+      false)))
+
