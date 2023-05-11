@@ -1945,3 +1945,26 @@
       (is (false? (ca/cert-authority-id-match-ca-subject-id? (:cert cert-3) (:cert ca-cert-1))))
       (is (false? (ca/cert-authority-id-match-ca-subject-id? (:cert cert-3) (:cert ca-cert-2)))))))
 
+(deftest duration-string-conversion-test
+  (testing "a valid duration string coverts to expected seconds"
+    (let [duration-str-1 "1y 1d 1h 1m 1s"
+          duration-str-2 "800y 0d 0h 0m 0s"
+          duration-str-3 "22d1s"
+          duration-str-4 "0s"]
+      (is (= 31626061 (ca/duration-str->sec duration-str-1)))
+      (is (= 25228800000 (ca/duration-str->sec duration-str-2)))
+      (is (= 1900801 (ca/duration-str->sec duration-str-3)))
+      (is (= 0 (ca/duration-str->sec duration-str-4)))))
+  (testing "an invalid duration string returns nil"
+    (let [duration-str-1 "not a duration string 283q 3z 3x 03o"
+          duration-str-2 "not a duration string 20d 20s"
+          duration-str-3 "1    y       1__d    30 m    s22   m39  thirtym"
+          duration-str-4 "0y 0d 0h 0m 0s 0x 0y 0z"
+          duration-str-5 33
+          duration-str-6 nil]
+      (is (= nil (ca/duration-str->sec duration-str-1)))
+      (is (= nil (ca/duration-str->sec duration-str-2)))
+      (is (= nil (ca/duration-str->sec duration-str-3)))
+      (is (= nil (ca/duration-str->sec duration-str-4)))
+      (is (= nil (ca/duration-str->sec duration-str-5)))
+      (is (= nil (ca/duration-str->sec duration-str-6))))))
