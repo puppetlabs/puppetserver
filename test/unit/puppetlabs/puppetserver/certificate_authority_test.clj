@@ -440,11 +440,10 @@
         csr                (-> (:csrdir settings)
                                (ca/path-to-cert-request "test-agent")
                                (utils/pem->csr))
-        expected-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")
-        request [:authorization [:name "authname"] :remote-addr "1.1.1.1"]]
+        expected-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
     ;; Fix the value of "now" so we can reliably test the dates
     (time/do-at now
-      (ca/autosign-certificate-request! "test-agent" csr settings (constantly nil) request))
+      (ca/autosign-certificate-request! "test-agent" csr settings (constantly nil)))
 
     (testing "requests are autosigned and saved to disk"
       (is (fs/exists? expected-cert-path)))
@@ -470,10 +469,9 @@
           csr       (-> (:csrdir settings)
                         (ca/path-to-cert-request "test-agent")
                         (utils/pem->csr))
-          cert-path (ca/path-to-cert (:signeddir settings) "test-agent")
-          request [:authorization [:name "authname"] :remote-addr "1.1.1.1"]]
+          cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
       (fs/delete (:capub settings))
-      (ca/autosign-certificate-request! "test-agent" csr settings (constantly nil) request)
+      (ca/autosign-certificate-request! "test-agent" csr settings (constantly nil))
       (is (true? (fs/exists? cert-path)))
       (let [cert  (utils/pem->cert cert-path)
             capub (-> (:cacert settings)
@@ -487,9 +485,8 @@
           csr       (-> (:csrdir settings)
                         (ca/path-to-cert-request "test-agent")
                         (utils/pem->csr))
-          cert-path (ca/path-to-cert (:signeddir settings) "test-agent")
-          request [:authorization [:name "authname"] :remote-addr "1.1.1.1"]]
-      (ca/autosign-certificate-request! "test-agent" csr settings (constantly nil) request)
+          cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
+      (ca/autosign-certificate-request! "test-agent" csr settings (constantly nil))
       (is (true? (fs/exists? cert-path)))
       (let [cert  (utils/pem->cert cert-path)
             capub (-> (:cacert settings)
@@ -507,11 +504,10 @@
           revoked? (fn [cert]
                      (-> (:cacrl settings)
                          (utils/pem->crl)
-                         (utils/revoked? cert)))
-          request [:authorization [:name "authname"] :remote-addr "1.1.1.1"]]
+                         (utils/revoked? cert)))]
       (fs/delete (:capub settings))
       (is (false? (revoked? cert)))
-      (ca/revoke-existing-certs! settings ["localhost"] (constantly nil) request)
+      (ca/revoke-existing-certs! settings ["localhost"] (constantly nil))
       (is (true? (revoked? cert))))))
 
 (deftest revoke-as-intermediate-ca
@@ -524,10 +520,9 @@
           revoked? (fn [cert]
                      (-> (:cacrl settings)
                          (utils/pem->ca-crl ca-cert)
-                         (utils/revoked? cert)))
-          request [:authorization [:name "authname"] :remote-addr "1.1.1.1"]]
+                         (utils/revoked? cert)))]
       (is (false? (revoked? cert)))
-      (ca/revoke-existing-certs! settings ["localhost"] (constantly nil) request)
+      (ca/revoke-existing-certs! settings ["localhost"] (constantly nil))
       (is (true? (revoked? cert))))))
 
 (deftest revoke-multiple-certs
@@ -542,11 +537,10 @@
           revoked? (fn [cert]
                      (-> (:cacrl settings)
                          (utils/pem->crl)
-                         (utils/revoked? cert)))
-          request [:authorization [:name "authname"] :remote-addr "1.1.1.1"]]
+                         (utils/revoked? cert)))]
       (is (false? (revoked? cert1)))
       (is (false? (revoked? cert2)))
-      (ca/revoke-existing-certs! settings ["localhost" "test_cert"] (constantly nil) request)
+      (ca/revoke-existing-certs! settings ["localhost" "test_cert"] (constantly nil))
       (is (true? (revoked? cert1)))
       (is (true? (revoked? cert2))))))
 
@@ -1142,13 +1136,12 @@
 (deftest allow-duplicate-certs-test
   (let [settings (assoc (testutils/ca-sandbox! cadir) :autosign false)]
     (testing "when false"
-      (let [settings (assoc settings :allow-duplicate-certs false)
-            request [:authorization [:name "authname"] :remote-addr "1.1.1.1"]]
+      (let [settings (assoc settings :allow-duplicate-certs false)]
         (testing "throws exception if CSR already exists"
           (is (thrown+?
                [:kind :duplicate-cert
                 :msg "test-agent already has a requested certificate; ignoring certificate request"]
-               (ca/process-csr-submission! "test-agent" (csr-stream "test-agent") settings (constantly nil) request))))
+               (ca/process-csr-submission! "test-agent" (csr-stream "test-agent") settings (constantly nil)))))
 
         (testing "throws exception if certificate already exists"
           (is (thrown+?
@@ -1157,26 +1150,23 @@
                (ca/process-csr-submission! "localhost"
                                         (io/input-stream (test-pem-file "localhost-csr.pem"))
                                         settings
-                                        (constantly nil)
-                                        request)))
+                                        (constantly nil))))
           (is (thrown+?
                [:kind :duplicate-cert
                 :msg "revoked-agent already has a revoked certificate; ignoring certificate request"]
                (ca/process-csr-submission! "revoked-agent"
                                         (io/input-stream (test-pem-file "revoked-agent-csr.pem"))
                                         settings
-                                        (constantly nil)
-                                        request))))))
+                                        (constantly nil)))))))
 
     (testing "when true"
-      (let [settings (assoc settings :allow-duplicate-certs true)
-            request [:authorization [:name "authname"] :remote-addr "1.1.1.1"]]
+      (let [settings (assoc settings :allow-duplicate-certs true)]
         (testing "new CSR overwrites existing one"
           (let [csr-path (ca/path-to-cert-request (:csrdir settings) "test-agent")
                 csr      (ByteArrayInputStream. (.getBytes (slurp csr-path)))]
             (spit csr-path "should be overwritten")
             (logutils/with-test-logging
-              (ca/process-csr-submission! "test-agent" csr settings (constantly nil) request)
+              (ca/process-csr-submission! "test-agent" csr settings (constantly nil))
               (is (logged? #"test-agent already has a requested certificate; new certificate will overwrite it" :info))
               (is (not= "should be overwritten" (slurp csr-path))
                   "Existing CSR was not overwritten"))))
@@ -1187,13 +1177,12 @@
                 old-cert  (slurp cert-path)
                 csr       (io/input-stream (test-pem-file "localhost-csr.pem"))]
             (logutils/with-test-logging
-              (ca/process-csr-submission! "localhost" csr settings (constantly nil) request)
+              (ca/process-csr-submission! "localhost" csr settings (constantly nil))
               (is (logged? #"localhost already has a signed certificate; new certificate will overwrite it" :info))
               (is (not= old-cert (slurp cert-path)) "Existing certificate was not overwritten"))))))))
 
 (deftest process-csr-submission!-test
-  (let [settings (testutils/ca-sandbox! cadir)
-        request [:authorization [:name "authname"] :remote-addr "1.1.1.1"]]
+  (let [settings (testutils/ca-sandbox! cadir)]
     (testing "CSR validation policies"
       (testing "when autosign is false"
         (let [settings (assoc settings :autosign false)]
@@ -1215,7 +1204,7 @@
                 (let [path (ca/path-to-cert-request (:csrdir settings) subject)
                       csr  (io/input-stream (test-pem-file csr-file))]
                   (is (false? (fs/exists? path)))
-                  (is (thrown+? exception (ca/process-csr-submission! subject csr settings (constantly nil) request)))
+                  (is (thrown+? exception (ca/process-csr-submission! subject csr settings (constantly nil))))
                   (is (false? (fs/exists? path)))))))
 
           (testing "extension & key policies are not checked"
@@ -1227,7 +1216,7 @@
                 (let [path (ca/path-to-cert-request (:csrdir settings) subject)
                       csr  (io/input-stream (test-pem-file csr-file))]
                   (is (false? (fs/exists? path)))
-                  (ca/process-csr-submission! subject csr settings (constantly nil) request)
+                  (ca/process-csr-submission! subject csr settings (constantly nil))
                   (is (true? (fs/exists? path)))
                   (fs/delete path)))))))
 
@@ -1251,7 +1240,7 @@
                 (let [path (ca/path-to-cert-request (:csrdir settings) subject)
                       csr  (io/input-stream (test-pem-file csr-file))]
                   (is (false? (fs/exists? path)))
-                  (is (thrown+? expected (ca/process-csr-submission! subject csr settings (constantly nil) request)))
+                  (is (thrown+? expected (ca/process-csr-submission! subject csr settings (constantly nil))))
                   (is (false? (fs/exists? path)))))))
 
           (testing "CSR will be saved when"
@@ -1276,7 +1265,7 @@
                 (let [path (ca/path-to-cert-request (:csrdir settings) subject)
                       csr  (io/input-stream (test-pem-file csr-file))]
                   (is (false? (fs/exists? path)))
-                  (is (thrown+? expected (ca/process-csr-submission! subject csr settings (constantly nil) request)))
+                  (is (thrown+? expected (ca/process-csr-submission! subject csr settings (constantly nil))))
                   (is (true? (fs/exists? path)))
                   (fs/delete path)))))))
 
@@ -1287,13 +1276,13 @@
             (is (thrown+?
                  [:kind :duplicate-cert
                   :msg "test-agent already has a requested certificate; ignoring certificate request"]
-                 (ca/process-csr-submission! "not-test-agent" csr-with-mismatched-name settings (constantly nil) request)))))
+                 (ca/process-csr-submission! "not-test-agent" csr-with-mismatched-name settings (constantly nil))))))
         (testing "subject policies checked before extension & key policies"
           (let [csr-with-disallowed-alt-names (io/input-stream (test-pem-file "hostwithaltnames.pem"))]
             (is (thrown+?
                  [:kind :hostname-mismatch
                   :msg "Instance name \"hostwithaltnames\" does not match requested key \"foo\""]
-                 (ca/process-csr-submission! "foo" csr-with-disallowed-alt-names settings (constantly nil) request)))))))))
+                 (ca/process-csr-submission! "foo" csr-with-disallowed-alt-names settings (constantly nil))))))))))
 
 (deftest cert-signing-extension-test
   (let [issuer-keys  (utils/generate-key-pair 512)

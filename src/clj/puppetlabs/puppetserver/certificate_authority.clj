@@ -1286,10 +1286,11 @@
      autosign
      (if (fs/exists? autosign)
        (if (fs/executable? autosign)
-         (let [command-result (execute-autosign-command! autosign subject csr-stream ruby-load-path gem-path)]
-           (-> command-result
-               :exit-code
-               zero?))
+         (let [command-result (execute-autosign-command! autosign subject csr-stream ruby-load-path gem-path)
+               succeed? (zero? (:exit-code command-result))]
+           (when-not succeed?
+             (log/debug (i18n/trs "Autosign executable failed. Result: {0} " (pr-str command-result))))
+           succeed?)
          (whitelist-matches? autosign subject))
        false))))
 
@@ -1349,6 +1350,12 @@
      subjects
      ip-address]))
 
+(defn create-report-activity-fn
+  [report-activity request]
+  (fn [subjects activity-type]
+    (let [[msg signee certnames ip] (generate-cert-message-from-request request subjects activity-type)]
+      (report-cert-event report-activity msg signee certnames ip activity-type))))
+
 (schema/defn ^:always-validate
   autosign-certificate-request!
   "Given a subject name, their certificate request, and the CA settings
@@ -1356,8 +1363,7 @@
   [subject :- schema/Str
    csr :- CertificateRequest
    {:keys [cacert cakey signeddir ca-ttl] :as ca-settings} :- CaSettings
-   report-activity
-   request]
+   report-activity]
   (let [validity    (cert-validity-dates ca-ttl)
         ;; if part of a CA bundle, the intermediate CA will be first in the chain
         cacert      (utils/pem->ca-cert cacert cakey)
@@ -1371,11 +1377,10 @@
                                             (utils/get-public-key csr)
                                             (create-agent-extensions
                                              csr
-                                             cacert))
-        [msg signee certnames ip] (generate-cert-message-from-request request [subject] "signed")]
+                                             cacert))]
     (write-cert-to-inventory! signed-cert ca-settings)
     (write-cert signed-cert (path-to-cert signeddir subject))
-    (report-cert-event report-activity msg signee certnames ip "signed")))
+    (report-activity [subject] "signed")))
 
 (schema/defn ^:always-validate
   save-certificate-request!
@@ -1472,8 +1477,7 @@
   [subject :- schema/Str
    certificate-request :- InputStream
    {:keys [autosign csrdir ruby-load-path gem-path allow-subject-alt-names allow-authorization-extensions] :as settings} :- CaSettings
-   report-activity
-   request]
+   report-activity]
   (with-open [byte-stream (-> certificate-request
                               input-stream->byte-array
                               ByteArrayInputStream.)]
@@ -1487,7 +1491,7 @@
         (ensure-no-authorization-extensions! csr allow-authorization-extensions)
         (validate-extensions! (utils/get-extensions csr))
         (validate-csr-signature! csr)
-        (autosign-certificate-request! subject csr settings report-activity request)
+        (autosign-certificate-request! subject csr settings report-activity)
         (fs/delete (path-to-cert-request csrdir subject))))))
 
 (schema/defn ^:always-validate delete-certificate-request! :- OutcomeInfo
@@ -1793,10 +1797,9 @@
   "Sign the subject's certificate request."
   [{:keys [csrdir] :as settings} :- CaSettings
    subject :- schema/Str
-   report-activity
-   request]
+   report-activity]
   (let [csr-path (path-to-cert-request csrdir subject)]
-    (autosign-certificate-request! subject (utils/pem->csr csr-path) settings report-activity request)
+    (autosign-certificate-request! subject (utils/pem->csr csr-path) settings report-activity)
     (fs/delete csr-path)
     (log/debug (i18n/trs "Removed certificate request for {0} at ''{1}''" subject csr-path))))
 
@@ -1820,8 +1823,7 @@
            crl-lock crl-lock-timeout-seconds
            infra-node-serials-path enable-infra-crl]} :- CaSettings
    subjects :- [schema/Str]
-   report-activity
-   request]
+   report-activity]
   ;; because we need the crl to be consistent for the serials, maintain a write lock on the crl
   ;; as reentrant read-write locks do not allow upgrading from a read lock to a write lock
   (common/with-safe-write-lock crl-lock crl-lock-descriptor crl-lock-timeout-seconds
@@ -1831,8 +1833,7 @@
                                                             (utils/get-serial))
                                                        subjects)
                                                   our-full-crl)
-          serial-count (count serials)
-          [msg signee certnames ip] (generate-cert-message-from-request request subjects "revoked")]
+          serial-count (count serials)]
       (if (= 0 serial-count)
         (log/info (i18n/trs "No revoke action needed. The certs are already in the CRL."))
         (let [new-full-crl (utils/revoke-multiple our-full-crl
@@ -1859,18 +1860,17 @@
                         full-infra-chain (cons new-infra-crl (vec rest-of-infra-chain))]
                     (write-crls full-infra-chain infra-crl-path)
                     (log/info (i18n/trs "Infra node certificate(s) being revoked; publishing updated infra CRL")))))))))
-      (report-cert-event report-activity msg signee certnames ip "revoked"))))
+      (report-activity subjects "revoked"))))
 
 (schema/defn ^:always-validate set-certificate-status!
   "Sign or revoke the certificate for the given subject."
   [settings :- CaSettings
    subject :- schema/Str
    desired-state :- DesiredCertificateState
-   report-activity
-   request]
+   report-activity]
   (if (= :signed desired-state)
-    (sign-existing-csr! settings subject report-activity request)
-    (revoke-existing-certs! settings [subject] report-activity request)))
+    (sign-existing-csr! settings subject report-activity)
+    (revoke-existing-certs! settings [subject] report-activity)))
 
 (schema/defn ^:always-validate certificate-exists? :- schema/Bool
   "Do we have a certificate for the given subject?"
