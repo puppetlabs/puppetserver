@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: 09a5cd47517a64ac95a32bb3a2ef924ee7762df8\n"
+"X-Git-Ref: 9b56761ba01930e7d6c9be904707dd81b11a6100\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -223,6 +223,10 @@ msgid ""
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Autosign executable failed. Result: {0} "
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 msgid "Entity {1} {2} 1 certificate: {3}."
 msgid_plural "Entity {1} {2} {0} certificates: {3}."
 msgstr[0] ""
@@ -358,6 +362,10 @@ msgstr ""
 msgid ""
 "No custom OID mapping configuration file found at {0}, custom OID mappings "
 "will not be loaded"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Renewed certificate for \"{0}\" with new expiration of \"{1}\""
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/cli/subcommand.clj
