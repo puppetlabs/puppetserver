@@ -5,6 +5,7 @@
            (java.nio.file.attribute FileAttribute PosixFilePermissions)
            (java.security PrivateKey PublicKey)
            (java.security.cert X509Certificate CRLException CertPathValidatorException X509CRL)
+           (java.text SimpleDateFormat)
            (java.util Date)
            (java.util.concurrent.locks ReentrantReadWriteLock ReentrantLock)
            (org.apache.commons.io IOUtils)
@@ -186,6 +187,8 @@
 (def default-inventory-lock-timeout-seconds
   60)
 
+(def default-auto-ttl-renewal-seconds
+  (* 60 60 24 60)) ; 60 days by default
 (schema/defn ^:always-validate initialize-ca-config
   "Adds in default ca config keys/values, which may be overwritten if a value for
   any of those keys already exists in the ca-data"
@@ -1286,10 +1289,11 @@
      autosign
      (if (fs/exists? autosign)
        (if (fs/executable? autosign)
-         (let [command-result (execute-autosign-command! autosign subject csr-stream ruby-load-path gem-path)]
-           (-> command-result
-               :exit-code
-               zero?))
+         (let [command-result (execute-autosign-command! autosign subject csr-stream ruby-load-path gem-path)
+               succeed? (zero? (:exit-code command-result))]
+           (when-not succeed?
+             (log/debug (i18n/trs "Autosign executable failed. Result: {0} " (pr-str command-result))))
+           succeed?)
          (whitelist-matches? autosign subject))
        false))))
 
@@ -1349,6 +1353,12 @@
      subjects
      ip-address]))
 
+(defn create-report-activity-fn
+  [report-activity request]
+  (fn [subjects activity-type]
+    (let [[msg signee certnames ip] (generate-cert-message-from-request request subjects activity-type)]
+      (report-cert-event report-activity msg signee certnames ip activity-type))))
+
 (schema/defn ^:always-validate
   autosign-certificate-request!
   "Given a subject name, their certificate request, and the CA settings
@@ -1356,8 +1366,7 @@
   [subject :- schema/Str
    csr :- CertificateRequest
    {:keys [cacert cakey signeddir ca-ttl] :as ca-settings} :- CaSettings
-   report-activity
-   request]
+   report-activity]
   (let [validity    (cert-validity-dates ca-ttl)
         ;; if part of a CA bundle, the intermediate CA will be first in the chain
         cacert      (utils/pem->ca-cert cacert cakey)
@@ -1371,11 +1380,10 @@
                                             (utils/get-public-key csr)
                                             (create-agent-extensions
                                              csr
-                                             cacert))
-        [msg signee certnames ip] (generate-cert-message-from-request request [subject] "signed")]
+                                             cacert))]
     (write-cert-to-inventory! signed-cert ca-settings)
     (write-cert signed-cert (path-to-cert signeddir subject))
-    (report-cert-event report-activity msg signee certnames ip "signed")))
+    (report-activity [subject] "signed")))
 
 (schema/defn ^:always-validate
   save-certificate-request!
@@ -1472,8 +1480,7 @@
   [subject :- schema/Str
    certificate-request :- InputStream
    {:keys [autosign csrdir ruby-load-path gem-path allow-subject-alt-names allow-authorization-extensions] :as settings} :- CaSettings
-   report-activity
-   request]
+   report-activity]
   (with-open [byte-stream (-> certificate-request
                               input-stream->byte-array
                               ByteArrayInputStream.)]
@@ -1487,7 +1494,7 @@
         (ensure-no-authorization-extensions! csr allow-authorization-extensions)
         (validate-extensions! (utils/get-extensions csr))
         (validate-csr-signature! csr)
-        (autosign-certificate-request! subject csr settings report-activity request)
+        (autosign-certificate-request! subject csr settings report-activity)
         (fs/delete (path-to-cert-request csrdir subject))))))
 
 (schema/defn ^:always-validate delete-certificate-request! :- OutcomeInfo
@@ -1793,10 +1800,9 @@
   "Sign the subject's certificate request."
   [{:keys [csrdir] :as settings} :- CaSettings
    subject :- schema/Str
-   report-activity
-   request]
+   report-activity]
   (let [csr-path (path-to-cert-request csrdir subject)]
-    (autosign-certificate-request! subject (utils/pem->csr csr-path) settings report-activity request)
+    (autosign-certificate-request! subject (utils/pem->csr csr-path) settings report-activity)
     (fs/delete csr-path)
     (log/debug (i18n/trs "Removed certificate request for {0} at ''{1}''" subject csr-path))))
 
@@ -1820,8 +1826,7 @@
            crl-lock crl-lock-timeout-seconds
            infra-node-serials-path enable-infra-crl]} :- CaSettings
    subjects :- [schema/Str]
-   report-activity
-   request]
+   report-activity]
   ;; because we need the crl to be consistent for the serials, maintain a write lock on the crl
   ;; as reentrant read-write locks do not allow upgrading from a read lock to a write lock
   (common/with-safe-write-lock crl-lock crl-lock-descriptor crl-lock-timeout-seconds
@@ -1831,8 +1836,7 @@
                                                             (utils/get-serial))
                                                        subjects)
                                                   our-full-crl)
-          serial-count (count serials)
-          [msg signee certnames ip] (generate-cert-message-from-request request subjects "revoked")]
+          serial-count (count serials)]
       (if (= 0 serial-count)
         (log/info (i18n/trs "No revoke action needed. The certs are already in the CRL."))
         (let [new-full-crl (utils/revoke-multiple our-full-crl
@@ -1859,18 +1863,17 @@
                         full-infra-chain (cons new-infra-crl (vec rest-of-infra-chain))]
                     (write-crls full-infra-chain infra-crl-path)
                     (log/info (i18n/trs "Infra node certificate(s) being revoked; publishing updated infra CRL")))))))))
-      (report-cert-event report-activity msg signee certnames ip "revoked"))))
+      (report-activity subjects "revoked"))))
 
 (schema/defn ^:always-validate set-certificate-status!
   "Sign or revoke the certificate for the given subject."
   [settings :- CaSettings
    subject :- schema/Str
    desired-state :- DesiredCertificateState
-   report-activity
-   request]
+   report-activity]
   (if (= :signed desired-state)
-    (sign-existing-csr! settings subject report-activity request)
-    (revoke-existing-certs! settings [subject] report-activity request)))
+    (sign-existing-csr! settings subject report-activity)
+    (revoke-existing-certs! settings [subject] report-activity)))
 
 (schema/defn ^:always-validate certificate-exists? :- schema/Bool
   "Do we have a certificate for the given subject?"
@@ -2036,3 +2039,47 @@
           (if (some? next-match)
             (recur next-match total-seconds)
             total-seconds))))))
+(schema/defn replace-authority-identifier :- utils/SSLExtensionList
+  [extensions  :- utils/SSLExtensionList ca-cert :- X509Certificate]
+  (conj (filter #(not= utils/authority-key-identifier-oid (:oid %)) extensions)
+        (utils/authority-key-identifier ca-cert)))
+
+(schema/defn replace-subject-identifier :- utils/SSLExtensionList
+  [extensions  :- utils/SSLExtensionList subject-public-key :- PublicKey]
+  (conj (filter #(not= utils/subject-key-identifier-oid (:oid %)) extensions)
+        (utils/subject-key-identifier subject-public-key false)))
+
+(schema/defn update-extensions-for-new-signing :- utils/SSLExtensionList
+  [extensions :- utils/SSLExtensionList ca-cert :- X509Certificate subject-public-key :- PublicKey]
+  (replace-subject-identifier (replace-authority-identifier extensions ca-cert) subject-public-key))
+
+(schema/defn renew-certificate!
+  "Given a certificate and CaSettings create a new signed certificate using the public key from the certificate.
+  It recreates all the extensions in the original certificate."
+  [certificate :- X509Certificate
+   {:keys [cacert cakey auto_renewal_cert_ttl] :as ca-settings} :- CaSettings
+   report-activity]
+  (let [validity (cert-validity-dates (or auto_renewal_cert_ttl default-auto-ttl-renewal-seconds))
+        cacert (utils/pem->ca-cert cacert cakey)
+        cert-subject (utils/get-subject-from-x509-certificate certificate)
+        cert-name (utils/x500-name->CN cert-subject)
+        signed-cert (utils/sign-certificate
+                      (utils/get-subject-from-x509-certificate cacert)
+                      (utils/pem->private-key cakey)
+                      (next-serial-number! ca-settings)
+                      (:not-before validity)
+                      (:not-after validity)
+                      cert-subject
+                      (.getPublicKey certificate)
+                      (update-extensions-for-new-signing
+                        (utils/get-extensions certificate)
+                        cacert
+                        (.getPublicKey certificate)))]
+    (write-cert-to-inventory! signed-cert ca-settings)
+    (delete-certificate! ca-settings cert-name)
+    (log/info (i18n/trs "Renewed certificate for \"{0}\" with new expiration of \"{1}\""
+                        cert-name
+                        (.format (new SimpleDateFormat "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+                                 (.getNotAfter signed-cert))))
+    (report-activity [cert-subject] "renewed")
+    signed-cert))

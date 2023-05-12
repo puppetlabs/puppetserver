@@ -55,8 +55,9 @@
    report-activity
    {:keys [body] {:keys [subject]} :route-params :as request}]
   (sling/try+
-    (ca/process-csr-submission! subject body ca-settings report-activity request)
-    (rr/content-type (rr/response nil) "text/plain")
+    (let [report-activity-fn (ca/create-report-activity-fn report-activity request)]
+      (ca/process-csr-submission! subject body ca-settings report-activity-fn)
+      (rr/content-type (rr/response nil) "text/plain"))
     (catch ca/csr-validation-failure? {:keys [msg]}
       (log/error msg)
       ;; Respond to all CSR validation failures with a 400
@@ -165,9 +166,10 @@
                                      certnames)
               message (when (seq missing-certs)
                         (format "The following certs do not exist and cannot be revoked: %s"
-                                (vec missing-certs)))]
+                                (vec missing-certs)))
+              report-activity-fn (ca/create-report-activity-fn report-activity request)]
           (try
-            (ca/revoke-existing-certs! ca-settings existing-certs report-activity request)  
+            (ca/revoke-existing-certs! ca-settings existing-certs report-activity-fn)
             (ca/delete-certificates! ca-settings existing-certs)
             (-> (rr/response (or message "Successfully cleaned all certs."))
                 (rr/status 200)
@@ -373,13 +375,13 @@
   :put!
   (fn [context]
      (let [desired-state (get-desired-state context)
-           request (:request context)]
+           request (:request context)
+           report-activity-fn (ca/create-report-activity-fn report-activity request)]
        (ca/set-certificate-status!
          (merge-request-settings settings context)
          subject
          desired-state
-         report-activity
-         request)
+         report-activity-fn)
        (-> context
          (assoc-in [:representation :media-type] "text/plain")))))
 
