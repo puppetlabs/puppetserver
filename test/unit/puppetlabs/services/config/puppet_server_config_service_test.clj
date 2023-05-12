@@ -6,6 +6,7 @@
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
+            [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging logged?]]
             [clj-semver.core :as semver]
             [puppetlabs.trapperkeeper.core :as tk]
@@ -96,6 +97,37 @@
               #".*configuration.*conflict.*:cacert, :cacrl"
               (tk-internal/throw-app-error-if-exists! app)))
          (tk-app/stop app))))))
+
+(deftest certificate-authority-override
+  (tk-testutils/with-app-with-config
+    app
+    service-and-deps
+    (-> required-config
+        (assoc :my-config {:foo "bar"}))
+    (testing (str "certificate-authority settings work")
+      (with-test-logging
+        (ks-testutils/with-no-jvm-shutdown-hooks
+          (let [config (-> (jruby-testutils/jruby-puppet-tk-config
+                    (jruby-testutils/jruby-puppet-config {:max-active-instances 2
+                                                          :borrow-timeout
+                                                          12}))
+                    (assoc :webserver {:port 8081
+                                       :shutdown-timeout-seconds 1}))
+                service (tk-app/get-service app :PuppetServerConfigService)
+                service-config (get-config service)
+                merged-config (merge service-config  {:certificate-authority
+                                                      {:allow-auto-renewal true
+                                                       :auto-renewal-cert-ttl "50d"
+                                                       :ca-ttl "50d"}})
+                settings (ca/config->ca-settings merged-config)
+                app (tk/boot-services-with-config
+                      (service-and-deps-with-mock-jruby config)
+                       config)]
+            (is (= true (:allow-auto-renewal settings)))
+            (is (= 4320000 (:auto-renewal-cert-ttl settings)))
+            (is (= 4320000 (:ca-ttl settings)))
+            (is (logged? #"Detected ca-ttl setting in CA config which will take precedence over puppet.conf setting"))
+            (tk-app/stop app)))))))
 
 (deftest multi-webserver-setting-override
   (let [webserver-config {:ssl-cert "thehostcert"

@@ -725,6 +725,12 @@
     (testing "serial"
       (is (fs/exists? (:serial settings))))
 
+    (testing "allow-auto-renewal"
+      (is (= false (:allow-auto-renewal settings))))
+
+    (testing "auto-renewal-cert-ttl"
+      (is (= "60d" (:auto-renewal-cert-ttl settings))))
+
     (testing "Does not replace files if they all exist"
       (let [files (-> (ca/settings->cadir-paths (assoc settings :enable-infra-crl false))
                       (dissoc :csrdir :signeddir :cadir)

@@ -55,6 +55,8 @@
    :allow-authorization-extensions   false
    :allow-duplicate-certs            false
    :allow-subject-alt-names          false
+   :allow-auto-renewal               false
+   :auto-renewal-cert-ttl            "60d"
    :ca-name                          "test ca"
    :ca-ttl                           1
    :cadir                            (str cadir)
