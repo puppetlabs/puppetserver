@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: 9b56761ba01930e7d6c9be904707dd81b11a6100\n"
+"X-Git-Ref: 2fdc098358943b4323ad50f859b87b1e85e7aa1a\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -18,6 +18,12 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid ""
+"Detected ca-ttl setting in CA config which will take precedence over puppet."
+"conf setting"
+msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 msgid "Cannot initialize {0} with partial state; need all files or none."
