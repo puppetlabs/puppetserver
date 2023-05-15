@@ -2,6 +2,7 @@
 
 set -e
 
+# improving test script
 echo "Total memory available: $(grep MemTotal /proc/meminfo | awk '{print $2}')"
 
 git submodule update --recursive --init
