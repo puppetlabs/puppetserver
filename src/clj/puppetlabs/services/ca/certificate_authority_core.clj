@@ -8,7 +8,7 @@
             [puppetlabs.ring-middleware.core :as middleware]
             [puppetlabs.ring-middleware.utils :as middleware-utils]
             [puppetlabs.puppetserver.liberator-utils :as liberator-utils]
-            [puppetlabs.comidi :as comidi :refer [GET ANY PUT DELETE]]
+            [puppetlabs.comidi :as comidi :refer [GET ANY PUT POST DELETE]]
             [bidi.schema :as bidi-schema]
             [slingshot.slingshot :as sling]
             [clojure.tools.logging :as log]
@@ -184,6 +184,19 @@
     (-> (rr/response "Request body is not JSON.")
         (rr/status 400)
         (rr/content-type "text/plain"))))
+
+(schema/defn handle-cert-renewal
+  [_request
+   ca-settings :- ca/CaSettings
+   _report-activity]
+  (let [allow-auto-renewal (:allow-auto-renewal ca-settings)]
+    (if allow-auto-renewal
+      (-> (rr/response (cheshire/generate-string {}))
+          (rr/status 501)
+          (rr/content-type "application/json"))
+      (-> (rr/response (cheshire/generate-string {}))
+          (rr/status 404)
+          (rr/content-type "application/json")))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Web app
@@ -431,7 +444,9 @@
       (GET ["/expirations"] _request
         (handle-get-ca-expirations ca-settings))
       (PUT ["/clean"] request
-        (handle-cert-clean request ca-settings report-activity)))
+        (handle-cert-clean request ca-settings report-activity))
+      (POST ["/certificate_renewal"] request
+        (handle-cert-renewal request ca-settings report-activity)))
     (comidi/not-found "Not Found")))
 
 (schema/defn ^:always-validate
