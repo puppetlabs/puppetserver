@@ -132,6 +132,7 @@
    :allow-subject-alt-names          schema/Bool
    :allow-auto-renewal               schema/Bool
    :auto-renewal-cert-ttl            TTLDuration
+   :allow-header-cert-info           schema/Bool
    :autosign                         AutoSignInput
    :cacert                           schema/Str
    :cadir                            schema/Str
@@ -261,7 +262,8 @@
                   :crl-lock-timeout-seconds default-crl-lock-timeout-seconds
                   :inventory-lock-timeout-seconds default-inventory-lock-timeout-seconds
                   :allow-auto-renewal false
-                  :auto-renewal-cert-ttl default-auto-ttl-renewal}]
+                  :auto-renewal-cert-ttl default-auto-ttl-renewal
+                  :allow-header-cert-info false}]
     (merge defaults ca-data)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -405,6 +407,7 @@
                     :autosign
                     :ca-name
                     :ca-ttl
+                    :allow-header-cert-info
                     :keylength
                     :manage-internal-file-permissions
                     :ruby-load-path
@@ -1289,7 +1292,7 @@
   config->ca-settings :- CaSettings
   "Given the configuration map from the Puppet Server config
    service return a map with of all the CA settings."
-  [{:keys [puppetserver jruby-puppet certificate-authority]}]
+  [{:keys [puppetserver jruby-puppet certificate-authority authorization]}]
   (let [merged (-> (select-keys puppetserver (keys CaSettings))
                    (merge (select-keys certificate-authority (keys CaSettings)))
                    (initialize-ca-config))]
@@ -1297,6 +1300,7 @@
            :allow-auto-renewal (:allow-auto-renewal merged)
            :auto-renewal-cert-ttl (duration-str->sec (:auto-renewal-cert-ttl merged))
            :ca-ttl (get-ca-ttl puppetserver certificate-authority)
+           :allow-header-cert-info (get authorization :allow-header-cert-info false)
            :gem-path (str/join (System/getProperty "path.separator")
                                (:gem-path jruby-puppet))
            :access-control (select-keys certificate-authority
@@ -1410,8 +1414,8 @@
         ip-address (:remote-addr request)
         signee (first (remove clojure.string/blank? [rbac-user auth-name "CA"]))]
 
-    [(i18n/trsn "Entity {1} {2} 1 certificate: {3}." 
-                "Entity {1} {2} {0} certificates: {3}." 
+    [(i18n/trsn "Entity {1} {2} 1 certificate: {3}."
+                "Entity {1} {2} {0} certificates: {3}."
                 (count subjects) signee activity-type (str/join ", " subjects))
      signee
      subjects

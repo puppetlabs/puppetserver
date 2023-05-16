@@ -59,6 +59,7 @@
    :auto-renewal-cert-ttl            "60d"
    :ca-name                          "test ca"
    :ca-ttl                           1
+   :allow-header-cert-info           false
    :cadir                            (str cadir)
    :cacrl                            (str cadir "/ca_crl.pem")
    :cacert                           (str cadir "/ca_crt.pem")
