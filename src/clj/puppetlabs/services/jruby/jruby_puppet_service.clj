@@ -13,7 +13,6 @@
 
 ;; This service uses TK's normal config service instead of the
 ;; PuppetServerConfigService.  This is because that service depends on this one.
-
 (trapperkeeper/defservice jruby-puppet-pooled-service
                           jruby/JRubyPuppetService
                           [[:ConfigService get-config]
