@@ -129,6 +129,33 @@
             (is (logged? #"Detected ca-ttl setting in CA config which will take precedence over puppet.conf setting"))
             (tk-app/stop app)))))))
 
+(deftest certificate-authority-defaults
+  (tk-testutils/with-app-with-config
+    app
+    service-and-deps
+    (-> required-config
+        (assoc :my-config {:foo "bar"}))
+    (testing (str "certificate-authority settings work")
+      (with-test-logging
+        (ks-testutils/with-no-jvm-shutdown-hooks
+          (let [config (-> (jruby-testutils/jruby-puppet-tk-config
+                    (jruby-testutils/jruby-puppet-config {:max-active-instances 2
+                                                          :borrow-timeout
+                                                          12}))
+                    (assoc :webserver {:port 8081
+                                       :shutdown-timeout-seconds 1}))
+                service (tk-app/get-service app :PuppetServerConfigService)
+                service-config (get-config service)
+                merged-config (merge service-config  {:certificate-authority
+                                                      {}})
+                settings (ca/config->ca-settings merged-config)
+                app (tk/boot-services-with-config
+                      (service-and-deps-with-mock-jruby config)
+                       config)]
+            (is (= false (:allow-auto-renewal settings)))
+            (is (= 5184000 (:auto-renewal-cert-ttl settings)))
+            (tk-app/stop app)))))))
+
 (deftest multi-webserver-setting-override
   (let [webserver-config {:ssl-cert "thehostcert"
                           :ssl-key "thehostprivkey"

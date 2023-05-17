@@ -240,8 +240,11 @@
 (def default-inventory-lock-timeout-seconds
   60)
 
+(def default-auto-ttl-renewal
+  "60d") ; 60 days by default
+
 (def default-auto-ttl-renewal-seconds
-  (* 60 60 24 60)) ; 60 days by default
+  (duration-str->sec default-auto-ttl-renewal)) ; 60 days by default
 
 (schema/defn ^:always-validate initialize-ca-config
   "Adds in default ca config keys/values, which may be overwritten if a value for
@@ -258,7 +261,7 @@
                   :crl-lock-timeout-seconds default-crl-lock-timeout-seconds
                   :inventory-lock-timeout-seconds default-inventory-lock-timeout-seconds
                   :allow-auto-renewal false
-                  :auto-renewal-cert-ttl default-auto-ttl-renewal-seconds}]
+                  :auto-renewal-cert-ttl default-auto-ttl-renewal}]
     (merge defaults ca-data)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1287,20 +1290,20 @@
   "Given the configuration map from the Puppet Server config
    service return a map with of all the CA settings."
   [{:keys [puppetserver jruby-puppet certificate-authority]}]
-  (-> (select-keys puppetserver (keys CaSettings))
-      (merge (select-keys certificate-authority (keys CaSettings)))
-      (initialize-ca-config)
-      (assoc :ruby-load-path (:ruby-load-path jruby-puppet)
-             :allow-auto-renewal (:allow-auto-renewal certificate-authority)
-             :auto-renewal-cert-ttl (duration-str->sec (:auto-renewal-cert-ttl certificate-authority))
-             :ca-ttl (get-ca-ttl puppetserver certificate-authority)
-             :gem-path (str/join (System/getProperty "path.separator")
-                                 (:gem-path jruby-puppet))
-             :access-control (select-keys certificate-authority
-                                          [:certificate-status])
-             :serial-lock (new ReentrantReadWriteLock)
-             :crl-lock (new ReentrantReadWriteLock)
-             :inventory-lock (new ReentrantLock))))
+  (let [merged (-> (select-keys puppetserver (keys CaSettings))
+                   (merge (select-keys certificate-authority (keys CaSettings)))
+                   (initialize-ca-config))]
+    (assoc merged :ruby-load-path (:ruby-load-path jruby-puppet)
+           :allow-auto-renewal (:allow-auto-renewal merged)
+           :auto-renewal-cert-ttl (duration-str->sec (:auto-renewal-cert-ttl merged))
+           :ca-ttl (get-ca-ttl puppetserver certificate-authority)
+           :gem-path (str/join (System/getProperty "path.separator")
+                               (:gem-path jruby-puppet))
+           :access-control (select-keys certificate-authority
+                                        [:certificate-status])
+           :serial-lock (new ReentrantReadWriteLock)
+           :crl-lock (new ReentrantReadWriteLock)
+           :inventory-lock (new ReentrantLock))))
 
 (schema/defn ^:always-validate
   config->master-settings :- MasterSettings
