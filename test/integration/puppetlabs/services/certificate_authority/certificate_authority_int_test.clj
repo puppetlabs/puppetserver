@@ -21,7 +21,9 @@
     [ring.mock.request :as mock]
     [ring.util.codec :as ring-codec]
     [schema.test :as schema-test])
-  (:import (javax.net.ssl SSLException)))
+  (:import (java.util Date)
+           (java.util.concurrent TimeUnit)
+           (javax.net.ssl SSLException)))
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/certificate_authority/certificate_authority_int_test")
@@ -967,6 +969,38 @@
                       :body "Bad data"})]
        (is (= 400 (:status response)))))))
 
+
+(defn generate-and-sign-a-cert!
+  [certname]
+  (let [cert-path (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")
+        key-path (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
+        ca-cert-path (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+        key-pair (ssl-utils/generate-key-pair)
+        csr (ssl-utils/generate-certificate-request
+             key-pair
+              (ssl-utils/cn certname))
+        csr-path (str bootstrap/server-conf-dir "/ca/requests/" certname ".pem")
+        status-url (str "https://localhost:8140/puppet-ca/v1/certificate_status/" certname)
+        cert-endpoint (str "https://localhost:8140/puppet-ca/v1/certificate/" certname)
+        request-opts {:ssl-cert cert-path
+                      :ssl-key key-path
+                      :ssl-ca-cert ca-cert-path}]
+
+       (ssl-utils/obj->pem! csr csr-path)
+       (http-client/put
+         status-url
+         (merge request-opts
+                {:body "{\"desired_state\": \"signed\"}"
+                 :headers {"content-type" "application/json"}}))
+       (let [cert-request (http-client/get cert-endpoint {:ssl-ca-cert ca-cert-path})
+             private-key-file (ks/temp-file)
+             public-key-file (ks/temp-file)]
+         (ssl-utils/key->pem! (ssl-utils/get-public-key key-pair) public-key-file)
+         (ssl-utils/key->pem! (ssl-utils/get-private-key key-pair) private-key-file)
+         {:signed-cert (slurp (:body cert-request))
+          :public-key public-key-file
+          :private-key private-key-file})))
+
 (deftest ca-certificate-renew-endpoint-test
   (testing "returns a 501 not implemented response when feature is enabled"
     (bootstrap/with-puppetserver-running-with-mock-jrubies
@@ -982,13 +1016,33 @@
         :ssl-crl-path (str bootstrap/server-conf-dir "/ssl/crl.pem")}
        :certificate-authority
        {:allow-auto-renewal true}}
-      (let [response (http-client/post
+      (let [generated-cert-info (generate-and-sign-a-cert! "foobar")
+            signed-cert-file (ks/temp-file)
+            _ (spit signed-cert-file (:signed-cert generated-cert-info))
+            _ (Thread/sleep 1000) ;; ensure some time has passed so the timestamps are different
+            response (http-client/post
                        "https://localhost:8140/puppet-ca/v1/certificate_renewal"
-                       {:ssl-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
-                        :ssl-key (str bootstrap/server-conf-dir "/ca/ca_key.pem")
+                       {:ssl-cert (str signed-cert-file)
+                        :ssl-key (str (:private-key generated-cert-info))
                         :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
                         :as :text})]
-        (is (= 501 (:status response))))))
+        (is (= 200 (:status response)))
+        (let [renewed-cert-pem (:body response)
+              renewed-cert-file (ks/temp-file)
+              _ (spit renewed-cert-file renewed-cert-pem)
+              renewed-cert (ssl-utils/pem->cert renewed-cert-file)
+              signed-cert (ssl-utils/pem->cert signed-cert-file)]
+          (testing "serial number has increased"
+            (is (< (.getSerialNumber signed-cert) (.getSerialNumber renewed-cert))))
+          (testing "not before time stamps have changed"
+            (is (= -1 (.compareTo (.getNotBefore signed-cert) (.getNotBefore renewed-cert)))))
+          (testing "new not-after is earlier than before"
+            (is (= 1 (.compareTo (.getNotAfter signed-cert) (.getNotAfter renewed-cert)))))
+          (testing "new not-after should be 59 days (and some faction) away"
+            (let [diff (- (.getTime (.getNotAfter renewed-cert)) (.getTime (Date.)))
+                  days (.convert TimeUnit/DAYS diff TimeUnit/MILLISECONDS)]
+              (is (= 59 days))))))))
+
   (testing "returns a 404 not found response when feature is disabled"
     (bootstrap/with-puppetserver-running-with-mock-jrubies
       "JRuby mocking is safe here because all of the requests are to the CA
@@ -1046,12 +1100,29 @@
        {:allow-auto-renewal true}
        :authorization
        {:allow-header-cert-info true}}
-      (let [header-cert (ring-codec/url-encode (slurp (str bootstrap/server-conf-dir "/ca/ca_crt.pem")))
+      (let [generated-cert-info (generate-and-sign-a-cert! "foobar")
+            signed-cert-file (ks/temp-file)
+            _ (spit signed-cert-file (:signed-cert generated-cert-info))
+            header-cert (ring-codec/url-encode (:signed-cert generated-cert-info))
+            _ (Thread/sleep 1000)
             response (http-client/post
                        "https://localhost:8140/puppet-ca/v1/certificate_renewal"
                        {:headers {"x-client-cert" header-cert}
-                        :ssl-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
-                        :ssl-key (str bootstrap/server-conf-dir "/ca/ca_key.pem")
                         :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
                         :as :text})]
-        (is (= 501 (:status response)))))))
+        (is (= 200 (:status response)))
+        (let [renewed-cert-pem (:body response)
+              renewed-cert-file (ks/temp-file)
+              _ (spit renewed-cert-file renewed-cert-pem)
+              renewed-cert (ssl-utils/pem->cert renewed-cert-file)
+              signed-cert (ssl-utils/pem->cert signed-cert-file)]
+          (testing "serial number has increased"
+            (is (< (.getSerialNumber signed-cert) (.getSerialNumber renewed-cert))))
+          (testing "not before time stamps have changed"
+            (is (= -1 (.compareTo (.getNotBefore signed-cert) (.getNotBefore renewed-cert)))))
+          (testing "new not-after is earlier than before"
+            (is (= 1 (.compareTo (.getNotAfter signed-cert) (.getNotAfter renewed-cert)))))
+          (testing "new not-after should be 59 days (and some faction) away"
+            (let [diff (- (.getTime (.getNotAfter renewed-cert)) (.getTime (Date.)))
+                  days (.convert TimeUnit/DAYS diff TimeUnit/MILLISECONDS)]
+              (is (= 59 days)))))))))

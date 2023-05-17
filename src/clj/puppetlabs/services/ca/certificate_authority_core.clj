@@ -24,7 +24,7 @@
             [schema.core :as schema]
             [slingshot.slingshot :as sling])
   (:import (clojure.lang IFn)
-           (java.io ByteArrayInputStream InputStream)
+           (java.io ByteArrayInputStream InputStream StringWriter)
            (org.joda.time DateTime)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -189,7 +189,7 @@
 (schema/defn handle-cert-renewal
   [request
    ca-settings :- ca/CaSettings
-   _report-activity]
+   report-activity]
   (let [allow-auto-renewal (:allow-auto-renewal ca-settings)
         allow-header-cert-info (:allow-header-cert-info ca-settings)]
     (if allow-auto-renewal
@@ -197,9 +197,16 @@
         (if request-cert
           (do
             (log/info (i18n/trs "Certificate present, processing renewal request"))
-            (-> (rr/response (cheshire/generate-string {}))
-                (rr/status 501)
-                (rr/content-type "application/json")))
+            (if true ;; assume validation has happened...
+              (let [result (ca/renew-certificate! request-cert ca-settings report-activity)
+                    cert-writer (StringWriter.)]
+                ;; has side effect of writing to the writer
+                (utils/cert->pem! result cert-writer)
+                (-> (rr/response (.toString cert-writer))
+                    (rr/content-type "text/plain")))
+              (-> (rr/response (cheshire/generate-string {}))
+                  (rr/status 501)
+                  (rr/content-type "application/json"))))
           (do
             (log/info (i18n/trs "No certificate found in renewal request"))
             (-> (rr/bad-request "No certificate found in renewal request")
