@@ -1,25 +1,26 @@
 (ns puppetlabs.services.certificate-authority.certificate-authority-int-test
   (:require
-   [clojure.test :refer [deftest is testing use-fixtures]]
-   [puppetlabs.kitchensink.core :as ks]
-   [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
-   [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
-   [puppetlabs.puppetserver.testutils :as testutils :refer [http-get]]
-   [puppetlabs.trapperkeeper.testutils.logging :as logutils]
-   [schema.test :as schema-test]
-   [me.raynes.fs :as fs]
-   [cheshire.core :as json]
-   [puppetlabs.http.client.sync :as http-client]
-   [puppetlabs.ssl-utils.core :as ssl-utils]
-   [puppetlabs.puppetserver.certificate-authority :as ca]
-   [puppetlabs.services.ca.certificate-authority-core :refer [handle-get-certificate-revocation-list]]
-   [puppetlabs.services.ca.ca-testutils :as ca-test-utils]
-   [ring.mock.request :as mock]
-   [clj-time.format :as time-format]
-   [clj-time.core :as time]
-   [puppetlabs.trapperkeeper.services :as tk-services]
-   [puppetlabs.rbac-client.protocols.activity :as act-proto]
-   [puppetlabs.rbac-client.testutils.dummy-rbac-service :refer [dummy-rbac-service]])
+    [cheshire.core :as json]
+    [clj-time.core :as time]
+    [clj-time.format :as time-format]
+    [clojure.test :refer [deftest is testing use-fixtures]]
+    [me.raynes.fs :as fs]
+    [puppetlabs.http.client.sync :as http-client]
+    [puppetlabs.kitchensink.core :as ks]
+    [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
+    [puppetlabs.puppetserver.certificate-authority :as ca]
+    [puppetlabs.puppetserver.testutils :as testutils :refer [http-get]]
+    [puppetlabs.rbac-client.protocols.activity :as act-proto]
+    [puppetlabs.rbac-client.testutils.dummy-rbac-service :refer [dummy-rbac-service]]
+    [puppetlabs.services.ca.ca-testutils :as ca-test-utils]
+    [puppetlabs.services.ca.certificate-authority-core :refer [handle-get-certificate-revocation-list]]
+    [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
+    [puppetlabs.ssl-utils.core :as ssl-utils]
+    [puppetlabs.trapperkeeper.services :as tk-services]
+    [puppetlabs.trapperkeeper.testutils.logging :as logutils]
+    [ring.mock.request :as mock]
+    [ring.util.codec :as ring-codec]
+    [schema.test :as schema-test])
   (:import (javax.net.ssl SSLException)))
 
 (def test-resources-dir
@@ -986,8 +987,7 @@
                        {:ssl-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
                         :ssl-key (str bootstrap/server-conf-dir "/ca/ca_key.pem")
                         :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
-                        :as :text
-                        :headers {"Accept" "application/json"}})]
+                        :as :text})]
         (is (= 501 (:status response))))))
   (testing "returns a 404 not found response when feature is disabled"
     (bootstrap/with-puppetserver-running-with-mock-jrubies
@@ -1008,6 +1008,50 @@
                        {:ssl-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
                         :ssl-key (str bootstrap/server-conf-dir "/ca/ca_key.pem")
                         :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
-                        :as :text
-                        :headers {"Accept" "application/json"}})]
-        (is (= 404 (:status response)))))))
+                        :as :text})]
+        (is (= 404 (:status response))))))
+  (testing "returns a 400 bad request response when the ssl-client-cert is not present"
+    (bootstrap/with-puppetserver-running-with-mock-jrubies
+      "JRuby mocking is safe here because all of the requests are to the CA
+      endpoints, which are implemented in Clojure."
+      app
+      {:jruby-puppet
+       {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
+       :webserver
+       {:ssl-cert (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")
+        :ssl-key (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
+        :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+        :ssl-crl-path (str bootstrap/server-conf-dir "/ssl/crl.pem")}
+       :certificate-authority
+       {:allow-auto-renewal true}}
+      (let [response (http-client/post
+                       "https://localhost:8140/puppet-ca/v1/certificate_renewal"
+                       {:ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                        :as :text})]
+        (is (= 400 (:status response))))))
+  (testing "returns a 501 not implemented response when the feature is enabled,
+            allow-header-cert-info is true, and a cert is supplied in header"
+    (bootstrap/with-puppetserver-running-with-mock-jrubies
+      "JRuby mocking is safe here because all of the requests are to the CA
+      endpoints, which are implemented in Clojure."
+      app
+      {:jruby-puppet
+       {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
+       :webserver
+       {:ssl-cert (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")
+        :ssl-key (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
+        :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+        :ssl-crl-path (str bootstrap/server-conf-dir "/ssl/crl.pem")}
+       :certificate-authority
+       {:allow-auto-renewal true}
+       :authorization
+       {:allow-header-cert-info true}}
+      (let [header-cert (ring-codec/url-encode (slurp (str bootstrap/server-conf-dir "/ca/ca_crt.pem")))
+            response (http-client/post
+                       "https://localhost:8140/puppet-ca/v1/certificate_renewal"
+                       {:headers {"x-client-cert" header-cert}
+                        :ssl-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                        :ssl-key (str bootstrap/server-conf-dir "/ca/ca_key.pem")
+                        :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                        :as :text})]
+        (is (= 501 (:status response)))))))

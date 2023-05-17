@@ -1,30 +1,31 @@
 (ns puppetlabs.services.ca.certificate-authority-core
-  (:import [java.io InputStream ByteArrayInputStream]
-           (clojure.lang IFn)
-           (org.joda.time DateTime))
-  (:require [puppetlabs.puppetserver.certificate-authority :as ca]
+  (:require [bidi.schema :as bidi-schema]
+            [cheshire.core :as cheshire]
+            [clj-time.core :as time]
+            [clj-time.format :as time-format]
+            [clojure.java.io :as io]
+            [clojure.string :as string]
+            [clojure.tools.logging :as log]
+            [liberator.core :refer [defresource]]
+            [liberator.representation :as representation]
+            [puppetlabs.comidi :as comidi :refer [ANY DELETE GET POST PUT]]
+            [puppetlabs.i18n.core :as i18n]
+            [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.puppetserver.common :as common]
+            [puppetlabs.puppetserver.liberator-utils :as liberator-utils]
             [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.ring-middleware.core :as middleware]
             [puppetlabs.ring-middleware.utils :as middleware-utils]
-            [puppetlabs.puppetserver.liberator-utils :as liberator-utils]
-            [puppetlabs.comidi :as comidi :refer [GET ANY PUT POST DELETE]]
-            [bidi.schema :as bidi-schema]
-            [slingshot.slingshot :as sling]
-            [clojure.tools.logging :as log]
-            [clojure.java.io :as io]
-            [clojure.string :as string]
-            [clj-time.core :as time]
-            [clj-time.format :as time-format]
-            [schema.core :as schema]
-            [cheshire.core :as cheshire]
-            [liberator.core :refer [defresource]]
-            [liberator.representation :as representation]
+            [puppetlabs.ssl-utils.core :as utils]
+            [puppetlabs.trapperkeeper.authorization.ring-middleware :as auth-middleware]
+            [puppetlabs.trapperkeeper.services.status.status-core :as status-core]
             [ring.util.request :as request]
             [ring.util.response :as rr]
-            [puppetlabs.trapperkeeper.services.status.status-core :as status-core]
-            [puppetlabs.i18n.core :as i18n]
-            [puppetlabs.ssl-utils.core :as utils]))
+            [schema.core :as schema]
+            [slingshot.slingshot :as sling])
+  (:import (clojure.lang IFn)
+           (java.io ByteArrayInputStream InputStream)
+           (org.joda.time DateTime)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
@@ -186,14 +187,23 @@
         (rr/content-type "text/plain"))))
 
 (schema/defn handle-cert-renewal
-  [_request
+  [request
    ca-settings :- ca/CaSettings
    _report-activity]
-  (let [allow-auto-renewal (:allow-auto-renewal ca-settings)]
+  (let [allow-auto-renewal (:allow-auto-renewal ca-settings)
+        allow-header-cert-info (:allow-header-cert-info ca-settings)]
     (if allow-auto-renewal
-      (-> (rr/response (cheshire/generate-string {}))
-          (rr/status 501)
-          (rr/content-type "application/json"))
+      (let [request-cert (auth-middleware/request->cert request allow-header-cert-info)]
+        (if request-cert
+          (do
+            (log/info (i18n/trs "Certificate present, processing renewal request"))
+            (-> (rr/response (cheshire/generate-string {}))
+                (rr/status 501)
+                (rr/content-type "application/json")))
+          (do
+            (log/info (i18n/trs "No certificate found in renewal request"))
+            (-> (rr/bad-request "No certificate found in renewal request")
+                (rr/content-type "text/plain")))))
       (-> (rr/response (cheshire/generate-string {}))
           (rr/status 404)
           (rr/content-type "application/json")))))
