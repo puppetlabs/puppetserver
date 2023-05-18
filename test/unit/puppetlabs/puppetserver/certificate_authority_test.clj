@@ -761,8 +761,7 @@
                (re-pattern (str "Missing:\n" path))
                (ca/initialize! settings)))))))
 
-  (testing (str "The CA private key has its permissions properly reset when "
-                ":manage-internal-file-permissions is true.")
+  (testing "The CA private key has its permissions properly reset when :manage-internal-file-permissions is true."
     (let [settings (testutils/ca-sandbox! cadir)]
       (ks-file/set-perms (:cakey settings) "rw-r--r--")
       (logutils/with-test-logging
@@ -770,8 +769,7 @@
         (is (logged? #"/ca/ca_key.pem' was found to have the wrong permissions set as 'rw-r--r--'. This has been corrected to 'rw-r-----'."))
         (is (= ca/private-key-perms (ks-file/get-perms (:cakey settings)))))))
 
-  (testing (str "The CA private key's permissions are not reset if "
-                ":manage-internal-file-permissions is false.")
+  (testing "The CA private key's permissions are not reset if :manage-internal-file-permissions is false."
     (let [perms "rw-r--r--"
           settings (assoc (testutils/ca-sandbox! cadir)
                      :manage-internal-file-permissions false)]
@@ -829,8 +827,7 @@
         (is (= (slurp hostcrl) cacrl-text)
             (str "Unexpected content for hostcrl: " hostcrl)))
 
-      (testing (str "Doesn't throw exception or create dummy file if no "
-                    "hostcrl and no cacrl to copy")
+      (testing "Doesn't throw exception or create dummy file if no hostcrl and no cacrl to copy"
         (fs/delete hostcrl)
         (let [copy (fs/copy cacrl (ks/temp-file))]
           (fs/delete cacrl)
@@ -913,8 +910,7 @@
              (ca/initialize-master-ssl! settings "master" ca-settings)))
         (fs/copy private-key-backup private-key-path)))
 
-    (testing (str "Throws an exception if the private key is present but cert "
-                  "and public key are missing")
+    (testing "Throws an exception if the private key is present but cert and public key are missing"
       (let [public-key-path (:hostpubkey settings)
             public-key-backup (fs/copy public-key-path (ks/temp-file))
             cert-path (:hostcert settings)
@@ -931,8 +927,7 @@
         (fs/copy public-key-backup public-key-path)
         (fs/copy cert-backup cert-path)))
 
-    (testing (str "Throws an exception if the public key is present but cert "
-                  "and private key are missing")
+    (testing "Throws an exception if the public key is present but cert and private key are missing"
       (let [private-key-path (:hostprivkey settings)
             private-key-backup (fs/copy private-key-path (ks/temp-file))
             cert-path (:hostcert settings)
