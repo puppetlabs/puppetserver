@@ -603,9 +603,7 @@
 
 (deftest ^:integration
          not-modified-returned-for-environment-class-info-request-with-gzip-tag
-  (testing (str "SERVER-1153 - when the webserver gzips the response "
-                "containing environment_classes etag, the next request "
-                "roundtripping that etag returns an HTTP 304 (Not Modified)")
+  (testing "SERVER-1153 - when the webserver gzips the response containing environment_classes etag, the next request roundtripping that etag returns an HTTP 304 (Not Modified)"
     (let [expected-etag "abcd1234"
           body-length 200000
           jruby-service (reify jruby-protocol/JRubyPuppetService

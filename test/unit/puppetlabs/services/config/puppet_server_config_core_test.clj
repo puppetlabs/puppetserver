@@ -84,26 +84,21 @@
                               :ssl-ca-cert  "thelocalcacert"
                               :ssl-crl-path "thehostcrl"}]
 
-    (testing (str "no call made to override default webserver settings if "
-                  "full ssl cert configuration already in webserver settings")
+    (testing "no call made to override default webserver settings if full ssl cert configuration already in webserver settings"
       (is (nil? (init-webserver-fn webserver-ssl-config))
           "Override function unexpectedly called with non-nil args"))
 
-    (testing (str "no call made to override default webserver settings if "
-                  "at least one overridable setting already in webserver "
-                  "settings")
+    (testing "no call made to override default webserver settings if at least one overridable setting already in webserver settings"
       (doseq [[setting-key setting-value] webserver-ssl-config]
         (let [map-with-one-overridable-setting {setting-key setting-value}]
           (is (nil? (init-webserver-fn map-with-one-overridable-setting))
               (str "Override function unexpectedly called with non-nil args "
                    "for " map-with-one-overridable-setting)))))
 
-    (testing (str "expected settings passed to override function when "
-                  "no overridable ones already exist in webserver settings")
+    (testing "expected settings passed to override function when no overridable ones already exist in webserver settings"
       (is (= webserver-ssl-config (init-webserver-fn {}))
           "Unexpected settings passed into the override function"))
 
-    (testing (str "expected settings passed to override function when "
-                  "no overridable ones already exist in webserver settings")
+    (testing "expected settings passed to override function when no overridable ones already exist in webserver settings"
       (is (= webserver-ssl-config (init-webserver-fn {:x-non-overridable true}))
           "Unexpected settings passed into the override function"))))

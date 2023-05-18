@@ -184,8 +184,7 @@
                     (ks/pprint-to-string response))))))))))
 
 (deftest ^:integration certificate-with-ca-true-extension-refused
-  (testing (str "Validates that the server rejects a csr for signing"
-                " that has the v3 CA:TRUE extension")
+  (testing "Validates that the server rejects a csr for signing that has the v3 CA:TRUE extension"
     (let [server-conf-dir (str test-resources-dir "/ca_true_test/master/conf")
           req-dir (str server-conf-dir "/ca/requests")
           key-pair (ssl-utils/generate-key-pair)
@@ -216,8 +215,7 @@
           (fs/delete-dir req-dir))))))
 
 (deftest ^:integration double-encoded-request-not-allowed
-  (testing (str "client not able to unintentionally get access to CA endpoint "
-                "by double-encoding request uri")
+  (testing "client not able to unintentionally get access to CA endpoint by double-encoding request uri"
     ;; The following tests are intended to show that a client is not able
     ;; to unintentionally gain access to info for a different client by
     ;; double-encoding a character in the client name portion of the
@@ -497,8 +495,7 @@
 
 
 (deftest ^:integration certificate-status-returns-auth-ext-info
-  (testing (str "Validates that the certificate_status endpoint"
-                "includes authorization extensions for certs and CSRs")
+  (testing "Validates that the certificate_status endpoint includes authorization extensions for certs and CSRs"
     (let [request-dir (str bootstrap/server-conf-dir "/ca/requests")
           key-pair (ssl-utils/generate-key-pair)
           subjectDN (ssl-utils/cn "test_cert_with_auth_ext")

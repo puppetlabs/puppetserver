@@ -82,9 +82,7 @@
                                   "default value, should not be returned")))))))))
 
 (deftest config-key-conflicts
-  (testing (str
-             "Providing config values that should be read from Puppet results "
-             "in an error that mentions all offending config keys.")
+  (testing "Providing config values that should be read from Puppet results in an error that mentions all offending config keys."
     (with-test-logging
       (ks-testutils/with-no-jvm-shutdown-hooks
        (let [config (assoc required-config :cacrl "bogus" :cacert "meow")
@@ -104,8 +102,7 @@
                           :ssl-crl-path "thecacrl"
                           :port 8081
                           :default-server true}]
-    (testing (str "webserver settings not overridden when mult-webserver config is provided"
-                  "and full ssl cert configuration is available")
+    (testing "webserver settings not overridden when mult-webserver config is provided and full ssl cert configuration is available"
       (with-test-logging
        (let [config (assoc required-config :webserver
                                            {:puppet-server webserver-config})]
@@ -115,8 +112,7 @@
           config
           (is (logged? #"Not overriding webserver settings with values from core Puppet"))))))
 
-    (testing (str "webserver settings not overridden when single webserver is provided"
-                  "and full ssl cert configuration is available")
+    (testing "webserver settings not overridden when single webserver is provided and full ssl cert configuration is available"
       (let [config (assoc required-config :webserver webserver-config)]
         (with-test-logging
          (tk-testutils/with-app-with-config
