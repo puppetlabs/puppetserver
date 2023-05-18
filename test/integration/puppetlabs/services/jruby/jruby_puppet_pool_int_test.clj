@@ -159,7 +159,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tests
 
-(deftest ^:integration ^:single-threaded-only admin-api-flush-jruby-pool-test
+(deftest ^:integration ^:single-threaded-only admin-api-flush-jruby-pool-single-threaded-test
   (testing "Flushing the instance pool results in all new JRuby instances"
     (bootstrap/with-puppetserver-running
       app
@@ -180,13 +180,14 @@
         (is (true? (verify-no-constants pool-context 4)))))))
 
 ;; Copies the test above, but for multithreaded mode (single jruby instance)
-(deftest ^:integration ^:multithreaded-only admin-api-flush-jruby-ref-pool-test
+(deftest ^:integration ^:multithreaded-only admin-api-flush-jruby-ref-pool-multi-threaded-test
   (testing "Flushing the reference pool results in a new JRuby instance"
     (bootstrap/with-puppetserver-running
       app
       {:jruby-puppet {:gem-path gem-path
                       :max-active-instances 4
-                      :borrow-timeout default-borrow-timeout}}
+                      :borrow-timeout default-borrow-timeout
+                      :multithreaded true}}
       (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
             context (tk-services/service-context jruby-service)
             pool-context (:pool-context context)]
