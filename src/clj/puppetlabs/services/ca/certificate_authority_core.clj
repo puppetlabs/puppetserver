@@ -186,27 +186,38 @@
         (rr/status 400)
         (rr/content-type "text/plain"))))
 
-(schema/defn handle-cert-renewal
+(schema/defn ^:always-validate
+  handle-cert-renewal
+  "Given a request and the CA settings, if there is a cert present in the request
+  (either in the ssl-client-cert property of the request, or as an x-client-cert
+  field in the header when allow-header-cert-info is set to true) and the cert in
+  the request is valid and signed by the this CA. then generate a renewed cert and
+  return it in the response body"
   [request
-   ca-settings :- ca/CaSettings
+   {:keys [cacert cakey allow-auto-renewal allow-header-cert-info]} :- ca/CaSettings
    _report-activity]
-  (let [allow-auto-renewal (:allow-auto-renewal ca-settings)
-        allow-header-cert-info (:allow-header-cert-info ca-settings)]
-    (if allow-auto-renewal
-      (let [request-cert (auth-middleware/request->cert request allow-header-cert-info)]
-        (if request-cert
-          (do
-            (log/info (i18n/trs "Certificate present, processing renewal request"))
-            (-> (rr/response (cheshire/generate-string {}))
-                (rr/status 501)
-                (rr/content-type "application/json")))
-          (do
-            (log/info (i18n/trs "No certificate found in renewal request"))
-            (-> (rr/bad-request "No certificate found in renewal request")
-                (rr/content-type "text/plain")))))
-      (-> (rr/response (cheshire/generate-string {}))
-          (rr/status 404)
-          (rr/content-type "application/json")))))
+  (if allow-auto-renewal
+    (let [request-cert (auth-middleware/request->cert request allow-header-cert-info)]
+      (if request-cert
+        (let [signing-cert (utils/pem->ca-cert cacert cakey)]
+          (if (ca/cert-authority-id-match-ca-subject-id? request-cert signing-cert)
+            (do
+              (log/info (i18n/trs "Certificate present, processing renewal request"))
+              (-> (rr/response (cheshire/generate-string {}))
+                  (rr/status 501)
+                  (rr/content-type "application/json")))
+            (do
+              (log/info (i18n/trs "Certificate present, but does not match signature"))
+              (-> (rr/response (i18n/tru "Certificate present, but does not match signature"))
+                  (rr/status 403)
+                  (rr/content-type "text/plain")))))
+        (do
+          (log/info (i18n/trs "No certificate found in renewal request"))
+          (-> (rr/bad-request (i18n/tru "No certificate found in renewal request"))
+              (rr/content-type "text/plain")))))
+    (-> (rr/response "Not Found")
+        (rr/status 404)
+        (rr/content-type "text/plain"))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Web app
