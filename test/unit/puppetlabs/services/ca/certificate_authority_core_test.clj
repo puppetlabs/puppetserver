@@ -162,24 +162,59 @@
                     :request-method :get
                     :headers        {"If-Modified-Since" "Wed, 21 Oct 2015 07:28:00"}}
           response (ring-app request)]
-      (is (= 200 (:status response))
-          (is (string? (:body response))))))
+      (is (= 200 (:status response)))
+      (is (string? (:body response)))))
   (testing "with older 'If-Modified-Since' header"
     (let [ring-app (build-ring-handler (testutils/ca-settings cadir) "42.42.42")
           request  {:uri            "/v1/certificate_revocation_list/mynode"
                     :request-method :get
                     :headers        {"If-Modified-Since" "Wed, 21 Oct 2015 07:28:00 GMT"}}
           response (ring-app request)]
-      (is (= 200 (:status response))
-          (is (string? (:body response))))))
+      (is (= 200 (:status response)))
+      (is (string? (:body response)))))
   (testing "with newer 'If-Modified-Since' header"
     (let [ring-app (build-ring-handler (testutils/ca-settings cadir) "42.42.42")
           request  {:uri            "/v1/certificate_revocation_list/mynode"
                     :request-method :get
                     :headers        {"If-Modified-Since" "Wed, 21 Oct 3015 07:28:00 GMT"}}
           response (ring-app request)]
-      (is (= 304 (:status response))
-          (is (nil? (:body response)))))))
+      (is (= 304 (:status response)))
+      (is (nil? (:body response))))))
+
+(deftest certificate-endpoint-test
+  (testing "implementation of the CRL endpoint with no 'If-Modified-Since' header"
+    (let [ring-app (build-ring-handler (testutils/ca-settings cadir) "42.42.42")
+          request  {:uri            "/v1/certificate/localhost"
+                    :request-method :get
+                    :headers        {}}
+          response (ring-app request)]
+      (is (= 200 (:status response)))
+      (is (string? (:body response)))
+      (is (= "text/plain" (get-in response [:headers "Content-Type"])))))
+  (testing "with a malformed http-date 'If-Modified-Since' header"
+    (let [ring-app (build-ring-handler (testutils/ca-settings cadir) "42.42.42")
+          request  {:uri            "/v1/certificate/localhost"
+                    :request-method :get
+                    :headers        {"If-Modified-Since" "Wed, 21 Oct 2015 07:28:00"}}
+          response (ring-app request)]
+      (is (= 200 (:status response)))
+      (is (string? (:body response)))))
+  (testing "with older 'If-Modified-Since' header"
+    (let [ring-app (build-ring-handler (testutils/ca-settings cadir) "42.42.42")
+          request  {:uri            "/v1/certificate/localhost"
+                    :request-method :get
+                    :headers        {"If-Modified-Since" "Wed, 21 Oct 2015 07:28:00 GMT"}}
+          response (ring-app request)]
+      (is (= 200 (:status response)))
+      (is (string? (:body response)))))
+  (testing "with newer 'If-Modified-Since' header"
+    (let [ring-app (build-ring-handler (testutils/ca-settings cadir) "42.42.42")
+          request  {:uri            "/v1/certificate/localhost"
+                    :request-method :get
+                    :headers        {"If-Modified-Since" "Wed, 21 Oct 3015 07:28:00 GMT"}}
+          response (ring-app request)]
+      (is (= 304 (:status response)))
+      (is (nil? (:body response))))))
 
 (deftest handle-put-certificate-revocation-list!-test
   (let [{:keys [cacrl cacert] :as settings} (testutils/ca-sandbox! cadir)
