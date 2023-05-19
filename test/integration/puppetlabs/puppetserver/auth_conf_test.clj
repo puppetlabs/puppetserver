@@ -31,8 +31,7 @@
   (testutils/with-puppet-conf (fs/file test-resources-dir "puppet.conf")))
 
 (deftest ^:integration request-with-ssl-cert-handled-via-tk-auth
-  (testing (str "Request with SSL certificate via trapperkeeper-authorization "
-                "handled")
+  (testing "Request with SSL certificate via trapperkeeper-authorization handled"
     (logutils/with-test-logging
       (bootstrap/with-puppetserver-running
         app
@@ -113,8 +112,7 @@
                   (ks/pprint-to-string response)))))))))
 
 (deftest ^:integration request-with-x-client-headers-handled-via-tk-auth
-  (testing (str "Request with X-Client headers via trapperkeeper-authorization "
-                "handled")
+  (testing "Request with X-Client headers via trapperkeeper-authorization handled"
     (let [extension-value "UUUU-IIIII-DDD"
           cert (:cert (ssl-simple/gen-self-signed-cert
                        "ssl-client"

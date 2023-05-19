@@ -282,8 +282,7 @@
       (is (every? (complement get-validity) invalid-path-results) (ks/pprint-to-string invalid-path-results)))))
 
 (deftest file-bucket-file-content-type-test
-  (testing (str "The 'Content-Type' header on incoming /file_bucket_file requests "
-                "is not overwritten, and simply passed through unmodified.")
+  (testing "The 'Content-Type' header on incoming /file_bucket_file requests is not overwritten, and simply passed through unmodified."
     (let [handler     (fn ([req] {:request req}))
           app         (build-ring-handler handler "1.2.3" dummy-jruby-service)
           resp        (app (-> {:request-method :put
@@ -293,11 +292,10 @@
       (is (= "application/octet-stream"
              (get-in resp [:request :content-type])))
 
-      (testing (str "Even if the client sends something insane, "
-                    "just pass it through and let the puppet code handle it.")
+      (testing "Even if the client sends something insane, just pass it through and let the puppet code handle it."
         (let [resp (app (-> {:request-method :put
-                          :content-type "something-crazy/for-content-type"
-                          :uri "/v3/file_bucket_file/bar"}
+                             :content-type "something-crazy/for-content-type"
+                             :uri "/v3/file_bucket_file/bar"}
                             (ring-mock/body "foo")))]
           (is (= "something-crazy/for-content-type"
                  (get-in resp [:request :content-type]))))))))
