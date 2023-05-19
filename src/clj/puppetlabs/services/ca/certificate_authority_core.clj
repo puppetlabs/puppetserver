@@ -38,10 +38,29 @@
 ;; course it'll need to be used to guard any competing writes.
 (def crl-write-serializer (Object.))
 
+(schema/defn format-http-date :- (schema/maybe DateTime)
+  "Formats an http-date into joda time.  Returns nil for malformed or nil
+   http-dates"
+  [http-date :- (schema/maybe schema/Str)]
+  (when http-date
+    (try
+      (time-format/parse
+        (time-format/formatters :rfc822)
+        (string/replace http-date #"GMT" "+0000"))
+      (catch IllegalArgumentException _
+        nil))))
+
 (defn handle-get-certificate
-  [subject {:keys [cacert signeddir]}]
-  (-> (if-let [certificate (ca/get-certificate subject cacert signeddir)]
-        (rr/response certificate)
+  [subject {:keys [cacert signeddir]} request]
+  (-> (if-let [certificate-path (ca/get-certificate-path subject cacert signeddir)]
+        (let [last-modified-val (rr/get-header request "If-Modified-Since")
+              last-modified-date-time (format-http-date last-modified-val)
+              cert-last-modified-date-time (ca/get-file-last-modified certificate-path)]
+          (if (or (nil? last-modified-date-time)
+                  (time/after? cert-last-modified-date-time last-modified-date-time))
+            (rr/response (slurp certificate-path))
+            (-> (rr/response nil)
+                (rr/status 304))))
         (rr/not-found (i18n/tru "Could not find certificate {0}" subject)))
       (rr/content-type "text/plain")))
 
@@ -64,17 +83,6 @@
       ;; Respond to all CSR validation failures with a 400
       (middleware-utils/plain-response 400 msg))))
 
-(schema/defn format-http-date :- (schema/maybe DateTime)
-  "Formats an http-date into joda time.  Returns nil for malformed or nil
-   http-dates"
-  [http-date :- (schema/maybe schema/Str)]
-  (when http-date
-    (try
-      (time-format/parse
-        (time-format/formatters :rfc822)
-        (string/replace http-date #"GMT" "+0000"))
-      (catch IllegalArgumentException _
-        nil))))
 
 (defn handle-get-certificate-revocation-list
   "Always return the crl if no 'If-Modified-Since' header is provided or
@@ -85,7 +93,7 @@
   (let [agent-crl-last-modified-val (rr/get-header request "If-Modified-Since")
         agent-crl-last-modified-date-time (format-http-date agent-crl-last-modified-val)
         master-crl-to-use (if (true? enable-infra-crl) infra-crl-path cacrl)
-        master-crl-last-modified-date-time (ca/get-crl-last-modified master-crl-to-use)]
+        master-crl-last-modified-date-time (ca/get-file-last-modified master-crl-to-use)]
     (if (or (nil? agent-crl-last-modified-date-time)
             (time/after? master-crl-last-modified-date-time agent-crl-last-modified-date-time))
       (-> (ca/get-certificate-revocation-list master-crl-to-use)
@@ -404,8 +412,8 @@
         (ANY [[#"[^/]+" :ignored-but-required]] request
           (certificate-statuses request ca-settings))
         (ANY [""] [] (middleware-utils/plain-response 400 "Missing URL Segment")))
-      (GET ["/certificate/" :subject] [subject]
-        (handle-get-certificate subject ca-settings))
+      (GET ["/certificate/" :subject] request
+        (handle-get-certificate (get-in request [:params :subject]) ca-settings request))
       (comidi/context ["/certificate_request/" :subject]
         (GET [""] [subject]
           (handle-get-certificate-request subject ca-settings))
