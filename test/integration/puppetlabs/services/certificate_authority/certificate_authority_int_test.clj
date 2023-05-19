@@ -622,8 +622,7 @@
     (fs/delete (str bootstrap/server-conf-dir "/ca/signed/test_cert_with_auth_ext.pem")))))
 
 (deftest ^:integration certificate-inventory-file-management
-  (testing (str "Validates that the certificate_status endpoint"
-                "includes authorization extensions for certs and CSRs")
+  (testing "Validates that the certificate_status endpoint includes authorization extensions for certs and CSRs"
     (with-redefs [act-proto/report-activity! (fn [_ _] nil)]
       (let [inventory-path (str bootstrap/server-conf-dir "/ca/inventory.txt")
             inventory-content (slurp inventory-path)
