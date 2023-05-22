@@ -37,10 +37,29 @@
 ;;; 'handler' functions for HTTP endpoints
 
 
+(schema/defn format-http-date :- (schema/maybe DateTime)
+  "Formats an http-date into joda time.  Returns nil for malformed or nil
+   http-dates"
+  [http-date :- (schema/maybe schema/Str)]
+  (when http-date
+    (try
+      (time-format/parse
+        (time-format/formatters :rfc822)
+        (string/replace http-date #"GMT" "+0000"))
+      (catch IllegalArgumentException _
+        nil))))
+
 (defn handle-get-certificate
-  [subject {:keys [cacert signeddir]}]
-  (-> (if-let [certificate (ca/get-certificate subject cacert signeddir)]
-        (rr/response certificate)
+  [subject {:keys [cacert signeddir]} request]
+  (-> (if-let [certificate-path (ca/get-certificate-path subject cacert signeddir)]
+        (let [last-modified-val (rr/get-header request "If-Modified-Since")
+              last-modified-date-time (format-http-date last-modified-val)
+              cert-last-modified-date-time (ca/get-file-last-modified certificate-path)]
+          (if (or (nil? last-modified-date-time)
+                  (time/after? cert-last-modified-date-time last-modified-date-time))
+            (rr/response (slurp certificate-path))
+            (-> (rr/response nil)
+                (rr/status 304))))
         (rr/not-found (i18n/tru "Could not find certificate {0}" subject)))
       (rr/content-type "text/plain")))
 
@@ -64,17 +83,6 @@
       ;; Respond to all CSR validation failures with a 400
       (middleware-utils/plain-response 400 msg))))
 
-(schema/defn format-http-date :- (schema/maybe DateTime)
-  "Formats an http-date into joda time.  Returns nil for malformed or nil
-   http-dates"
-  [http-date :- (schema/maybe schema/Str)]
-  (when http-date
-    (try
-      (time-format/parse
-        (time-format/formatters :rfc822)
-        (string/replace http-date #"GMT" "+0000"))
-      (catch IllegalArgumentException _
-        nil))))
 
 (schema/defn resolve-crl-information
   "Create a map that has the appropriate path, lock, timeout and descriptor for the crl being used"
@@ -97,7 +105,7 @@
     ;; window of time between when the last-modified is read and when the crl content is potentially read.
     (common/with-safe-read-lock lock descriptor timeout
         (if (or (nil? agent-crl-last-modified-date-time)
-                (time/after? (ca/get-crl-last-modified path lock descriptor timeout)
+                (time/after? (ca/get-file-last-modified path lock descriptor timeout)
                              agent-crl-last-modified-date-time))
           (-> (ca/get-certificate-revocation-list path lock descriptor timeout)
               (rr/response)
@@ -438,8 +446,8 @@
         (ANY [[#"[^/]+" :ignored-but-required]] request
           (certificate-statuses request ca-settings))
         (ANY [""] [] (middleware-utils/plain-response 400 "Missing URL Segment")))
-      (GET ["/certificate/" :subject] [subject]
-        (handle-get-certificate subject ca-settings))
+      (GET ["/certificate/" :subject] request
+        (handle-get-certificate (get-in request [:params :subject]) ca-settings request))
       (comidi/context ["/certificate_request/" :subject]
         (GET [""] [subject]
           (handle-get-certificate-request subject ca-settings))

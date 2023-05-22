@@ -1316,10 +1316,10 @@
   [{:keys [puppetserver]}]
   (select-keys puppetserver (keys MasterSettings)))
 
-(schema/defn ^:always-validate
-  get-certificate :- (schema/maybe schema/Str)
-  "Given a subject name and paths to the certificate directory and the CA
-  certificate, return the subject's certificate as a string, or nil if not found.
+(schema/defn ^:always-validate get-certificate-path :- (schema/maybe schema/Str)
+  "Given a subject name and paths to the CA certificate and path
+  to the certificate directory return the path to the subject's
+  certificate as a string, or nil if not found.
   If the subject is 'ca', then use the `cacert` path instead."
   [subject :- schema/Str
    cacert :- schema/Str
@@ -1328,7 +1328,18 @@
                     cacert
                     (path-to-cert signeddir subject))]
     (when (fs/exists? cert-path)
-      (slurp cert-path))))
+      cert-path)))
+
+(schema/defn ^:always-validate
+  get-certificate :- (schema/maybe schema/Str)
+  "Given a subject name and path to the certificate directory and the CA
+  certificate, return the subject's certificate as a string, or nil if not found.
+  If the subject is 'ca', then use the `cacert` path instead."
+  [subject :- schema/Str
+   cacert :- schema/Str
+   signeddir :- schema/Str]
+  (when-let [cert-path (get-certificate-path subject cacert signeddir)]
+    (slurp cert-path)))
 
 (schema/defn ^:always-validate
   get-certificate-request :- (schema/maybe schema/Str)
@@ -1598,16 +1609,19 @@
     (slurp cacrl)))
 
 (schema/defn ^:always-validate
-  get-crl-last-modified :- DateTime
-  "Given the value of the 'cacrl' setting from Puppet, return
-  a Joda DateTime instance of when the CRL file was last modified."
-  [cacrl :- schema/Str
-   lock :- ReentrantReadWriteLock
-   lock-descriptor :- schema/Str
-   lock-timeout :- PosInt]
-  (common/with-safe-read-lock lock lock-descriptor lock-timeout
-    (let [last-modified-milliseconds (.lastModified (io/file cacrl))]
-         (time-coerce/from-long last-modified-milliseconds))))
+  get-file-last-modified :- DateTime
+  "Given a path to a file, return a Joda DateTime instance of when the file was last modified.
+   an optional lock, description, and timeout may be passed to serialize access to files."
+  ([path :- schema/Str]
+   (let [last-modified-milliseconds (.lastModified (io/file path))]
+        (time-coerce/from-long last-modified-milliseconds)))
+  ([path :- schema/Str
+    lock :- ReentrantReadWriteLock
+    lock-descriptor :- schema/Str
+    lock-timeout :- PosInt]
+   (common/with-safe-read-lock lock lock-descriptor lock-timeout
+     (let [last-modified-milliseconds (.lastModified (io/file path))]
+          (time-coerce/from-long last-modified-milliseconds)))))
 
 (schema/defn ^:always-validate reject-delta-crl
   [crl :- CertificateRevocationList]
