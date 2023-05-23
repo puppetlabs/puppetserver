@@ -16,6 +16,7 @@
     [puppetlabs.services.ca.certificate-authority-core :refer [handle-get-certificate-revocation-list]]
     [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
     [puppetlabs.ssl-utils.core :as ssl-utils]
+    [puppetlabs.ssl-utils.simple :as simple]
     [puppetlabs.trapperkeeper.services :as tk-services]
     [puppetlabs.trapperkeeper.testutils.logging :as logutils]
     [ring.mock.request :as mock]
@@ -46,6 +47,58 @@
   ([body]
    (merge (cert-status-request-params) {:body body})))
 
+(defn create-ca-cert
+  [name serial]
+  (let [keypair (ssl-utils/generate-key-pair)
+        public-key (ssl-utils/get-public-key keypair)
+        private-key (ssl-utils/get-private-key keypair)
+        x500-name (ssl-utils/cn name)
+        validity (ca/cert-validity-dates 3600)
+        ca-exts (ca/create-ca-extensions public-key public-key)]
+    {:public-key public-key
+     :private-key private-key
+     :x500-name x500-name
+     :certname name
+     :cert (ssl-utils/sign-certificate
+             x500-name
+             private-key
+             serial
+             (:not-before validity)
+             (:not-after validity)
+             x500-name
+             public-key
+             ca-exts)}))
+
+(defn generate-and-sign-a-cert!
+  [certname]
+  (let [cert-path (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")
+        key-path (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
+        ca-cert-path (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+        key-pair (ssl-utils/generate-key-pair)
+        csr (ssl-utils/generate-certificate-request
+              key-pair
+              (ssl-utils/cn certname))
+        csr-path (str bootstrap/server-conf-dir "/ca/requests/" certname ".pem")
+        status-url (str "https://localhost:8140/puppet-ca/v1/certificate_status/" certname)
+        cert-endpoint (str "https://localhost:8140/puppet-ca/v1/certificate/" certname)
+        request-opts {:ssl-cert cert-path
+                      :ssl-key key-path
+                      :ssl-ca-cert ca-cert-path}]
+
+    (ssl-utils/obj->pem! csr csr-path)
+    (http-client/put
+      status-url
+      (merge request-opts
+             {:body "{\"desired_state\": \"signed\"}"
+              :headers {"content-type" "application/json"}}))
+    (let [cert-request (http-client/get cert-endpoint {:ssl-ca-cert ca-cert-path})
+          private-key-file (ks/temp-file)
+          public-key-file (ks/temp-file)]
+      (ssl-utils/key->pem! (ssl-utils/get-public-key key-pair) public-key-file)
+      (ssl-utils/key->pem! (ssl-utils/get-private-key key-pair) private-key-file)
+      {:signed-cert (slurp (:body cert-request))
+       :public-key public-key-file
+       :private-key private-key-file})))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tests
@@ -964,90 +1017,164 @@
        (is (= 400 (:status response)))))))
 
 (deftest ca-certificate-renew-endpoint-test
-  (testing "returns a 501 not implemented response when feature is enabled"
-    (bootstrap/with-puppetserver-running-with-mock-jrubies
-      "JRuby mocking is safe here because all of the requests are to the CA
-      endpoints, which are implemented in Clojure."
-      app
-      {:jruby-puppet
-       {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
-       :webserver
-       {:ssl-cert (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")
-        :ssl-key (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
-        :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
-        :ssl-crl-path (str bootstrap/server-conf-dir "/ssl/crl.pem")}
-       :certificate-authority
-       {:allow-auto-renewal true}}
-      (let [response (http-client/post
-                       "https://localhost:8140/puppet-ca/v1/certificate_renewal"
-                       {:ssl-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
-                        :ssl-key (str bootstrap/server-conf-dir "/ca/ca_key.pem")
-                        :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
-                        :as :text})]
-        (is (= 501 (:status response))))))
-  (testing "returns a 404 not found response when feature is disabled"
-    (bootstrap/with-puppetserver-running-with-mock-jrubies
-      "JRuby mocking is safe here because all of the requests are to the CA
-      endpoints, which are implemented in Clojure."
-      app
-      {:jruby-puppet
-       {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
-       :webserver
-       {:ssl-cert (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")
-        :ssl-key (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
-        :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
-        :ssl-crl-path (str bootstrap/server-conf-dir "/ssl/crl.pem")}
-       :certificate-authority
-       {:allow-auto-renewal false}}
-      (let [response (http-client/post
-                       "https://localhost:8140/puppet-ca/v1/certificate_renewal"
-                       {:ssl-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
-                        :ssl-key (str bootstrap/server-conf-dir "/ca/ca_key.pem")
-                        :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
-                        :as :text})]
-        (is (= 404 (:status response))))))
-  (testing "returns a 400 bad request response when the ssl-client-cert is not present"
-    (bootstrap/with-puppetserver-running-with-mock-jrubies
-      "JRuby mocking is safe here because all of the requests are to the CA
-      endpoints, which are implemented in Clojure."
-      app
-      {:jruby-puppet
-       {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
-       :webserver
-       {:ssl-cert (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")
-        :ssl-key (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
-        :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
-        :ssl-crl-path (str bootstrap/server-conf-dir "/ssl/crl.pem")}
-       :certificate-authority
-       {:allow-auto-renewal true}}
-      (let [response (http-client/post
-                       "https://localhost:8140/puppet-ca/v1/certificate_renewal"
-                       {:ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
-                        :as :text})]
-        (is (= 400 (:status response))))))
-  (testing "returns a 501 not implemented response when the feature is enabled,
-            allow-header-cert-info is true, and a cert is supplied in header"
-    (bootstrap/with-puppetserver-running-with-mock-jrubies
-      "JRuby mocking is safe here because all of the requests are to the CA
-      endpoints, which are implemented in Clojure."
-      app
-      {:jruby-puppet
-       {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
-       :webserver
-       {:ssl-cert (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")
-        :ssl-key (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
-        :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
-        :ssl-crl-path (str bootstrap/server-conf-dir "/ssl/crl.pem")}
-       :certificate-authority
-       {:allow-auto-renewal true}
-       :authorization
-       {:allow-header-cert-info true}}
-      (let [header-cert (ring-codec/url-encode (slurp (str bootstrap/server-conf-dir "/ca/ca_crt.pem")))
-            response (http-client/post
-                       "https://localhost:8140/puppet-ca/v1/certificate_renewal"
-                       {:headers {"x-client-cert" header-cert}
-                        :ssl-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
-                        :ssl-key (str bootstrap/server-conf-dir "/ca/ca_key.pem")
-                        :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
-                        :as :text})]
-        (is (= 501 (:status response)))))))
+  (testing "with the feature enabled"
+    (testing "with allow-header-cert-info = false (default)"
+      (testing "returns a 501 not implemented response when feature is enabled,
+            a certificate is present in the request, and that cert matches
+            the signing cert"
+        (bootstrap/with-puppetserver-running-with-mock-jrubies
+          "JRuby mocking is safe here because all of the requests are to the CA
+          endpoints, which are implemented in Clojure."
+          app
+          {:jruby-puppet
+           {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
+           :webserver
+           {:ssl-cert     (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")
+            :ssl-key      (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
+            :ssl-ca-cert  (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+            :ssl-crl-path (str bootstrap/server-conf-dir "/ssl/crl.pem")}
+           :certificate-authority
+           {:allow-auto-renewal true}}
+          (let [response (http-client/post
+                           "https://localhost:8140/puppet-ca/v1/certificate_renewal"
+                           {:ssl-cert    (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")
+                            :ssl-key     (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
+                            :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                            :as          :text})]
+            (is (= 501 (:status response))))))
+
+      (testing "returns a 400 bad request response when the ssl-client-cert is not present"
+        (bootstrap/with-puppetserver-running-with-mock-jrubies
+          "JRuby mocking is safe here because all of the requests are to the CA
+          endpoints, which are implemented in Clojure."
+          app
+          {:jruby-puppet
+           {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
+           :webserver
+           {:ssl-cert     (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")
+            :ssl-key      (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
+            :ssl-ca-cert  (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+            :ssl-crl-path (str bootstrap/server-conf-dir "/ssl/crl.pem")}
+           :certificate-authority
+           {:allow-auto-renewal true}}
+          (let [response (http-client/post
+                           "https://localhost:8140/puppet-ca/v1/certificate_renewal"
+                           {:ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                            :as          :text})]
+            (is (= 400 (:status response)))
+            (is (= "No certificate found in renewal request" (:body response)))))))
+
+    (testing "with allow-header-cert-info = true"
+      (testing "returns a 501 not implemented response when the feature is enabled,
+            a cert is supplied in header and the signing certificate matches"
+        (bootstrap/with-puppetserver-running-with-mock-jrubies
+          "JRuby mocking is safe here because all of the requests are to the CA
+          endpoints, which are implemented in Clojure."
+          app
+          {:jruby-puppet
+           {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
+           :webserver
+           {:ssl-cert     (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")
+            :ssl-key      (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
+            :ssl-ca-cert  (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+            :ssl-crl-path (str bootstrap/server-conf-dir "/ssl/crl.pem")}
+           :certificate-authority
+           {:allow-auto-renewal true}
+           :authorization
+           {:allow-header-cert-info true}}
+          (let [header-cert (ring-codec/url-encode (slurp (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")))
+                response (http-client/post
+                           "https://localhost:8140/puppet-ca/v1/certificate_renewal"
+                           {:headers     {"x-client-cert" header-cert}
+                            :ssl-cert    (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")
+                            :ssl-key      (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
+                            :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                            :as          :text})]
+            (is (= 501 (:status response))))))
+
+      (testing "returns a 400 bad request response when the feature is enabled,
+             and a bogus cert is supplied in the header"
+        (bootstrap/with-puppetserver-running-with-mock-jrubies
+          "JRuby mocking is safe here because all of the requests are to the CA
+          endpoints, which are implemented in Clojure."
+          app
+          {:jruby-puppet
+           {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
+           :webserver
+           {:ssl-cert     (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")
+            :ssl-key      (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
+            :ssl-ca-cert  (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+            :ssl-crl-path (str bootstrap/server-conf-dir "/ssl/crl.pem")}
+           :certificate-authority
+           {:allow-auto-renewal true}
+           :authorization
+           {:allow-header-cert-info true}}
+          (let [header-cert "abadstring"
+                response (http-client/post
+                           "https://localhost:8140/puppet-ca/v1/certificate_renewal"
+                           {:headers     {"x-client-cert" header-cert}
+                            :ssl-cert    (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")
+                            :ssl-key      (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
+                            :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                            :as          :text})]
+            (is (= 400 (:status response)))
+            (is (= "No certs found in PEM read from x-client-cert" (:body response))))))
+
+      (testing "returns a 403 forbidden response when a certificate is present in the request,
+               but that cert does not match the signing cert"
+        (bootstrap/with-puppetserver-running-with-mock-jrubies
+          "JRuby mocking is safe here because all of the requests are to the CA
+          endpoints, which are implemented in Clojure."
+          app
+          {:jruby-puppet
+           {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
+           :webserver
+           {:ssl-cert     (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")
+            :ssl-key      (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
+            :ssl-ca-cert  (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+            :ssl-crl-path (str bootstrap/server-conf-dir "/ssl/crl.pem")}
+           :certificate-authority
+           {:allow-auto-renewal true}
+           :authorization
+           {:allow-header-cert-info true}}
+          (let [ca-cert (create-ca-cert "ca-nomatch" 42)
+                ca-cert-file (ks/temp-file)
+                _ (ssl-utils/cert->pem! (:cert ca-cert) ca-cert-file)
+                cert-1 (simple/gen-cert "localhost" ca-cert 4 {:extensions [(ssl-utils/authority-key-identifier (:cert ca-cert))]})
+                cert-1-file (ks/temp-file)
+                _ (ssl-utils/cert->pem! (:cert cert-1) cert-1-file)
+                header-cert (ring-codec/url-encode (slurp cert-1-file))
+                private-key-file (ks/temp-file)
+                _ (ssl-utils/key->pem! (:private-key cert-1) private-key-file)
+                response (http-client/post
+                           "https://localhost:8140/puppet-ca/v1/certificate_renewal"
+                           {:headers     {"x-client-cert" header-cert}
+                            :ssl-cert    (str cert-1-file)
+                            :ssl-key     (str private-key-file)
+                            :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                            :as          :text})]
+            (is (= 403 (:status response)))
+            (is (= "Certificate present, but does not match signature" (:body response))))))))
+
+  (testing "with the feature disabled"
+    (testing "returns a 404 not found response when feature is disabled"
+      (bootstrap/with-puppetserver-running-with-mock-jrubies
+        "JRuby mocking is safe here because all of the requests are to the CA
+        endpoints, which are implemented in Clojure."
+        app
+        {:jruby-puppet
+         {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
+         :webserver
+         {:ssl-cert     (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")
+          :ssl-key      (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
+          :ssl-ca-cert  (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+          :ssl-crl-path (str bootstrap/server-conf-dir "/ssl/crl.pem")}
+         :certificate-authority
+         {:allow-auto-renewal false}}
+        (let [response (http-client/post
+                         "https://localhost:8140/puppet-ca/v1/certificate_renewal"
+                         {:ssl-cert    (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")
+                          :ssl-key      (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
+                          :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                          :as          :text})]
+          (is (= 404 (:status response))))))))
