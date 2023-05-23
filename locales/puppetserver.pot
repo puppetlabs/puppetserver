@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: f6a05f9359f1e3c20e0ab9fb087e5b0c4995c647\n"
+"X-Git-Ref: 4dc7b77e0db804b7a046682903df2660ec1b9304\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -512,6 +512,10 @@ msgstr ""
 
 #: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
 msgid "Certificate present, processing renewal request"
+msgstr ""
+
+#: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
+msgid "Certificate present, but does not match signature"
 msgstr ""
 
 #: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
