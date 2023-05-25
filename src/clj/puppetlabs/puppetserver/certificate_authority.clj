@@ -2102,7 +2102,7 @@
   [extensions :- utils/SSLExtensionList ca-cert :- X509Certificate subject-public-key :- PublicKey]
   (replace-subject-identifier (replace-authority-identifier extensions ca-cert) subject-public-key))
 
-(schema/defn renew-certificate!
+(schema/defn renew-certificate! :- X509Certificate
   "Given a certificate and CaSettings create a new signed certificate using the public key from the certificate.
   It recreates all the extensions in the original certificate."
   [certificate :- X509Certificate

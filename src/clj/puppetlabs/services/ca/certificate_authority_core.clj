@@ -24,7 +24,7 @@
             [schema.core :as schema]
             [slingshot.slingshot :as sling])
   (:import (clojure.lang IFn)
-           (java.io ByteArrayInputStream InputStream)
+           (java.io ByteArrayInputStream InputStream StringWriter)
            (org.joda.time DateTime)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -202,8 +202,8 @@
   the request is valid and signed by the this CA. then generate a renewed cert and
   return it in the response body"
   [request
-   {:keys [cacert cakey allow-auto-renewal allow-header-cert-info]} :- ca/CaSettings
-   _report-activity]
+   {:keys [cacert cakey allow-auto-renewal allow-header-cert-info] :as ca-settings} :- ca/CaSettings
+   report-activity]
   (if allow-auto-renewal
     (let [request-cert (auth-middleware/request->cert request allow-header-cert-info)]
       (if request-cert
@@ -211,9 +211,12 @@
           (if (ca/cert-authority-id-match-ca-subject-id? request-cert signing-cert)
             (do
               (log/info (i18n/trs "Certificate present, processing renewal request"))
-              (-> (rr/response (cheshire/generate-string {}))
-                  (rr/status 501)
-                  (rr/content-type "application/json")))
+              (let [cert-signing-result (ca/renew-certificate! request-cert ca-settings report-activity)
+                    cert-writer (StringWriter.)]
+                ;; has side effect of writing to the writer
+                (utils/cert->pem! cert-signing-result cert-writer)
+                (-> (rr/response (.toString cert-writer))
+                    (rr/content-type "text/plain"))))
             (do
               (log/info (i18n/trs "Certificate present, but does not match signature"))
               (-> (rr/response (i18n/tru "Certificate present, but does not match signature"))

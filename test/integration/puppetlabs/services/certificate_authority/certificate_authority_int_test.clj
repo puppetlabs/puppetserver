@@ -22,7 +22,9 @@
     [ring.mock.request :as mock]
     [ring.util.codec :as ring-codec]
     [schema.test :as schema-test])
-  (:import (javax.net.ssl SSLException)))
+  (:import (java.util Date)
+           (java.util.concurrent TimeUnit)
+           (javax.net.ssl SSLException)))
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/certificate_authority/certificate_authority_int_test")
@@ -1019,7 +1021,7 @@
 (deftest ca-certificate-renew-endpoint-test
   (testing "with the feature enabled"
     (testing "with allow-header-cert-info = false (default)"
-      (testing "returns a 501 not implemented response when feature is enabled,
+      (testing "returns a 200 OK response when feature is enabled,
             a certificate is present in the request, and that cert matches
             the signing cert"
         (bootstrap/with-puppetserver-running-with-mock-jrubies
@@ -1035,13 +1037,32 @@
             :ssl-crl-path (str bootstrap/server-conf-dir "/ssl/crl.pem")}
            :certificate-authority
            {:allow-auto-renewal true}}
-          (let [response (http-client/post
+          (let [generated-cert-info (generate-and-sign-a-cert! "foobar")
+                signed-cert-file (ks/temp-file)
+                _ (spit signed-cert-file (:signed-cert generated-cert-info))
+                _ (Thread/sleep 1000) ;; ensure some time has passed so the timestamps are different
+                response (http-client/post
                            "https://localhost:8140/puppet-ca/v1/certificate_renewal"
-                           {:ssl-cert    (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")
-                            :ssl-key     (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
+                           {:ssl-cert    (str signed-cert-file)
+                            :ssl-key     (str (:private-key generated-cert-info))
                             :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
                             :as          :text})]
-            (is (= 501 (:status response))))))
+            (is (= 200 (:status response)))
+            (let [renewed-cert-pem (:body response)
+                  renewed-cert-file (ks/temp-file)
+                  _ (spit renewed-cert-file renewed-cert-pem)
+                  renewed-cert (ssl-utils/pem->cert renewed-cert-file)
+                  signed-cert (ssl-utils/pem->cert signed-cert-file)]
+              (testing "serial number has been incremented"
+                (is (< (.getSerialNumber signed-cert) (.getSerialNumber renewed-cert))))
+              (testing "not before time stamps have changed"
+                (is (true? (.before (.getNotBefore signed-cert) (.getNotBefore renewed-cert)))))
+              (testing "new not-after is earlier than before"
+                (is (true? (.after (.getNotAfter signed-cert) (.getNotAfter renewed-cert)))))
+              (testing "new not-after should be 59 days (and some fraction) away"
+                (let [diff (- (.getTime (.getNotAfter renewed-cert)) (.getTime (Date.)))
+                      days (.convert TimeUnit/DAYS diff TimeUnit/MILLISECONDS)]
+                  (is (= 59 days))))))))
 
       (testing "returns a 400 bad request response when the ssl-client-cert is not present"
         (bootstrap/with-puppetserver-running-with-mock-jrubies
@@ -1065,7 +1086,7 @@
             (is (= "No certificate found in renewal request" (:body response)))))))
 
     (testing "with allow-header-cert-info = true"
-      (testing "returns a 501 not implemented response when the feature is enabled,
+      (testing "returns a 200 OK response when the feature is enabled,
             a cert is supplied in header and the signing certificate matches"
         (bootstrap/with-puppetserver-running-with-mock-jrubies
           "JRuby mocking is safe here because all of the requests are to the CA
@@ -1082,15 +1103,32 @@
            {:allow-auto-renewal true}
            :authorization
            {:allow-header-cert-info true}}
-          (let [header-cert (ring-codec/url-encode (slurp (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")))
+          (let [generated-cert-info (generate-and-sign-a-cert! "foobar")
+                signed-cert-file (ks/temp-file)
+                _ (spit signed-cert-file (:signed-cert generated-cert-info))
+                header-cert (ring-codec/url-encode (:signed-cert generated-cert-info))
+                _ (Thread/sleep 1000)
                 response (http-client/post
                            "https://localhost:8140/puppet-ca/v1/certificate_renewal"
                            {:headers     {"x-client-cert" header-cert}
-                            :ssl-cert    (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")
-                            :ssl-key      (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
                             :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
                             :as          :text})]
-            (is (= 501 (:status response))))))
+            (is (= 200 (:status response)))
+            (let [renewed-cert-pem (:body response)
+                  renewed-cert-file (ks/temp-file)
+                  _ (spit renewed-cert-file renewed-cert-pem)
+                  renewed-cert (ssl-utils/pem->cert renewed-cert-file)
+                  signed-cert (ssl-utils/pem->cert signed-cert-file)]
+              (testing "serial number has been incremented"
+                (is (< (.getSerialNumber signed-cert) (.getSerialNumber renewed-cert))))
+              (testing "not before time stamps have changed"
+                (is (true? (.before (.getNotBefore signed-cert) (.getNotBefore renewed-cert)))))
+              (testing "new not-after is earlier than before"
+                (is (true? (.after (.getNotAfter signed-cert) (.getNotAfter renewed-cert)))))
+              (testing "new not-after should be 59 days (and some fraction) away"
+                (let [diff (- (.getTime (.getNotAfter renewed-cert)) (.getTime (Date.)))
+                      days (.convert TimeUnit/DAYS diff TimeUnit/MILLISECONDS)]
+                  (is (= 59 days))))))))
 
       (testing "returns a 400 bad request response when the feature is enabled,
              and a bogus cert is supplied in the header"
