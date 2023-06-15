@@ -746,6 +746,7 @@
            csr (ssl-utils/generate-certificate-request key-pair subjectDN)
            csr-file (ks/temp-file "test_csr.pem")
            saved-csr (str request-dir "/test_cert.pem")
+           indicator-file (str request-dir "/test_cert.tmp")
            url "https://localhost:8140/puppet-ca/v1/certificate_request/test_cert"
            request-opts {:ssl-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
                          :ssl-key (str bootstrap/server-conf-dir "/ca/ca_key.pem")
@@ -758,6 +759,7 @@
                          url
                          (merge request-opts {:body (slurp csr-file)}))]
            (is (= 200 (:status response)))
+           (is (not (fs/exists? indicator-file)))
            (is (= (slurp csr-file) (slurp saved-csr)))))
        (testing "get a CSR from the API"
          (let [response (http-client/get
@@ -773,6 +775,43 @@
            (is (= 204 (:status response)))
            (is (not (fs/exists? saved-csr)))))
        (fs/delete csr-file)))))
+
+(deftest csr-api-puppet-version-test
+  (testutils/with-stub-puppet-conf
+    (bootstrap/with-puppetserver-running-with-config
+      app
+      (bootstrap/load-dev-config-with-overrides
+        {:jruby-puppet
+         {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
+         :webserver
+         {:ssl-cert (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")
+          :ssl-key (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
+          :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+          :ssl-crl-path (str bootstrap/server-conf-dir "/ssl/crl.pem")}})
+      (let [request-dir (str bootstrap/server-conf-dir "/ca/requests")
+            key-pair (ssl-utils/generate-key-pair)
+            subjectDN (ssl-utils/cn "test_version_cert")
+            csr (ssl-utils/generate-certificate-request key-pair subjectDN)
+            csr-file (ks/temp-file "test_version_csr.pem")
+            saved-csr (str request-dir "/test_version_cert.pem")
+            indicator-file (str request-dir "/test_version_cert.tmp")
+            url "https://localhost:8140/puppet-ca/v1/certificate_request/test_version_cert"
+            request-opts {:ssl-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                          :ssl-key (str bootstrap/server-conf-dir "/ca/ca_key.pem")
+                          :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                          :as :text
+                          :headers {"content-type" "text/plain"
+                                    "x-puppet-version" "8.2.0"}}]
+        (ssl-utils/obj->pem! csr csr-file)
+        (testing "submit a CSR via the API"
+          (let [response (http-client/put
+                           url
+                           (merge request-opts {:body (slurp csr-file)}))]
+            (is (= 200 (:status response)))
+            (is (fs/exists? indicator-file))
+            (fs/delete csr-file)
+            (fs/delete saved-csr)
+            (fs/delete indicator-file)))))))
 
 (deftest csr-activity-service-cert
   (let [reported-activity (atom [])

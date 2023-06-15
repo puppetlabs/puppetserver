@@ -1144,7 +1144,7 @@
           (is (thrown+?
                [:kind :duplicate-cert
                 :msg "test-agent already has a requested certificate; ignoring certificate request"]
-               (ca/process-csr-submission! "test-agent" (csr-stream "test-agent") settings (constantly nil)))))
+               (ca/process-csr-submission! "test-agent" (csr-stream "test-agent") settings (constantly nil) false))))
 
         (testing "throws exception if certificate already exists"
           (is (thrown+?
@@ -1153,14 +1153,16 @@
                (ca/process-csr-submission! "localhost"
                                         (io/input-stream (test-pem-file "localhost-csr.pem"))
                                         settings
-                                        (constantly nil))))
+                                        (constantly nil)
+                                        false)))
           (is (thrown+?
                [:kind :duplicate-cert
                 :msg "revoked-agent already has a revoked certificate; ignoring certificate request"]
                (ca/process-csr-submission! "revoked-agent"
                                         (io/input-stream (test-pem-file "revoked-agent-csr.pem"))
                                         settings
-                                        (constantly nil)))))))
+                                        (constantly nil)
+                                        false))))))
 
     (testing "when true"
       (let [settings (assoc settings :allow-duplicate-certs true)]
@@ -1169,7 +1171,7 @@
                 csr      (ByteArrayInputStream. (.getBytes (slurp csr-path)))]
             (spit csr-path "should be overwritten")
             (logutils/with-test-logging
-              (ca/process-csr-submission! "test-agent" csr settings (constantly nil))
+              (ca/process-csr-submission! "test-agent" csr settings (constantly nil) false)
               (is (logged? #"test-agent already has a requested certificate; new certificate will overwrite it" :info))
               (is (not= "should be overwritten" (slurp csr-path))
                   "Existing CSR was not overwritten"))))
@@ -1180,7 +1182,7 @@
                 old-cert  (slurp cert-path)
                 csr       (io/input-stream (test-pem-file "localhost-csr.pem"))]
             (logutils/with-test-logging
-              (ca/process-csr-submission! "localhost" csr settings (constantly nil))
+              (ca/process-csr-submission! "localhost" csr settings (constantly nil) false)
               (is (logged? #"localhost already has a signed certificate; new certificate will overwrite it" :info))
               (is (not= old-cert (slurp cert-path)) "Existing certificate was not overwritten"))))))))
 
@@ -1207,7 +1209,7 @@
                 (let [path (ca/path-to-cert-request (:csrdir settings) subject)
                       csr  (io/input-stream (test-pem-file csr-file))]
                   (is (false? (fs/exists? path)))
-                  (is (thrown+? exception (ca/process-csr-submission! subject csr settings (constantly nil))))
+                  (is (thrown+? exception (ca/process-csr-submission! subject csr settings (constantly nil) false)))
                   (is (false? (fs/exists? path)))))))
 
           (testing "extension & key policies are not checked"
@@ -1219,9 +1221,21 @@
                 (let [path (ca/path-to-cert-request (:csrdir settings) subject)
                       csr  (io/input-stream (test-pem-file csr-file))]
                   (is (false? (fs/exists? path)))
-                  (ca/process-csr-submission! subject csr settings (constantly nil))
+                  (ca/process-csr-submission! subject csr settings (constantly nil) false)
                   (is (true? (fs/exists? path)))
-                  (fs/delete path)))))))
+                  (fs/delete path)))))
+          (testing "writes indicator file when asked to"
+            (let [subject "meow"
+                  path (ca/path-to-cert-request (:csrdir settings) subject)
+                  path-to-indicator (ca/path-to-autosign-indication (:csrdir settings) subject)
+                  csr  (io/input-stream (test-pem-file "meow-bad-extension.pem"))]
+              (is (false? (fs/exists? path)))
+              (is (false? (fs/exists? path-to-indicator)))
+              (ca/process-csr-submission! subject csr settings (constantly nil) true)
+              (is (true? (fs/exists? path)))
+              (is (true? (fs/exists? path-to-indicator)))
+              (fs/delete path)
+              (fs/delete path-to-indicator)))))
 
       (testing "when autosign is true, all policies are checked, and"
         (let [settings (assoc settings :autosign true)]
@@ -1243,7 +1257,7 @@
                 (let [path (ca/path-to-cert-request (:csrdir settings) subject)
                       csr  (io/input-stream (test-pem-file csr-file))]
                   (is (false? (fs/exists? path)))
-                  (is (thrown+? expected (ca/process-csr-submission! subject csr settings (constantly nil))))
+                  (is (thrown+? expected (ca/process-csr-submission! subject csr settings (constantly nil) false)))
                   (is (false? (fs/exists? path)))))))
 
           (testing "CSR will be saved when"
@@ -1268,7 +1282,7 @@
                 (let [path (ca/path-to-cert-request (:csrdir settings) subject)
                       csr  (io/input-stream (test-pem-file csr-file))]
                   (is (false? (fs/exists? path)))
-                  (is (thrown+? expected (ca/process-csr-submission! subject csr settings (constantly nil))))
+                  (is (thrown+? expected (ca/process-csr-submission! subject csr settings (constantly nil) false)))
                   (is (true? (fs/exists? path)))
                   (fs/delete path)))))))
 
@@ -1279,13 +1293,13 @@
             (is (thrown+?
                  [:kind :duplicate-cert
                   :msg "test-agent already has a requested certificate; ignoring certificate request"]
-                 (ca/process-csr-submission! "not-test-agent" csr-with-mismatched-name settings (constantly nil))))))
+                 (ca/process-csr-submission! "not-test-agent" csr-with-mismatched-name settings (constantly nil) false)))))
         (testing "subject policies checked before extension & key policies"
           (let [csr-with-disallowed-alt-names (io/input-stream (test-pem-file "hostwithaltnames.pem"))]
             (is (thrown+?
                  [:kind :hostname-mismatch
                   :msg "Instance name \"hostwithaltnames\" does not match requested key \"foo\""]
-                 (ca/process-csr-submission! "foo" csr-with-disallowed-alt-names settings (constantly nil))))))))))
+                 (ca/process-csr-submission! "foo" csr-with-disallowed-alt-names settings (constantly nil) false)))))))))
 
 (deftest cert-signing-extension-test
   (let [issuer-keys  (utils/generate-key-pair 512)
@@ -2012,3 +2026,12 @@
             ;; for ease of testing, just test the first and last
             (is (= "0x0006" (first last-entry-fields)))
             (is (= "/CN=foo" (last last-entry-fields)))))))))
+
+(deftest versioncmp-test
+  (testing "should be able to sort a long set of various unordered versions"
+    (let [test-items ["1.1.6" "2.3" "1.1a" "3.0" "1.5" "1" "2.4" "1.1-4" "2.3.1" "1.2" "2.3.0" "1.1-3" "2.4b" "2.4" "2.40.2" "2.3a.1" "3.1" "0002" "1.1-5" "1.1.a" "1.06"]
+          sorted-items (sort ca/versioncmp test-items)]
+      (is (= ["0002", "1", "1.06", "1.1-3", "1.1-4", "1.1-5", "1.1.6", "1.1.a", "1.1a", "1.2", "1.5", "2.3", "2.3.0", "2.3.1", "2.3a.1", "2.4", "2.4", "2.4b", "2.40.2", "3.0", "3.1"]
+             sorted-items)))))
+
+
