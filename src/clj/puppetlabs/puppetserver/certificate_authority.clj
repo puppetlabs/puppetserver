@@ -442,6 +442,12 @@
   [csrdir subject]
   (str csrdir "/" subject ".pem"))
 
+(defn path-to-autosign-indication
+  "Return a path to the `subject`s certificate request file under the `csrdir`."
+  [csrdir subject]
+  (str csrdir "/" subject ".tmp"))
+
+
 (defn create-parent-directories!
   "Create all intermediate directories present in each of the file paths.
   Throws an exception if the directory cannot be created."
@@ -1474,8 +1480,16 @@
     (log/debug (i18n/trs "Saving CSR to ''{0}''" csr-path))
     (write-csr csr csr-path)))
 
+(schema/defn save-auto-renewal-indicator!
+  "Given a subject and a path, create a file that indicates that the subject supports auto-renewal"
+  [subject :- schema/Str
+   csrdir :- schema/Str]
+  (let [indication-path (path-to-autosign-indication csrdir subject)]
+    (log/debug (i18n/trs "Saving autosign indication to ''{0}''" indication-path))
+    (ks-file/atomic-write-string indication-path subject public-key-perms)))
+
 (schema/defn validate-duplicate-cert-policy!
-  "Throw a slingshot exception if allow-duplicate-certs is false
+  "Throw a slingshot exception if allow-duplicate-certs is false,
    and we already have a certificate or CSR for the subject.
    The exception map will look like:
    {:kind :duplicate-cert
@@ -1552,6 +1566,72 @@
                            (i18n/tru "To allow subject alternative names, set allow-subject-alt-names to true in your ca.conf file.")
                            (i18n/tru "Then restart the puppetserver and try signing this certificate again."))})))))))
 
+(schema/defn is-only-number? :- schema/Bool
+  "Given a string, does the string only consist of numeric characters"
+  [a :- schema/Str]
+  (some? (re-find #"^\d+$" a)))
+(schema/defn starts-with-zero? :- schema/Bool
+  "Given a string, does it start with zero?"
+  [a :- schema/Str]
+  (some? (re-find #"^0" a)))
+
+
+;; TODO - move to kitchensink
+(schema/defn versioncmp :- schema/Int
+  [a :- schema/Str
+   b :- schema/Str]
+  (let [version-regular-expression #"[\-.]|\d+|[^\-.\d]+"
+        a-matches (re-seq version-regular-expression a)
+        b-matches (re-seq version-regular-expression b)]
+    (if (and (pos? (count a-matches))
+             (pos? (count b-matches)))
+      (loop [current-a-matches a-matches
+             current-b-matches b-matches]
+        (let [current-a (first current-a-matches)
+              current-b (first current-b-matches)]
+          (cond
+            (and (nil? current-a) (nil? current-b))
+            0
+
+            (nil? current-a)
+            (compare a b)
+
+            (nil? current-b)
+            (compare a b)
+
+            (= current-a current-b)
+            (recur (rest current-a-matches) (rest current-b-matches))
+
+            (= "-" current-a)
+            -1
+
+            (= "-" current-b)
+            1
+
+            (= "." current-a)
+            -1
+
+            (= "." current-b)
+            1
+
+            (and (is-only-number? current-a) (is-only-number? current-b))
+            (if (or (starts-with-zero? current-a)
+                    (starts-with-zero? current-b))
+              (compare (.toUpperCase current-a) (.toUpperCase current-b))
+              (compare (ks/parse-int current-a) (ks/parse-int current-b)))
+
+            :else
+            (compare (.toUpperCase current-a) (.toUpperCase current-b)))))
+      (compare a b))))
+(schema/defn supports-auto-renewal? :- schema/Bool
+  "Given a http-request, determine if the requester is capable of supporting auto-renewal"
+  [request]
+  (if-let [puppet-version (get-in request [:headers "x-puppet-version"])]
+    (let [comparison (versioncmp "8.2.0" puppet-version)]
+         (or (pos? comparison)
+             (zero? comparison)))
+    false))
+
 (schema/defn ^:always-validate process-csr-submission!
   "Given a CSR for a subject (typically from the HTTP endpoint),
    perform policy checks and sign or save the CSR (based on autosign).
@@ -1559,7 +1639,8 @@
   [subject :- schema/Str
    certificate-request :- InputStream
    {:keys [autosign csrdir ruby-load-path gem-path allow-subject-alt-names allow-authorization-extensions] :as settings} :- CaSettings
-   report-activity]
+   report-activity
+   supports-auto-renewal :- schema/Bool]
   (with-open [byte-stream (-> certificate-request
                               input-stream->byte-array
                               ByteArrayInputStream.)]
@@ -1568,6 +1649,8 @@
       (validate-duplicate-cert-policy! csr settings)
       (validate-subject! subject (get-csr-subject csr))
       (save-certificate-request! subject csr csrdir)
+      (when supports-auto-renewal
+        (save-auto-renewal-indicator! subject csrdir))
       (when (autosign-csr? autosign subject csr-stream ruby-load-path gem-path)
         (ensure-subject-alt-names-allowed! csr allow-subject-alt-names)
         (ensure-no-authorization-extensions! csr allow-authorization-extensions)

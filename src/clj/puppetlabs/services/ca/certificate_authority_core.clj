@@ -70,13 +70,15 @@
         (rr/not-found (i18n/tru "Could not find certificate_request {0}" subject)))
       (rr/content-type "text/plain")))
 
+
 (schema/defn handle-put-certificate-request!
   [ca-settings :- ca/CaSettings
    report-activity
    {:keys [body] {:keys [subject]} :route-params :as request}]
   (sling/try+
-    (let [report-activity-fn (ca/create-report-activity-fn report-activity request)]
-      (ca/process-csr-submission! subject body ca-settings report-activity-fn)
+    (let [supports-auto-renewal (ca/supports-auto-renewal? request)
+          report-activity-fn (ca/create-report-activity-fn report-activity request)]
+      (ca/process-csr-submission! subject body ca-settings report-activity-fn supports-auto-renewal)
       (rr/content-type (rr/response nil) "text/plain"))
     (catch ca/csr-validation-failure? {:keys [msg]}
       (log/error msg)
