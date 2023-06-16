@@ -1444,6 +1444,33 @@
     (let [[msg signee certnames ip] (generate-cert-message-from-request request subjects activity-type)]
       (report-cert-event report-activity msg signee certnames ip activity-type))))
 
+(schema/defn ^:always-validate delete-certificate-request! :- OutcomeInfo
+  "Delete pending certificate requests for subject"
+  [{:keys [csrdir]} :- CaSettings
+   subject :- schema/Str]
+  (let [csr-path (path-to-cert-request csrdir subject)
+        indicator-path (path-to-autosign-indication csrdir subject)]
+
+    (when (fs/exists? indicator-path)
+      (log/debug (i18n/trs "Deleting certificate renewal indicator for {0}" subject))
+      (fs/delete indicator-path))
+
+    (if (fs/exists? csr-path)
+      (if (fs/delete csr-path)
+        (let [msg (i18n/trs "Deleted certificate request for {0} at {1}" subject csr-path)]
+          (log/debug msg)
+          {:outcome :success
+           :message msg})
+        (let [msg (i18n/trs "Path {0} exists but could not be deleted" csr-path)]
+          (log/error msg)
+          {:outcome :error
+           :message msg}))
+      (let [msg (i18n/trs "No certificate request for {0} at expected path {1}"
+                          subject csr-path)]
+        (log/warn msg)
+        {:outcome :not-found
+         :message msg}))))
+
 (schema/defn ^:always-validate
   autosign-certificate-request!
   "Given a subject name, their certificate request, and the CA settings
@@ -1468,6 +1495,7 @@
                                              cacert))]
     (write-cert-to-inventory! signed-cert ca-settings)
     (write-cert signed-cert (path-to-cert signeddir subject))
+    (delete-certificate-request! ca-settings subject)
     (report-activity [subject] "signed")))
 
 (schema/defn ^:always-validate
@@ -1656,29 +1684,8 @@
         (ensure-no-authorization-extensions! csr allow-authorization-extensions)
         (validate-extensions! (utils/get-extensions csr))
         (validate-csr-signature! csr)
-        (autosign-certificate-request! subject csr settings report-activity)
-        (fs/delete (path-to-cert-request csrdir subject))))))
+        (autosign-certificate-request! subject csr settings report-activity)))))
 
-(schema/defn ^:always-validate delete-certificate-request! :- OutcomeInfo
-  "Delete pending certificate requests for subject"
-  [{:keys [csrdir]} :- CaSettings
-   subject :- schema/Str]
-  (let [csr-path (path-to-cert-request csrdir subject)]
-    (if (fs/exists? csr-path)
-      (if (fs/delete csr-path)
-        (let [msg (i18n/trs "Deleted certificate request for {0}" subject)]
-          (log/debug msg)
-          {:outcome :success
-           :message msg})
-        (let [msg (i18n/trs "Path {0} exists but could not be deleted" csr-path)]
-          (log/error msg)
-          {:outcome :error
-           :message msg}))
-      (let [msg (i18n/trs "No certificate request for {0} at expected path {1}"
-                  subject csr-path)]
-        (log/warn msg)
-        {:outcome :not-found
-         :message msg}))))
 
 (schema/defn ^:always-validate
   get-certificate-revocation-list :- schema/Str
@@ -1967,9 +1974,7 @@
    subject :- schema/Str
    report-activity]
   (let [csr-path (path-to-cert-request csrdir subject)]
-    (autosign-certificate-request! subject (utils/pem->csr csr-path) settings report-activity)
-    (fs/delete csr-path)
-    (log/debug (i18n/trs "Removed certificate request for {0} at ''{1}''" subject csr-path))))
+    (autosign-certificate-request! subject (utils/pem->csr csr-path) settings report-activity)))
 
 (schema/defn filter-already-revoked-serials :- [schema/Int]
   "Given a list of serials and Puppet's CA CRL, returns vector of serials with
