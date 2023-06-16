@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: 4dc7b77e0db804b7a046682903df2660ec1b9304\n"
+"X-Git-Ref: 1d3048e7bad54b9839389f23f96a8767d700ac81\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -240,6 +240,10 @@ msgstr[1] ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 msgid "Saving CSR to ''{0}''"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Saving autosign indication to ''{0}''"
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
