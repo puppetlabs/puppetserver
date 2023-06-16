@@ -773,7 +773,8 @@
                          url
                          request-opts)]
            (is (= 204 (:status response)))
-           (is (not (fs/exists? saved-csr)))))
+           (is (not (fs/exists? saved-csr)))
+           (is (not (fs/exists? indicator-file)))))
        (fs/delete csr-file)))))
 
 (deftest csr-api-puppet-version-test
@@ -809,17 +810,22 @@
                            (merge request-opts {:body (slurp csr-file)}))]
             (is (= 200 (:status response)))
             (is (fs/exists? indicator-file))
-            (fs/delete csr-file)
-            (fs/delete saved-csr)
-            (fs/delete indicator-file)))))))
+            (fs/delete csr-file)))
+        (testing "delete a CSR via the API"
+          (let [response (http-client/delete
+                           url
+                           request-opts)]
+            (is (= 204 (:status response)))
+            ;; csr and indicator should be removed
+            (is (not (fs/exists? saved-csr)))
+            (is (not (fs/exists? indicator-file)))))))))
 
 (deftest csr-activity-service-cert
   (let [reported-activity (atom [])
-        test-service (tk-services/service
-                  act-proto/ActivityReportingService
-                  []
-                  (report-activity! [_this body]
-                    (swap! reported-activity conj body)))
+        test-service (tk-services/service act-proto/ActivityReportingService
+                       []
+                       (report-activity! [_this body]
+                         (swap! reported-activity conj body)))
         cert-path (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")
         key-path (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
         ca-cert-path (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
@@ -830,13 +836,13 @@
           app
           (concat (bootstrap/services-from-dev-bootstrap) [test-service])
           (bootstrap/load-dev-config-with-overrides
-          {:jruby-puppet
-            {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
-           :webserver
-            {:ssl-cert cert-path
-             :ssl-key key-path
-             :ssl-ca-cert ca-cert-path
-             :ssl-crl-path crl-path}})
+            {:jruby-puppet
+              {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
+             :webserver
+              {:ssl-cert cert-path
+               :ssl-key key-path
+               :ssl-ca-cert ca-cert-path
+               :ssl-crl-path crl-path}})
           (let [certname "test_cert"
                 csr (ssl-utils/generate-certificate-request
                      (ssl-utils/generate-key-pair)
