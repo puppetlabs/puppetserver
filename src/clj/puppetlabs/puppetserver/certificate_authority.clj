@@ -1594,68 +1594,11 @@
                            (i18n/tru "To allow subject alternative names, set allow-subject-alt-names to true in your ca.conf file.")
                            (i18n/tru "Then restart the puppetserver and try signing this certificate again."))})))))))
 
-(schema/defn is-only-number? :- schema/Bool
-  "Given a string, does the string only consist of numeric characters"
-  [a :- schema/Str]
-  (some? (re-find #"^\d+$" a)))
-(schema/defn starts-with-zero? :- schema/Bool
-  "Given a string, does it start with zero?"
-  [a :- schema/Str]
-  (some? (re-find #"^0" a)))
-
-
-;; TODO - move to kitchensink
-(schema/defn versioncmp :- schema/Int
-  [a :- schema/Str
-   b :- schema/Str]
-  (let [version-regular-expression #"[\-.]|\d+|[^\-.\d]+"
-        a-matches (re-seq version-regular-expression a)
-        b-matches (re-seq version-regular-expression b)]
-    (if (and (pos? (count a-matches))
-             (pos? (count b-matches)))
-      (loop [current-a-matches a-matches
-             current-b-matches b-matches]
-        (let [current-a (first current-a-matches)
-              current-b (first current-b-matches)]
-          (cond
-            (and (nil? current-a) (nil? current-b))
-            0
-
-            (nil? current-a)
-            (compare a b)
-
-            (nil? current-b)
-            (compare a b)
-
-            (= current-a current-b)
-            (recur (rest current-a-matches) (rest current-b-matches))
-
-            (= "-" current-a)
-            -1
-
-            (= "-" current-b)
-            1
-
-            (= "." current-a)
-            -1
-
-            (= "." current-b)
-            1
-
-            (and (is-only-number? current-a) (is-only-number? current-b))
-            (if (or (starts-with-zero? current-a)
-                    (starts-with-zero? current-b))
-              (compare (.toUpperCase current-a) (.toUpperCase current-b))
-              (compare (ks/parse-int current-a) (ks/parse-int current-b)))
-
-            :else
-            (compare (.toUpperCase current-a) (.toUpperCase current-b)))))
-      (compare a b))))
 (schema/defn supports-auto-renewal? :- schema/Bool
   "Given a http-request, determine if the requester is capable of supporting auto-renewal"
   [request]
   (if-let [puppet-version (get-in request [:headers "x-puppet-version"])]
-    (let [comparison (versioncmp "8.2.0" puppet-version)]
+    (let [comparison (ks/compare-versions "8.2.0" puppet-version)]
          (or (pos? comparison)
              (zero? comparison)))
     false))
