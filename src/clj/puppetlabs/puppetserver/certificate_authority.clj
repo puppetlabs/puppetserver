@@ -1444,6 +1444,12 @@
     (let [[msg signee certnames ip] (generate-cert-message-from-request request subjects activity-type)]
       (report-cert-event report-activity msg signee certnames ip activity-type))))
 
+(schema/defn indicator-file-exists?
+  [{:keys [csrdir]} :- CaSettings
+   subject :- schema/Str]
+  (let [indicator-path (path-to-autosign-indication csrdir subject)]
+    (fs/exists? indicator-path)))
+
 (schema/defn ^:always-validate delete-certificate-request! :- OutcomeInfo
   "Delete pending certificate requests for subject"
   [{:keys [csrdir]} :- CaSettings
@@ -1477,9 +1483,12 @@
   from Puppet, auto-sign the request and write the certificate to disk."
   [subject :- schema/Str
    csr :- CertificateRequest
-   {:keys [cacert cakey signeddir ca-ttl] :as ca-settings} :- CaSettings
+   {:keys [cacert cakey signeddir ca-ttl allow-auto-renewal auto-renewal-cert-ttl] :as ca-settings} :- CaSettings
    report-activity]
-  (let [validity    (cert-validity-dates ca-ttl)
+  (let [renewal-ttl (if (and allow-auto-renewal (indicator-file-exists? ca-settings subject))
+                      auto-renewal-cert-ttl
+                      ca-ttl)
+        validity    (cert-validity-dates renewal-ttl)
         ;; if part of a CA bundle, the intermediate CA will be first in the chain
         cacert      (utils/pem->ca-cert cacert cakey)
         signed-cert (utils/sign-certificate (utils/get-subject-from-x509-certificate
@@ -1598,7 +1607,7 @@
   "Given a http-request, determine if the requester is capable of supporting auto-renewal"
   [request]
   (if-let [puppet-version (get-in request [:headers "x-puppet-version"])]
-    (let [comparison (ks/compare-versions "8.2.0" puppet-version)]
+    (let [comparison (ks/compare-versions puppet-version "8.2.0")]
          (or (pos? comparison)
              (zero? comparison)))
     false))
