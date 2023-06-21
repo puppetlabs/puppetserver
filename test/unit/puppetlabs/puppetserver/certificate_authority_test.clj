@@ -2026,3 +2026,10 @@
             ;; for ease of testing, just test the first and last
             (is (= "0x0006" (first last-entry-fields)))
             (is (= "/CN=foo" (last last-entry-fields)))))))))
+(deftest supports-auto-renewal?-test
+  (testing "old versions should not support auto-renewal"
+    (is (false? (ca/supports-auto-renewal? {:headers {"x-puppet-version" "1.1.0"}})))
+    (is (false? (ca/supports-auto-renewal? {:headers {"x-puppet-version""7.1.8"}}))))
+  (testing "new versions should support auto-renewal"
+    (is (true? (ca/supports-auto-renewal? {:headers {"x-puppet-version""8.2.0"}})))
+    (is (true? (ca/supports-auto-renewal? {:headers {"x-puppet-version""9.0.0"}})))))
