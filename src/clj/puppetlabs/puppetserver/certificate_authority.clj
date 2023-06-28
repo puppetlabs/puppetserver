@@ -26,7 +26,6 @@
             [puppetlabs.puppetserver.common :as common]
             [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.ssl-utils.core :as utils]
-            [clj-yaml.core :as yaml]
             [puppetlabs.puppetserver.shell-utils :as shell-utils]
             [puppetlabs.i18n.core :as i18n]))
 
@@ -1007,7 +1006,7 @@
   certificate extensions from the `extensions_requests` section."
   [csr-attributes-file :- schema/Str]
   (if (fs/file? csr-attributes-file)
-    (let [csr-attrs (yaml/parse-string (slurp csr-attributes-file))
+    (let [csr-attrs (common/parse-yaml (slurp csr-attributes-file))
           ext-req (:extension_requests csr-attrs)]
       (map (fn [[oid value]]
              {:oid (or (get puppet-short-names oid)
@@ -2068,7 +2067,7 @@
   shortnames"
   [custom-oid-mapping-file :- schema/Str]
   (if (fs/file? custom-oid-mapping-file)
-    (let [oid-mappings (:oid_mapping (yaml/parse-string (slurp custom-oid-mapping-file)))]
+    (let [oid-mappings (:oid_mapping (common/parse-yaml (slurp custom-oid-mapping-file)))]
       (into {} (for [[oid names] oid-mappings] [(name oid) (keyword (:shortname names))])))
     (log/debug (i18n/trs "No custom OID mapping configuration file found at {0}, custom OID mappings will not be loaded"
                 custom-oid-mapping-file))))
