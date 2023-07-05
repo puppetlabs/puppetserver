@@ -56,7 +56,7 @@
    :allow-duplicate-certs            false
    :allow-subject-alt-names          false
    :allow-auto-renewal               false
-   :auto-renewal-cert-ttl            "60d"
+   :auto-renewal-cert-ttl            "90d"
    :ca-name                          "test ca"
    :ca-ttl                           1
    :allow-header-cert-info           false

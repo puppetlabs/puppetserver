@@ -241,10 +241,10 @@
   60)
 
 (def default-auto-ttl-renewal
-  "60d") ; 60 days by default
+  "90d") ; 90 days by default
 
 (def default-auto-ttl-renewal-seconds
-  (duration-str->sec default-auto-ttl-renewal)) ; 60 days by default
+  (duration-str->sec default-auto-ttl-renewal)) ; 90 days by default
 
 (schema/defn ^:always-validate initialize-ca-config
   "Adds in default ca config keys/values, which may be overwritten if a value for
