@@ -729,7 +729,7 @@
       (is (= false (:allow-auto-renewal settings))))
 
     (testing "auto-renewal-cert-ttl"
-      (is (= "60d" (:auto-renewal-cert-ttl settings))))
+      (is (= "90d" (:auto-renewal-cert-ttl settings))))
 
     (testing "Does not replace files if they all exist"
       (let [files (-> (ca/settings->cadir-paths (assoc settings :enable-infra-crl false))
@@ -2005,10 +2005,10 @@
           (is (= -1 (.compareTo (.getNotBefore signed-cert) (.getNotBefore renewed-cert)))))
         (testing "new not-after is later than before"
           (is (= -1 (.compareTo (.getNotAfter signed-cert) (.getNotAfter renewed-cert)))))
-        (testing "new not-after should be 59 days (and some faction) away"
+        (testing "new not-after should be 89 days (and some faction) away"
           (let [diff (- (.getTime (.getNotAfter renewed-cert)) (.getTime (Date.)))
                 days (.convert TimeUnit/DAYS diff TimeUnit/MILLISECONDS)]
-            (is (= 59 days))))
+            (is (= 89 days))))
         (testing "certificate should have been removed"
           (is (not (fs/exists? expected-cert-path))))
         (testing "extensions are preserved"

@@ -214,10 +214,10 @@
                         (is (= 204 (:status response)))
                         (is (fs/exists? signed-cert-path))
                         (let [signed-cert (ssl-utils/pem->cert signed-cert-path)]
-                          (testing "new not-after should be 59 days (and some fraction) away"
+                          (testing "new not-after should be 89 days (and some fraction) away"
                             (let [diff (- (.getTime (.getNotAfter signed-cert)) (.getTime (Date.)))
                                   days (.convert TimeUnit/DAYS diff TimeUnit/MILLISECONDS)]
-                              (is (= 59 days)))))))))
+                              (is (= 89 days)))))))))
             (testing "signs a cert with a long ttl when the capability indicator is not present"
               (let [certname (ks/rand-str :alpha-lower 8)
                     csr (ssl-utils/generate-certificate-request
@@ -1194,10 +1194,10 @@
                 (is (true? (.before (.getNotBefore signed-cert) (.getNotBefore renewed-cert)))))
               (testing "new not-after is earlier than before"
                 (is (true? (.after (.getNotAfter signed-cert) (.getNotAfter renewed-cert)))))
-              (testing "new not-after should be 59 days (and some fraction) away"
+              (testing "new not-after should be 89 days (and some fraction) away"
                 (let [diff (- (.getTime (.getNotAfter renewed-cert)) (.getTime (Date.)))
                       days (.convert TimeUnit/DAYS diff TimeUnit/MILLISECONDS)]
-                  (is (= 59 days))))))))
+                  (is (= 89 days))))))))
 
       (testing "returns a 400 bad request response when the ssl-client-cert is not present"
         (bootstrap/with-puppetserver-running-with-mock-jrubies
@@ -1260,10 +1260,10 @@
                 (is (true? (.before (.getNotBefore signed-cert) (.getNotBefore renewed-cert)))))
               (testing "new not-after is earlier than before"
                 (is (true? (.after (.getNotAfter signed-cert) (.getNotAfter renewed-cert)))))
-              (testing "new not-after should be 59 days (and some fraction) away"
+              (testing "new not-after should be 89 days (and some fraction) away"
                 (let [diff (- (.getTime (.getNotAfter renewed-cert)) (.getTime (Date.)))
                       days (.convert TimeUnit/DAYS diff TimeUnit/MILLISECONDS)]
-                  (is (= 59 days))))))))
+                  (is (= 89 days))))))))
 
       (testing "returns a 400 bad request response when the feature is enabled,
              and a bogus cert is supplied in the header"
