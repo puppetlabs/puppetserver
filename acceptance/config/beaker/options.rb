@@ -11,5 +11,5 @@
  "puppetserver-confdir"=>"/etc/puppetlabs/puppetserver/conf.d",
  "puppetserver-config"=>
   "/etc/puppetlabs/puppetserver/conf.d/puppetserver.conf",
- :puppet_build_version=>"348533785edb522a4d71653eeba4fd53e8bfb88f",
+ :puppet_build_version=>"7a7acf28c26639f98926aeb7c1b12425290fab19",
  :ssh=>{:config=>true}}
