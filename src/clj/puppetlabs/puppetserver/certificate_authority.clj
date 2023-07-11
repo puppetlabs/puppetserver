@@ -502,6 +502,10 @@
   (into (mapv (partial str "IP:") (utils/get-subject-ip-alt-names cert-or-csr))
         (mapv (partial str "DNS:") (utils/get-subject-dns-alt-names cert-or-csr))))
 
+(schema/defn get-csr-attributes :- utils/SSLMultiValueAttributeList
+  [csr :- PKCS10CertificationRequest]
+  (utils/get-attributes csr))
+
 (schema/defn authorization-extensions :- {schema/Str schema/Str}
   "Get the authorization extensions for the certificate or CSR.
   These are extensions that fall under the ppAuthCert OID arc.
@@ -1027,7 +1031,7 @@
         csr-attr-exts (create-csr-attrs-exts csr-attributes)
         base-ext-list [(utils/netscape-comment
                          netscape-comment-value)
-                       (utils/authority-key-identifier ca-cert)
+                       (utils/authority-key-identifier-options ca-cert)
                        (utils/basic-constraints-for-non-ca true)
                        (utils/ext-key-usages
                          [ssl-server-cert ssl-client-cert] true)
@@ -1391,7 +1395,7 @@
         csr-ext-list (utils/get-extensions csr)
         base-ext-list [(utils/netscape-comment
                          netscape-comment-value)
-                       (utils/authority-key-identifier
+                       (utils/authority-key-identifier-options
                          cacert)
                        (utils/basic-constraints-for-non-ca true)
                        (utils/ext-key-usages
