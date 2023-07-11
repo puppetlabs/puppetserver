@@ -207,7 +207,7 @@
         (let [response (testutils/get-static-file-content "dist/foo/files/bar.txt?code_id=foobar&environment=test")]
           (is (= 200 (:status response)))
           (is (= "test foobar dist/foo/files/bar.txt\n" (:body response)))))
-       (testing "the /static_file_content endpoint validates environment"
+      (testing "the /static_file_content endpoint validates environment"
          (doseq [[env-encoded env-decoded]
                  [["hi%23cat" "hi#cat"]
                   ["hi%20cat" "hi cat"]
@@ -221,7 +221,7 @@
              (is (= (ps-common/environment-validation-error-msg env-decoded)
                     (:body response))))))
 
-       (testing "the /static_file_content endpoint validates code-id"
+      (testing "the /static_file_content endpoint validates code-id"
          (doseq [[code-id-encoded code-id-decoded]
                  [["hi%23cat" "hi#cat"]
                   ["hi%20cat" "hi cat"]
@@ -237,7 +237,7 @@
 
 
 
-       (let [error-message "Error: A /static_file_content request requires an environment, a code-id, and a file-path"]
+      (let [error-message "Error: A /static_file_content request requires an environment, a code-id, and a file-path"]
         (testing "the /static_file_content endpoint returns an error if code_id is not provided"
           (let [response (testutils/get-static-file-content "modules/foo/files/bar.txt?environment=test")]
             (is (= 400 (:status response)))

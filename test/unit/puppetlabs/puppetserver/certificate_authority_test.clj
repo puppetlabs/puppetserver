@@ -2033,3 +2033,10 @@
   (testing "new versions should support auto-renewal"
     (is (true? (ca/supports-auto-renewal? {:headers {"x-puppet-version""8.2.0"}})))
     (is (true? (ca/supports-auto-renewal? {:headers {"x-puppet-version""9.0.0"}})))))
+
+(deftest get-csr-attributes-test
+  (testing "extract attribute from CSR"
+    (let [keypair (utils/generate-key-pair)
+          subject (utils/cn "foo")
+          csr  (utils/generate-certificate-request keypair subject [] [{:oid "1.3.6.1.4.1.34380.1.3.2" :value true}])]
+      (is (= [{:oid "1.3.6.1.4.1.34380.1.3.2", :values ["true"]}] (ca/get-csr-attributes csr))))))
