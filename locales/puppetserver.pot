@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: 142912b6a6556c6c7e894c0e29a0dab094ad7be9\n"
+"X-Git-Ref: b74338698b919c1bb53ba0718fb232ea7391b0d3\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -239,7 +239,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
-msgid "Deleting certificate renewal indicator for {0}"
+msgid "Found auto-renew-attribute {0}"
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
@@ -255,11 +255,11 @@ msgid "No certificate request for {0} at expected path {1}"
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
-msgid "Saving CSR to ''{0}''"
+msgid "Calculating validity dates for {0} from ttl of {1} "
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
-msgid "Saving autosign indication to ''{0}''"
+msgid "Saving CSR to ''{0}''"
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
