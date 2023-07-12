@@ -187,10 +187,11 @@
               (let [certname (ks/rand-str :alpha-lower 8)
                     csr (ssl-utils/generate-certificate-request
                           (ssl-utils/generate-key-pair)
-                          (ssl-utils/cn certname))
+                          (ssl-utils/cn certname)
+                          []
+                          [{:oid "1.3.6.1.4.1.34380.1.3.2" :value true}])
                     csr-path (ks/temp-file "test_csr.pem")
                     signed-cert-path (str bootstrap/server-conf-dir "/ca/signed/" certname ".pem")
-                    indicator-file (str bootstrap/server-conf-dir "/ca/requests/" certname ".tmp")
                     status-url (str "https://localhost:8140/puppet-ca/v1/certificate_status/" certname)
                     url (str "https://localhost:8140/puppet-ca/v1/certificate_request/" certname)
                     request-opts {:ssl-cert cert-path
@@ -203,8 +204,7 @@
                                      url
                                      (merge request-opts {:body (slurp csr-path)
                                                           :headers {"x-puppet-version" "8.2.0"}}))]
-                      (is (= 200 (:status response)))
-                      (is (fs/exists? indicator-file))))
+                      (is (= 200 (:status response)))))
                   (testing "Sign the waiting CSR"
                     (let [response (http-client/put
                                      status-url
@@ -225,7 +225,6 @@
                           (ssl-utils/cn certname))
                     csr-path (ks/temp-file "test_csr.pem")
                     signed-cert-path (str bootstrap/server-conf-dir "/ca/signed/" certname ".pem")
-                    indicator-file (str bootstrap/server-conf-dir "/ca/requests/" certname ".tmp")
                     status-url (str "https://localhost:8140/puppet-ca/v1/certificate_status/" certname)
                     url (str "https://localhost:8140/puppet-ca/v1/certificate_request/" certname)
                     request-opts {:ssl-cert cert-path
@@ -238,8 +237,7 @@
                                    url
                                    (merge request-opts {:body (slurp csr-path)
                                                         :headers {"x-puppet-version" "7.1.8"}}))]
-                    (is (= 200 (:status response)))
-                    (is (not (fs/exists? indicator-file)))))
+                    (is (= 200 (:status response)))))
                 (testing "Sign the waiting CSR"
                   (let [response (http-client/put
                                    status-url
@@ -697,8 +695,8 @@
                  ;; If the revocation was successful infra CRL should contain above revoked compiler's cert
                  (is (= 200 (:status revoke-response)))
                  (is (ssl-utils/revoked? (ssl-utils/pem->ca-crl
-                                      (str bootstrap/server-conf-dir "/ca/infra_crl.pem")
-                                      ca-cert)
+                                         (str bootstrap/server-conf-dir "/ca/infra_crl.pem")
+                                         ca-cert)
                                      cert1))
                  (is (ssl-utils/revoked? (ssl-utils/pem->ca-crl
                                       (str bootstrap/server-conf-dir "/ca/infra_crl.pem")
@@ -835,7 +833,6 @@
            csr (ssl-utils/generate-certificate-request key-pair subjectDN)
            csr-file (ks/temp-file "test_csr.pem")
            saved-csr (str request-dir "/test_cert.pem")
-           indicator-file (str request-dir "/test_cert.tmp")
            url "https://localhost:8140/puppet-ca/v1/certificate_request/test_cert"
            request-opts {:ssl-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
                          :ssl-key (str bootstrap/server-conf-dir "/ca/ca_key.pem")
@@ -848,7 +845,6 @@
                          url
                          (merge request-opts {:body (slurp csr-file)}))]
            (is (= 200 (:status response)))
-           (is (not (fs/exists? indicator-file)))
            (is (= (slurp csr-file) (slurp saved-csr)))))
        (testing "get a CSR from the API"
          (let [response (http-client/get
@@ -862,8 +858,7 @@
                          url
                          request-opts)]
            (is (= 204 (:status response)))
-           (is (not (fs/exists? saved-csr)))
-           (is (not (fs/exists? indicator-file)))))
+           (is (not (fs/exists? saved-csr)))))
        (fs/delete csr-file)))))
 
 (deftest csr-api-puppet-version-test
@@ -884,7 +879,6 @@
             csr (ssl-utils/generate-certificate-request key-pair subjectDN)
             csr-file (ks/temp-file "test_version_csr.pem")
             saved-csr (str request-dir "/test_version_cert.pem")
-            indicator-file (str request-dir "/test_version_cert.tmp")
             url "https://localhost:8140/puppet-ca/v1/certificate_request/test_version_cert"
             request-opts {:ssl-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
                           :ssl-key (str bootstrap/server-conf-dir "/ca/ca_key.pem")
@@ -898,16 +892,13 @@
                            url
                            (merge request-opts {:body (slurp csr-file)}))]
             (is (= 200 (:status response)))
-            (is (fs/exists? indicator-file))
             (fs/delete csr-file)))
         (testing "delete a CSR via the API"
           (let [response (http-client/delete
                            url
                            request-opts)]
             (is (= 204 (:status response)))
-            ;; csr and indicator should be removed
-            (is (not (fs/exists? saved-csr)))
-            (is (not (fs/exists? indicator-file)))))))))
+            (is (not (fs/exists? saved-csr)))))))))
 
 (deftest csr-activity-service-cert
   (let [reported-activity (atom [])

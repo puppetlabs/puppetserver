@@ -338,6 +338,10 @@
    :pp_auth_role        "1.3.6.1.4.1.34380.1.3.13"
    :pp_cli_auth         cli-auth-oid})
 
+;; OID for the attribute that indicates if the agent supports auto-renewal or not
+(def pp_auth_auto_renew-attribute
+  "1.3.6.1.4.1.34380.1.3.2",)
+
 (def netscape-comment-value
   "Standard value applied to the Netscape Comment extension for certificates"
   "Puppet Server Internal Certificate")
@@ -440,12 +444,6 @@
   "Return a path to the `subject`s certificate request file under the `csrdir`."
   [csrdir subject]
   (str csrdir "/" subject ".pem"))
-
-(defn path-to-autosign-indication
-  "Return a path to the `subject`s certificate request file under the `csrdir`."
-  [csrdir subject]
-  (str csrdir "/" subject ".tmp"))
-
 
 (defn create-parent-directories!
   "Create all intermediate directories present in each of the file paths.
@@ -1447,22 +1445,21 @@
     (let [[msg signee certnames ip] (generate-cert-message-from-request request subjects activity-type)]
       (report-cert-event report-activity msg signee certnames ip activity-type))))
 
-(schema/defn indicator-file-exists?
-  [{:keys [csrdir]} :- CaSettings
-   subject :- schema/Str]
-  (let [indicator-path (path-to-autosign-indication csrdir subject)]
-    (fs/exists? indicator-path)))
+(schema/defn supports-auto-renewal? :- schema/Bool
+  "Given a csr, determine if the requester is capable of supporting auto-renewal by looking for a specific attribute"
+  [csr]
+  (if-let [auto-renew-attribute (first (filter #(= pp_auth_auto_renew-attribute (:oid %)) (get-csr-attributes csr)))]
+    (do
+      (log/debug (i18n/trs "Found auto-renew-attribute {0}" (first (:values auto-renew-attribute))))
+      ;; the values is a sequence of results, assume the first one is correct.
+      (= "true" (first (:values auto-renew-attribute))))
+    false))
 
 (schema/defn ^:always-validate delete-certificate-request! :- OutcomeInfo
   "Delete pending certificate requests for subject"
   [{:keys [csrdir]} :- CaSettings
    subject :- schema/Str]
-  (let [csr-path (path-to-cert-request csrdir subject)
-        indicator-path (path-to-autosign-indication csrdir subject)]
-
-    (when (fs/exists? indicator-path)
-      (log/debug (i18n/trs "Deleting certificate renewal indicator for {0}" subject))
-      (fs/delete indicator-path))
+  (let [csr-path (path-to-cert-request csrdir subject)]
 
     (if (fs/exists? csr-path)
       (if (fs/delete csr-path)
@@ -1488,9 +1485,10 @@
    csr :- CertificateRequest
    {:keys [cacert cakey signeddir ca-ttl allow-auto-renewal auto-renewal-cert-ttl] :as ca-settings} :- CaSettings
    report-activity]
-  (let [renewal-ttl (if (and allow-auto-renewal (indicator-file-exists? ca-settings subject))
+  (let [renewal-ttl (if (and allow-auto-renewal (supports-auto-renewal? csr))
                       auto-renewal-cert-ttl
                       ca-ttl)
+        _           (log/debug (i18n/trs "Calculating validity dates for {0} from ttl of {1} " subject renewal-ttl))
         validity    (cert-validity-dates renewal-ttl)
         ;; if part of a CA bundle, the intermediate CA will be first in the chain
         cacert      (utils/pem->ca-cert cacert cakey)
@@ -1519,14 +1517,6 @@
   (let [csr-path (path-to-cert-request csrdir subject)]
     (log/debug (i18n/trs "Saving CSR to ''{0}''" csr-path))
     (write-csr csr csr-path)))
-
-(schema/defn save-auto-renewal-indicator!
-  "Given a subject and a path, create a file that indicates that the subject supports auto-renewal"
-  [subject :- schema/Str
-   csrdir :- schema/Str]
-  (let [indication-path (path-to-autosign-indication csrdir subject)]
-    (log/debug (i18n/trs "Saving autosign indication to ''{0}''" indication-path))
-    (ks-file/atomic-write-string indication-path subject public-key-perms)))
 
 (schema/defn validate-duplicate-cert-policy!
   "Throw a slingshot exception if allow-duplicate-certs is false,
@@ -1606,14 +1596,6 @@
                            (i18n/tru "To allow subject alternative names, set allow-subject-alt-names to true in your ca.conf file.")
                            (i18n/tru "Then restart the puppetserver and try signing this certificate again."))})))))))
 
-(schema/defn supports-auto-renewal? :- schema/Bool
-  "Given a http-request, determine if the requester is capable of supporting auto-renewal"
-  [request]
-  (if-let [puppet-version (get-in request [:headers "x-puppet-version"])]
-    (let [comparison (ks/compare-versions puppet-version "8.2.0")]
-         (or (pos? comparison)
-             (zero? comparison)))
-    false))
 
 (schema/defn ^:always-validate process-csr-submission!
   "Given a CSR for a subject (typically from the HTTP endpoint),
@@ -1622,8 +1604,7 @@
   [subject :- schema/Str
    certificate-request :- InputStream
    {:keys [autosign csrdir ruby-load-path gem-path allow-subject-alt-names allow-authorization-extensions] :as settings} :- CaSettings
-   report-activity
-   supports-auto-renewal :- schema/Bool]
+   report-activity]
   (with-open [byte-stream (-> certificate-request
                               input-stream->byte-array
                               ByteArrayInputStream.)]
@@ -1632,8 +1613,6 @@
       (validate-duplicate-cert-policy! csr settings)
       (validate-subject! subject (get-csr-subject csr))
       (save-certificate-request! subject csr csrdir)
-      (when supports-auto-renewal
-        (save-auto-renewal-indicator! subject csrdir))
       (when (autosign-csr? autosign subject csr-stream ruby-load-path gem-path)
         (ensure-subject-alt-names-allowed! csr allow-subject-alt-names)
         (ensure-no-authorization-extensions! csr allow-authorization-extensions)
