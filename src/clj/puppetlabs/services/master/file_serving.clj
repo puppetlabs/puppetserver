@@ -1,12 +1,12 @@
 (ns puppetlabs.services.master.file-serving
   (:require [bidi.bidi :as bidi]
-            [clj-yaml.core :as yaml]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [digest :as digest]
             [me.raynes.fs :as fs]
             [puppetlabs.i18n.core :as i18n]
             [puppetlabs.ring-middleware.utils :as middleware-utils]
+            [puppetlabs.trapperkeeper.common :refer [parse-yaml]]
             [ring.util.response :as rr])
   (:import com.sun.security.auth.module.UnixSystem
            [java.nio.file Files FileSystems FileVisitOption FileVisitResult LinkOption Paths SimpleFileVisitor]))
@@ -150,7 +150,7 @@
   [project-dir]
   (let [config-path (str project-dir "/bolt-project.yaml")]
     (when (fs/file? config-path)
-     (yaml/parse-string (slurp config-path)))))
+     (parse-yaml (slurp config-path)))))
 
 (defn parse-modulepath
   "The modulepath for a bolt project can either be an array of paths or a string

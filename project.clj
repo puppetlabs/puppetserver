@@ -33,7 +33,6 @@
   :dependencies [[org.clojure/clojure]
 
                  [slingshot]
-                 [clj-commons/clj-yaml]
                  [org.yaml/snakeyaml]
                  [commons-lang]
                  [commons-io]
