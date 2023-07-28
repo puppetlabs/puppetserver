@@ -1971,6 +1971,11 @@
 (deftest renew-certificate!-test
   (testing "creates a new signed cert"
     (let [settings (testutils/ca-sandbox! cadir)
+          ;; auto-renewal-cert-ttl is expected to be an int
+          ;; unit tests skip some of the conversion flow so
+          ;; transform the duration here
+          converted-auto-renewal-cert-ttl (ca/duration-str->sec (:auto-renewal-cert-ttl settings))
+          updated-settings (assoc settings :auto-renewal-cert-ttl converted-auto-renewal-cert-ttl)
           ca-cert (create-ca-cert "ca1" 1)
           keypair (utils/generate-key-pair)
           subject (utils/cn "foo")
@@ -1990,7 +1995,7 @@
         (ca/write-cert signed-cert expected-cert-path)
         (is (fs/exists? expected-cert-path)))
       (Thread/sleep 1000) ;; ensure there is some time elapsed between the two
-      (let [renewed-cert (ca/renew-certificate! signed-cert settings (constantly nil))]
+      (let [renewed-cert (ca/renew-certificate! signed-cert updated-settings (constantly nil))]
         (is (some? renewed-cert))
         (testing "serial number has increased"
           (is (< (.getSerialNumber signed-cert) (.getSerialNumber renewed-cert)))

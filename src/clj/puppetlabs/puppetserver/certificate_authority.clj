@@ -2128,9 +2128,9 @@
   "Given a certificate and CaSettings create a new signed certificate using the public key from the certificate.
   It recreates all the extensions in the original certificate."
   [certificate :- X509Certificate
-   {:keys [cacert cakey auto_renewal_cert_ttl] :as ca-settings} :- CaSettings
+   {:keys [cacert cakey auto-renewal-cert-ttl] :as ca-settings} :- CaSettings
    report-activity]
-  (let [validity (cert-validity-dates (or auto_renewal_cert_ttl default-auto-ttl-renewal-seconds))
+  (let [validity (cert-validity-dates (or auto-renewal-cert-ttl default-auto-ttl-renewal-seconds))
         cacert (utils/pem->ca-cert cacert cakey)
         cert-subject (utils/get-subject-from-x509-certificate certificate)
         cert-name (utils/x500-name->CN cert-subject)

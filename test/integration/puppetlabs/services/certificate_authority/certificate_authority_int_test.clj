@@ -1190,6 +1190,48 @@
                       days (.convert TimeUnit/DAYS diff TimeUnit/MILLISECONDS)]
                   (is (= 89 days))))))))
 
+      (testing "Honors non-default auto-renewal-cert-ttl"
+        (bootstrap/with-puppetserver-running-with-mock-jrubies
+          "JRuby mocking is safe here because all of the requests are to the CA
+          endpoints, which are implemented in Clojure."
+          app
+          {:jruby-puppet
+           {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
+           :webserver
+           {:ssl-cert     (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")
+            :ssl-key      (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
+            :ssl-ca-cert  (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+            :ssl-crl-path (str bootstrap/server-conf-dir "/ssl/crl.pem")}
+           :certificate-authority
+           {:allow-auto-renewal true
+            :auto-renewal-cert-ttl "42d"}}
+          (let [generated-cert-info (generate-and-sign-a-cert! "foobar")
+                signed-cert-file (ks/temp-file)
+                _ (spit signed-cert-file (:signed-cert generated-cert-info))
+                _ (Thread/sleep 1000) ;; ensure some time has passed so the timestamps are different
+                response (http-client/post
+                           "https://localhost:8140/puppet-ca/v1/certificate_renewal"
+                           {:ssl-cert    (str signed-cert-file)
+                            :ssl-key     (str (:private-key generated-cert-info))
+                            :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                            :as          :text})]
+            (is (= 200 (:status response)))
+            (let [renewed-cert-pem (:body response)
+                  renewed-cert-file (ks/temp-file)
+                  _ (spit renewed-cert-file renewed-cert-pem)
+                  renewed-cert (ssl-utils/pem->cert renewed-cert-file)
+                  signed-cert (ssl-utils/pem->cert signed-cert-file)]
+              (testing "serial number has been incremented"
+                (is (< (.getSerialNumber signed-cert) (.getSerialNumber renewed-cert))))
+              (testing "not before time stamps have changed"
+                (is (true? (.before (.getNotBefore signed-cert) (.getNotBefore renewed-cert)))))
+              (testing "new not-after is earlier than before"
+                (is (true? (.after (.getNotAfter signed-cert) (.getNotAfter renewed-cert)))))
+              (testing "new not-after should be 41 days (and some fraction) away"
+                (let [diff (- (.getTime (.getNotAfter renewed-cert)) (.getTime (Date.)))
+                      days (.convert TimeUnit/DAYS diff TimeUnit/MILLISECONDS)]
+                  (is (= 41 days))))))))
+
       (testing "returns a 400 bad request response when the ssl-client-cert is not present"
         (bootstrap/with-puppetserver-running-with-mock-jrubies
           "JRuby mocking is safe here because all of the requests are to the CA
