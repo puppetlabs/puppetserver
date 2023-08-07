@@ -21,10 +21,10 @@ step "Upgrade nss to version that is hopefully compatible with jdk version puppe
     nss_package_name="nss"
   end
   if nss_package_name
-    if master['platform'] != 'el-8-x86_64'
-      master.upgrade_package(nss_package_name)
-    else
+    if master['platform'] == 'el-8-x86_64' || master['platform'] == 'el-9-x86_64'
       master.install_package(nss_package_name)
+    else
+      master.upgrade_package(nss_package_name)
     end
   else
     logger.warn("Don't know what nss package to use for #{variant} so not installing one")
