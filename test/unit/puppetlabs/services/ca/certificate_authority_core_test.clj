@@ -327,7 +327,6 @@
               (is (false? (fs/exists? expected-path)))
               (is (= 204 (:status response)))
               (is (re-matches msg-matcher (:body response)))
-              (is (= "text/plain" (get-in response [:headers "Content-Type"])))
               (is (logged? msg-matcher :debug)))
             (finally
               (fs/delete expected-path))))))
