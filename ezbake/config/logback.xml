@@ -44,6 +44,7 @@
         <appender-ref ref="STATUS"/>
     </logger>
 
+    <logger name="puppetlabs.puppetserver" level="debug"/>
     <logger name="org.eclipse.jetty" level="INFO"/>
     <logger name="org.apache.http" level="INFO"/>
     <logger name="jruby" level="info"/>
