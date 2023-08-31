@@ -17,6 +17,7 @@
             [puppetlabs.ring-middleware.core :as middleware]
             [puppetlabs.ring-middleware.utils :as middleware-utils]
             [puppetlabs.ssl-utils.core :as utils]
+            [puppetlabs.trapperkeeper.authorization.ring :as ring]
             [puppetlabs.trapperkeeper.authorization.ring-middleware :as auth-middleware]
             [puppetlabs.trapperkeeper.services.status.status-core :as status-core]
             [ring.util.request :as request]
@@ -25,6 +26,7 @@
             [slingshot.slingshot :as sling])
   (:import (clojure.lang IFn)
            (java.io ByteArrayInputStream InputStream StringWriter)
+           (java.security.cert X509Certificate)
            (org.joda.time DateTime)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -198,6 +200,47 @@
         (rr/status 400)
         (rr/content-type "text/plain"))))
 
+(schema/defn validate-cert-in-infra-list :- schema/Bool
+  [request-cert :- X509Certificate
+   infra-nodes-path :- schema/Str]
+  (if infra-nodes-path
+    (let [subject-name (utils/get-cn-from-x509-certificate request-cert)]
+      (if (.exists (io/file infra-nodes-path))
+        (with-open [infra-nodes-reader (io/reader infra-nodes-path)]
+          (let [infra-nodes (ca/read-infra-nodes infra-nodes-reader)]
+            (boolean (some #(= subject-name %) infra-nodes))))
+        (do (log/info (i18n/trs "Unable to find infra-nodes file at {0}" infra-nodes-path))
+            false)))
+    (do
+      (log/info (i18n/trs "infra-nodes-path is nil, cannot validate certificate is allowed."))
+      false)))
+
+(schema/defn request->cert :- (schema/maybe X509Certificate)
+  "Pull the client certificate from the request.  Response includes the
+  certificate as a java.security.cert.X509Certificate object or, if none
+  can be found, nil.  allow-header-cert-info determines whether to try to
+  pull the certificate from an HTTP header (true) or from the certificate
+  provided during SSL session negotiation (false).
+
+  If allow-header-cert-info is false, and the cert is present in both the header
+  and the request, validate that the cert in the request is in the infra list.
+  If it isn't in the infra list, log the issue and return nil.
+  If the header isn't set, return the cert from the request.
+  "
+  [request :- ring/Request
+   allow-header-cert-info :- schema/Bool
+   infra-nodes-path :- schema/Str]
+  (let [header-cert-val (get-in request [:headers auth-middleware/header-cert-name])]
+    (if allow-header-cert-info
+      (auth-middleware/header->cert header-cert-val)
+      (if-let [request-cert (:ssl-client-cert request)]
+        (if header-cert-val
+          (if (validate-cert-in-infra-list request-cert infra-nodes-path)
+            (auth-middleware/header->cert header-cert-val)
+            (log/warn (i18n/trs "Rejecting certificate request because the {0} header was specified, but the client making the request was not in the allow list."  auth-middleware/header-cert-name)))
+          request-cert)
+        (log/warn (i18n/trs "Request is missing a certificate for an endpoint that requires a certificate."))))))
+
 (schema/defn ^:always-validate
   handle-cert-renewal
   "Given a request and the CA settings, if there is a cert present in the request
@@ -206,30 +249,29 @@
   the request is valid and signed by the this CA. then generate a renewed cert and
   return it in the response body"
   [request
-   {:keys [cacert cakey allow-auto-renewal allow-header-cert-info] :as ca-settings} :- ca/CaSettings
+   {:keys [cacert cakey allow-auto-renewal allow-header-cert-info infra-nodes-path] :as ca-settings} :- ca/CaSettings
    report-activity]
   (if allow-auto-renewal
-    (let [request-cert (auth-middleware/request->cert request allow-header-cert-info)]
-      (if request-cert
-        (let [signing-cert (utils/pem->ca-cert cacert cakey)]
-          (if (ca/cert-authority-id-match-ca-subject-id? request-cert signing-cert)
-            (do
-              (log/info (i18n/trs "Certificate present, processing renewal request"))
-              (let [cert-signing-result (ca/renew-certificate! request-cert ca-settings report-activity)
-                    cert-writer (StringWriter.)]
-                ;; has side effect of writing to the writer
-                (utils/cert->pem! cert-signing-result cert-writer)
-                (-> (rr/response (.toString cert-writer))
-                    (rr/content-type "text/plain"))))
-            (do
-              (log/info (i18n/trs "Certificate present, but does not match signature"))
-              (-> (rr/response (i18n/tru "Certificate present, but does not match signature"))
-                  (rr/status 403)
-                  (rr/content-type "text/plain")))))
+    (if-let [request-cert (request->cert request allow-header-cert-info infra-nodes-path)]
+      (let [signing-cert (utils/pem->ca-cert cacert cakey)]
+        (if (ca/cert-authority-id-match-ca-subject-id? request-cert signing-cert)
+          (do
+            (log/info (i18n/trs "Certificate present, processing renewal request"))
+            (let [cert-signing-result (ca/renew-certificate! request-cert ca-settings report-activity)
+                  cert-writer (StringWriter.)]
+              ;; has side effect of writing to the writer
+              (utils/cert->pem! cert-signing-result cert-writer)
+              (-> (rr/response (.toString cert-writer))
+                  (rr/content-type "text/plain"))))
+          (do
+            (log/info (i18n/trs "Certificate present, but does not match signature"))
+            (-> (rr/response (i18n/tru "Certificate present, but does not match signature"))
+                (rr/status 403)
+                (rr/content-type "text/plain")))))
         (do
           (log/info (i18n/trs "No certificate found in renewal request"))
           (-> (rr/bad-request (i18n/tru "No certificate found in renewal request"))
-              (rr/content-type "text/plain")))))
+              (rr/content-type "text/plain"))))
     (-> (rr/response "Not Found")
         (rr/status 404)
         (rr/content-type "text/plain"))))
