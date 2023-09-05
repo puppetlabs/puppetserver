@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: b74338698b919c1bb53ba0718fb232ea7391b0d3\n"
+"X-Git-Ref: 500f0657d6b29c5498810e2b22b47657e7534806\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -512,6 +512,25 @@ msgstr ""
 
 #: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
 msgid "No valid CRLs submitted, nothing will be updated."
+msgstr ""
+
+#: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
+msgid "Unable to find infra-nodes file at {0}"
+msgstr ""
+
+#: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
+msgid "infra-nodes-path is nil, cannot validate certificate is allowed."
+msgstr ""
+
+#: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
+msgid ""
+"Rejecting certificate request because the {0} header was specified, but the "
+"client making the request was not in the allow list."
+msgstr ""
+
+#: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
+msgid ""
+"Request is missing a certificate for an endpoint that requires a certificate."
 msgstr ""
 
 #: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
