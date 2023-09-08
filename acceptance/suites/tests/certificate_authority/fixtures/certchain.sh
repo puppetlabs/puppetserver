@@ -9,14 +9,14 @@
 # emailAddress.
 
 # basic config to describe the environment
-# B="/tmp/certchain"
-B="$(mktemp -d -t certchain.XXXXXXXX)"
+B="/tmp/certchain"
+#B="$(mktemp -d -t certchain.XXXXXXXX)"
 HTTPS_PORT=8443
 OPENSSL=$(which openssl)
 
 # utility method to dedent a heredoc
 dedent() {
-    python -c 'import sys, textwrap; print textwrap.dedent(sys.stdin.read())'
+    python3 -c 'import sys, textwrap; print(textwrap.dedent(sys.stdin.read()))'
 }
 
 # invoke openssl
@@ -314,6 +314,11 @@ create_leaf_email_cert() {
     local masterdir="${B}/${ca}"
     local dir="${B}/leaves"
     local fname="${fqdn}.issued_by.${ca}"
+    if [[ -n "$exts" ]]; then
+        exts="-extensions $exts"
+    else
+        exts=
+    fi
 
     if [[ -n "$exts" ]]; then
         exts="-extensions $exts"
