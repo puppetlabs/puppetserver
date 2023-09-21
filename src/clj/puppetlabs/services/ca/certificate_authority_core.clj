@@ -164,6 +164,12 @@
     (catch Exception e
       (log/debug e))))
 
+(schema/defn certificate-issued? :- schema/Bool
+  [settings :- ca/CaSettings
+   subject :- schema/Str]
+  (or (ca/certificate-exists? settings subject)
+      (ca/in-cert-inventory-file? settings subject)))
+
 (schema/defn handle-cert-clean
   [request
    ca-settings :- ca/CaSettings
@@ -177,7 +183,7 @@
       (if-let [certnames (:certnames json-body)]
         (let [{existing-certs true
                missing-certs false} (group-by
-                                     #(ca/certificate-exists? ca-settings %)
+                                     #(certificate-issued? ca-settings %)
                                      certnames)
               message (when (seq missing-certs)
                         (format "The following certs do not exist and cannot be revoked: %s"
@@ -190,6 +196,7 @@
                 (rr/status 200)
                 (rr/content-type "text/plain"))
             (catch Exception e
+              (log/info e (i18n/trs "Error while cleaning certs"))
               (-> (rr/response (str "Error while cleaning certs: " (.getMessage e)))
                   (rr/status 500)
                   (rr/content-type "text/plain")))))
@@ -286,7 +293,7 @@
   [true {::malformed message}])
 
 (defn conflict
-  "Returns a value indicating to liberator that the request is is conflict
+  "Returns a value indicating to liberator that the request is conflict
   with the server, with the given error message assoc'ed into the context."
   [message]
   [true {::conflict message}])
@@ -375,7 +382,7 @@
      (case desired-state
        :revoked
        ;; A signed cert must exist if we are to revoke it.
-       (when-not (ca/certificate-exists? settings subject)
+       (when-not (certificate-issued? settings subject)
          (conflict (i18n/tru "Cannot revoke certificate for host {0} without a signed certificate" subject)))
 
        :signed
@@ -396,8 +403,8 @@
   :exists?
   (fn [_context]
     (or
-     (ca/certificate-exists? settings subject)
-     (ca/csr-exists? settings subject)))
+      (certificate-issued? settings subject)
+      (ca/csr-exists? settings subject)))
 
   :handle-conflict
   (fn [context]

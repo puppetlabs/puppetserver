@@ -7,7 +7,7 @@
            (java.security.cert X509Certificate CRLException CertPathValidatorException X509CRL)
            (java.text SimpleDateFormat)
            (java.util Date)
-           (java.util.concurrent.locks ReentrantReadWriteLock ReentrantLock)
+           (java.util.concurrent.locks ReentrantReadWriteLock)
            (org.apache.commons.io IOUtils)
            (org.bouncycastle.pkcs PKCS10CertificationRequest)
            (org.joda.time DateTime))
@@ -163,7 +163,7 @@
    :serial-lock-timeout-seconds      PosInt
    :crl-lock                         ReentrantReadWriteLock
    :crl-lock-timeout-seconds         PosInt
-   :inventory-lock                   ReentrantLock
+   :inventory-lock                   ReentrantReadWriteLock
    :inventory-lock-timeout-seconds   PosInt})
 
 (def DesiredCertificateState
@@ -715,9 +715,47 @@
                             (.write writer entry)
                             (.flush writer)
                             (log/trace (i18n/trs "Finish append to inventory file. ")))]
-    (common/with-safe-lock inventory-lock inventory-lock-descriptor inventory-lock-timeout-seconds
+    (common/with-safe-write-lock inventory-lock inventory-lock-descriptor inventory-lock-timeout-seconds
       (log/debug (i18n/trs "Append \"{1}\" to inventory file {0}" cert-inventory entry))
       (ks-file/atomic-write cert-inventory stream-content-fn))))
+
+(schema/defn is-subject-in-inventory-row? :- schema/Bool
+  [cn-subject :- utils/ValidX500Name
+   [_serial _not-before _not-after row-subject] :- [schema/Str]]
+   ;; row subject always starts with a slash, so drop it.
+   (if (some? row-subject)
+     (= (subs row-subject 1) cn-subject)
+     false))
+
+(defn extract-inventory-row-contents
+  [row]
+  (str/split row #" "))
+
+(schema/defn in-cert-inventory-file? :- schema/Bool
+  [{:keys [cert-inventory inventory-lock inventory-lock-timeout-seconds]} :- CaSettings
+   certname :- schema/Str]
+  (common/with-safe-read-lock inventory-lock inventory-lock-descriptor inventory-lock-timeout-seconds
+    (log/trace (i18n/trs "Looking for \"{0}\" in inventory file {1}" certname cert-inventory))
+    (with-open [inventory-reader (io/reader cert-inventory)]
+      (let [inventory-rows (map extract-inventory-row-contents (line-seq inventory-reader))
+            cn-subject (utils/cn certname)]
+        (some? (some (partial is-subject-in-inventory-row? cn-subject) inventory-rows))))))
+
+(schema/defn find-matching-valid-serial-numbers :- [BigInteger]
+  [{:keys [cert-inventory inventory-lock inventory-lock-timeout-seconds]} :- CaSettings
+   certname :- schema/Str]
+  (common/with-safe-read-lock inventory-lock inventory-lock-descriptor inventory-lock-timeout-seconds
+    (log/trace (i18n/trs "Looking for serial numbers for \"{0}\" in inventory file {1}" certname cert-inventory))
+    (with-open [inventory-reader (io/reader cert-inventory)]
+      (let [inventory-rows (map extract-inventory-row-contents (line-seq inventory-reader))
+            cn-subject (utils/cn certname)]
+        (doall
+          (->> inventory-rows
+               (filter (partial is-subject-in-inventory-row? cn-subject))
+               ;; serial number is first entry in the array
+               (map first)
+               ;; assume serials are base 16 strings, drop the `0x` as BigInteger won't deal with them.
+               (map #(BigInteger. ^String (subs % 2) 16))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Initialization
@@ -1314,7 +1352,7 @@
                                         [:certificate-status])
            :serial-lock (new ReentrantReadWriteLock)
            :crl-lock (new ReentrantReadWriteLock)
-           :inventory-lock (new ReentrantLock))))
+           :inventory-lock (new ReentrantReadWriteLock))))
 
 (schema/defn ^:always-validate
   config->master-settings :- MasterSettings
@@ -1910,10 +1948,10 @@
   (let [csr-path (path-to-cert-request csrdir subject)]
     (autosign-certificate-request! subject (utils/pem->csr csr-path) settings report-activity)))
 
-(schema/defn filter-already-revoked-serials :- [schema/Int]
+(schema/defn filter-already-revoked-serials :- [BigInteger]
   "Given a list of serials and Puppet's CA CRL, returns vector of serials with
    any already-revoked serials removed."
-  [serials :- [schema/Int]
+  [serials :- [BigInteger]
    crl :- X509CRL]
   (let [crl-revoked-list (.getRevokedCertificates crl)
         existed-serials (set (map #(.getSerialNumber %) crl-revoked-list))
@@ -1923,25 +1961,50 @@
         (log/debug (i18n/trs "Certificate with serial {0} is already revoked." serial))))
     (vec (set/difference (set serials) existed-serials))))
 
+(schema/defn get-cert-serial :- BigInteger
+  ;; will throw if the file doesn't exist
+  [signeddir certname]
+  (log/trace (i18n/trs "Try to read serial for \"{0}\" from \"{1}\"" certname signeddir))
+  (-> (path-to-cert signeddir certname)
+      (utils/pem->cert)
+      (utils/get-serial)))
+(schema/defn safe-get-cert-serial :- [BigInteger]
+  ;; attempt to read the serial from the file, catch any exceptions in case it doesn't exist
+  [signeddir certname]
+  (try
+    [(get-cert-serial signeddir certname)]
+    (catch Exception _
+      [])))
+
+(schema/defn look-for-serial-numbers :- [BigInteger]
+  [settings :- CaSettings
+   certname :- schema/Str]
+  ;; first look in the inventory (it is cheaper than reading certs).  If it isn't there, read the cert
+  (let [inventory-certs (find-matching-valid-serial-numbers settings certname)]
+    (if-not (empty? inventory-certs)
+      ;; cover the corner case of the serial number in the cert in the file, but not in the inventory file
+      (concat inventory-certs (safe-get-cert-serial (:signeddir settings) certname))
+      ;; this will throw if the file isn't found, indicating it isn't present
+      [(get-cert-serial (:signeddir settings) certname)])))
+
 (schema/defn revoke-existing-certs!
   "Revoke the subjects' certificates. Note this does not destroy the certificates.
    The certificates will remain in the signed directory despite being revoked."
-  [{:keys [signeddir cacert cacrl cakey infra-crl-path
+  [{:keys [cacert cacrl cakey infra-crl-path
            crl-lock crl-lock-timeout-seconds
-           infra-node-serials-path enable-infra-crl]} :- CaSettings
+           infra-node-serials-path enable-infra-crl] :as settings} :- CaSettings
    subjects :- [schema/Str]
    report-activity]
   ;; because we need the crl to be consistent for the serials, maintain a write lock on the crl
   ;; as reentrant read-write locks do not allow upgrading from a read lock to a write lock
   (common/with-safe-write-lock crl-lock crl-lock-descriptor crl-lock-timeout-seconds
     (let [[our-full-crl & rest-of-full-chain] (utils/pem->crls cacrl)
-          serials (filter-already-revoked-serials (map #(-> (path-to-cert signeddir %)
-                                                            (utils/pem->cert)
-                                                            (utils/get-serial))
-                                                       subjects)
+          serials (filter-already-revoked-serials (->> subjects
+                                                       (map (partial look-for-serial-numbers settings))
+                                                       flatten)
                                                   our-full-crl)
           serial-count (count serials)]
-      (if (= 0 serial-count)
+      (if (zero? serial-count)
         (log/info (i18n/trs "No revoke action needed. The certs are already in the CRL."))
         (let [new-full-crl (utils/revoke-multiple our-full-crl
                                                   (utils/pem->private-key cakey)
@@ -1958,7 +2021,7 @@
             (when (seq infra-revocations)
               (let [[our-infra-crl & rest-of-infra-chain] (utils/pem->crls infra-crl-path)
                     new-infra-revocations (filter-already-revoked-serials infra-revocations our-infra-crl)]
-                (if (= 0 new-infra-revocations)
+                (if (empty? new-infra-revocations)
                   (log/info (i18n/trs "No revoke action needed. The infra certs are already in the infra CRL"))
                   (let [new-infra-crl (utils/revoke-multiple our-infra-crl
                                                              (utils/pem->private-key cakey)
@@ -2113,7 +2176,7 @@
 (schema/defn replace-authority-identifier :- utils/SSLExtensionList
   [extensions  :- utils/SSLExtensionList ca-cert :- X509Certificate]
   (conj (filter #(not= utils/authority-key-identifier-oid (:oid %)) extensions)
-        (utils/authority-key-identifier ca-cert)))
+        (utils/authority-key-identifier-options ca-cert)))
 
 (schema/defn replace-subject-identifier :- utils/SSLExtensionList
   [extensions  :- utils/SSLExtensionList subject-public-key :- PublicKey]
