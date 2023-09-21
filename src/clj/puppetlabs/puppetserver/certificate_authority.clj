@@ -2191,7 +2191,7 @@
   "Given a certificate and CaSettings create a new signed certificate using the public key from the certificate.
   It recreates all the extensions in the original certificate."
   [certificate :- X509Certificate
-   {:keys [cacert cakey auto-renewal-cert-ttl] :as ca-settings} :- CaSettings
+   {:keys [cacert cakey auto-renewal-cert-ttl signeddir] :as ca-settings} :- CaSettings
    report-activity]
   (let [validity (cert-validity-dates (or auto-renewal-cert-ttl default-auto-ttl-renewal-seconds))
         cacert (utils/pem->ca-cert cacert cakey)
@@ -2210,7 +2210,7 @@
                         cacert
                         (.getPublicKey certificate)))]
     (write-cert-to-inventory! signed-cert ca-settings)
-    (delete-certificate! ca-settings cert-name)
+    (write-cert signed-cert (path-to-cert signeddir cert-name))
     (log/info (i18n/trs "Renewed certificate for \"{0}\" with new expiration of \"{1}\""
                         cert-name
                         (.format (new SimpleDateFormat "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")

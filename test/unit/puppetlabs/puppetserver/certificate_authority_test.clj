@@ -2012,8 +2012,13 @@
           (let [diff (- (.getTime (.getNotAfter renewed-cert)) (.getTime (Date.)))
                 days (.convert TimeUnit/DAYS diff TimeUnit/MILLISECONDS)]
             (is (= 89 days))))
-        (testing "certificate should have been removed"
-          (is (not (fs/exists? expected-cert-path))))
+        (testing "certificate should have been replaced"
+          (is (fs/exists? expected-cert-path))
+          (testing "updated cert on disk matches renewed cert"
+            (let [updated-cert (utils/pem->cert expected-cert-path)]
+              (is (= 6 (.getSerialNumber updated-cert)))
+              (is (zero? (.compareTo (.getNotBefore updated-cert) (.getNotBefore renewed-cert))))
+              (is (zero? (.compareTo (.getNotAfter updated-cert) (.getNotAfter renewed-cert)))))))
         (testing "extensions are preserved"
           (let [extensions-before (utils/get-extensions signed-cert)
                 extensions-after (utils/get-extensions signed-cert)]
