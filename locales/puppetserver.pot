@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: 500f0657d6b29c5498810e2b22b47657e7534806\n"
+"X-Git-Ref: 4adf13c93996522d8e93cf4b98503ff84f74130e\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -55,6 +55,14 @@ msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 msgid "Append \"{1}\" to inventory file {0}"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Looking for \"{0}\" in inventory file {1}"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Looking for serial numbers for \"{0}\" in inventory file {1}"
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
@@ -353,6 +361,10 @@ msgid "Certificate with serial {0} is already revoked."
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Try to read serial for \"{0}\" from \"{1}\""
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 msgid "No revoke action needed. The certs are already in the CRL."
 msgstr ""
 
@@ -512,6 +524,10 @@ msgstr ""
 
 #: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
 msgid "No valid CRLs submitted, nothing will be updated."
+msgstr ""
+
+#: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
+msgid "Error while cleaning certs"
 msgstr ""
 
 #: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
