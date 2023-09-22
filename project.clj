@@ -62,7 +62,7 @@
                  [puppetlabs/trapperkeeper-status]
                  [puppetlabs/trapperkeeper-filesystem-watcher]
                  [puppetlabs/kitchensink]
-                 [puppetlabs/ssl-utils]
+                 [puppetlabs/ssl-utils "3.5.2"]
                  [puppetlabs/ring-middleware]
                  [puppetlabs/dujour-version-check]
                  [puppetlabs/http-client]
