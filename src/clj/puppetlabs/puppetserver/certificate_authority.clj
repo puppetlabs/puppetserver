@@ -1963,29 +1963,29 @@
 
 (schema/defn get-cert-serial :- BigInteger
   ;; will throw if the file doesn't exist
-  [signeddir certname]
-  (log/trace (i18n/trs "Try to read serial for \"{0}\" from \"{1}\"" certname signeddir))
-  (-> (path-to-cert signeddir certname)
+  [path-to-cert]
+  (log/trace (i18n/trs "Try to read serial from \"{0}\"" path-to-cert))
+  (-> path-to-cert
       (utils/pem->cert)
       (utils/get-serial)))
 (schema/defn safe-get-cert-serial :- [BigInteger]
-  ;; attempt to read the serial from the file, catch any exceptions in case it doesn't exist
-  [signeddir certname]
-  (try
-    [(get-cert-serial signeddir certname)]
-    (catch Exception _
-      [])))
+  ;; Check to see if the file exists and attempt to read the serial from the file if it does
+  [path-to-cert]
+  (if (fs/exists? path-to-cert)
+    [(get-cert-serial path-to-cert)]
+    []))
 
 (schema/defn look-for-serial-numbers :- [BigInteger]
   [settings :- CaSettings
    certname :- schema/Str]
   ;; first look in the inventory (it is cheaper than reading certs).  If it isn't there, read the cert
-  (let [inventory-certs (find-matching-valid-serial-numbers settings certname)]
+  (let [inventory-certs (find-matching-valid-serial-numbers settings certname)
+        path-to-cert (path-to-cert (:signeddir settings) certname)]
     (if-not (empty? inventory-certs)
       ;; cover the corner case of the serial number in the cert in the file, but not in the inventory file
-      (concat inventory-certs (safe-get-cert-serial (:signeddir settings) certname))
+      (concat inventory-certs (safe-get-cert-serial path-to-cert))
       ;; this will throw if the file isn't found, indicating it isn't present
-      [(get-cert-serial (:signeddir settings) certname)])))
+      [(get-cert-serial path-to-cert)])))
 
 (schema/defn revoke-existing-certs!
   "Revoke the subjects' certificates. Note this does not destroy the certificates.
