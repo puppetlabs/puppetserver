@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: 4adf13c93996522d8e93cf4b98503ff84f74130e\n"
+"X-Git-Ref: 809c17431e1a1cd356b810588d7ea72454636f3c\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -361,7 +361,7 @@ msgid "Certificate with serial {0} is already revoked."
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
-msgid "Try to read serial for \"{0}\" from \"{1}\""
+msgid "Try to read serial from \"{0}\""
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
