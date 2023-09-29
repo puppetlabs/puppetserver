@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: 809c17431e1a1cd356b810588d7ea72454636f3c\n"
+"X-Git-Ref: 6890ea2b3fef2689f5ca8d94c560be8b423ca70b\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -540,6 +540,12 @@ msgstr ""
 
 #: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
 msgid ""
+"Rejecting certificate request because the {0} was specified and the "
+"certificate is revoked."
+msgstr ""
+
+#: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
+msgid ""
 "Rejecting certificate request because the {0} header was specified, but the "
 "client making the request was not in the allow list."
 msgstr ""
@@ -558,7 +564,7 @@ msgid "Certificate present, but does not match signature"
 msgstr ""
 
 #: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
-msgid "No certificate found in renewal request"
+msgid "No valid certificate found in renewal request"
 msgstr ""
 
 #: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
