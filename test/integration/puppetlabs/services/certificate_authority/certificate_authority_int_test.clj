@@ -1301,6 +1301,54 @@
           ;; restore the content of the inventory file
           (spit infra-inventory-path infra-inventory-content)))
 
+      (testing "rejects x-client-cert header when requester revoked"
+        (let [infra-inventory-path (str bootstrap/server-conf-dir "/ca/infra_inventory.txt")
+              random-agent-certname (ks/rand-str :alpha-lower 16)
+              random-compiler-certname (ks/rand-str :alpha-lower 16)
+              infra-inventory-content (slurp infra-inventory-path)]
+          ;; We're going to pretend this is an infra cert for this test
+          (spit infra-inventory-path (str infra-inventory-content random-compiler-certname))
+          (bootstrap/with-puppetserver-running-with-mock-jrubies
+            "JRuby mocking is safe here because all of the requests are to the CA
+            endpoints, which are implemented in Clojure."
+            app
+            {:jruby-puppet
+             {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
+             :webserver
+             {:ssl-cert     (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")
+              :ssl-key      (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
+              :ssl-ca-cert  (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+              :ssl-crl-path (str bootstrap/server-conf-dir "/ssl/crl.pem")}
+             :certificate-authority
+             {:allow-auto-renewal true
+              :auto-renewal-cert-ttl "42d"}}
+            (let [generated-agent-cert-info (generate-and-sign-a-cert! random-agent-certname)
+                  generated-compiler-cert-info (generate-and-sign-a-cert! random-compiler-certname)
+                  compiler-signed-cert-file (ks/temp-file)
+                  agent-signed-cert-file (ks/temp-file)
+                  _ (spit compiler-signed-cert-file (:signed-cert generated-compiler-cert-info))
+                  _ (spit agent-signed-cert-file (:signed-cert generated-agent-cert-info))
+                  revoke-response (http-client/put
+                                    (str "https://localhost:8140/puppet-ca/v1/certificate_status/" random-agent-certname)
+                                    {:body "{\"desired_state\": \"revoked\"}"
+                                     :ssl-cert    (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")
+                                     :ssl-key     (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
+                                     :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                                     :headers {"content-type" "application/json"}})]
+              (is (= 204 (:status revoke-response)))
+              (Thread/sleep 1000) ;; ensure some time has passed so the timestamps are different
+              (let [response (http-client/post
+                               "https://localhost:8140/puppet-ca/v1/certificate_renewal"
+                               {:headers     {"x-client-cert" (ring-codec/url-encode (:signed-cert generated-agent-cert-info))}
+                                :ssl-cert    (str compiler-signed-cert-file)
+                                :ssl-key     (str (:private-key generated-compiler-cert-info))
+                                :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                                :as          :text})]
+                (is (= 400 (:status response)))
+                (is (= "No valid certificate found in renewal request" (:body response)))
+                ;; restore the content of the inventory file
+                (spit infra-inventory-path infra-inventory-content))))))
+
       (testing "fails for x-client-cert header when requester is not in infra-nodes file"
         (let [infra-inventory-path (str bootstrap/server-conf-dir "/ca/infra_inventory.txt")
               infra-inventory-content (slurp infra-inventory-path)
@@ -1337,7 +1385,7 @@
                               :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
                               :as          :text})]
               (is (= 400 (:status response)))
-              (is (= "No certificate found in renewal request" (:body response)))))
+              (is (= "No valid certificate found in renewal request" (:body response)))))
           ;; restore the content of the inventory file
           (spit infra-inventory-path infra-inventory-content)))
 
@@ -1374,7 +1422,7 @@
                               :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
                               :as          :text})]
               (is (= 400 (:status response)))
-              (is (= "No certificate found in renewal request" (:body response)))))
+              (is (= "No valid certificate found in renewal request" (:body response)))))
           ;; restore the content of the inventory file
           (spit infra-inventory-path infra-inventory-content)))
 
@@ -1397,7 +1445,7 @@
                            {:ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
                             :as          :text})]
             (is (= 400 (:status response)))
-            (is (= "No certificate found in renewal request" (:body response))))))
+            (is (= "No valid certificate found in renewal request" (:body response))))))
       (testing "returns a 400 bad request when ssl-client-cert is not present and x-client-cert is specified"
         (bootstrap/with-puppetserver-running-with-mock-jrubies
           "JRuby mocking is safe here because all of the requests are to the CA
@@ -1424,7 +1472,7 @@
                             :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
                             :as          :text})]
             (is (= 400 (:status response)))
-            (is (= "No certificate found in renewal request" (:body response)))))))
+            (is (= "No valid certificate found in renewal request" (:body response)))))))
 
     (testing "with allow-header-cert-info = true"
       (testing "returns a 200 OK response when the feature is enabled,
@@ -1471,6 +1519,45 @@
                 (let [diff (- (.getTime (.getNotAfter renewed-cert)) (.getTime (Date.)))
                       days (.convert TimeUnit/DAYS diff TimeUnit/MILLISECONDS)]
                   (is (= 89 days))))))))
+      (testing "returns a 400 bad request response when the feature is enabled,
+            a revoked cert is supplied in header and the signing certificate matches"
+        (bootstrap/with-puppetserver-running-with-mock-jrubies
+          "JRuby mocking is safe here because all of the requests are to the CA
+          endpoints, which are implemented in Clojure."
+          app
+          {:jruby-puppet
+           {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
+           :webserver
+           {:ssl-cert     (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")
+            :ssl-key      (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
+            :ssl-ca-cert  (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+            :ssl-crl-path (str bootstrap/server-conf-dir "/ssl/crl.pem")}
+           :certificate-authority
+           {:allow-auto-renewal true}
+           :authorization
+           {:allow-header-cert-info true}}
+          (let [random-certname (ks/rand-str :alpha-lower 16)
+                generated-cert-info (generate-and-sign-a-cert! random-certname)
+                signed-cert-file (ks/temp-file)
+                _ (spit signed-cert-file (:signed-cert generated-cert-info))
+                ;; revoke the cert
+                revoke-response (http-client/put
+                                  (str "https://localhost:8140/puppet-ca/v1/certificate_status/" random-certname)
+                                  {:body "{\"desired_state\": \"revoked\"}"
+                                   :ssl-cert    (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")
+                                   :ssl-key     (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
+                                   :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                                   :headers {"content-type" "application/json"}})]
+            (is (= 204 (:status revoke-response)))
+            (let [header-cert (ring-codec/url-encode (:signed-cert generated-cert-info))
+                 _ (Thread/sleep 1000)
+                 response (http-client/post
+                            "https://localhost:8140/puppet-ca/v1/certificate_renewal"
+                           {:headers     {"x-client-cert" header-cert}
+                            :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                            :as          :text})]
+            (is (= 400 (:status response)))
+            (is (= "No valid certificate found in renewal request" (:body response)))))))
 
       (testing "Can revoke a renewed certificate"
         (testing "using certificate status"

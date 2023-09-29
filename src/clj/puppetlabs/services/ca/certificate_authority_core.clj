@@ -222,6 +222,16 @@
       (log/info (i18n/trs "infra-nodes-path is nil, cannot validate certificate is allowed."))
       false)))
 
+(schema/defn validate-header-cert-not-revoked :- (schema/maybe X509Certificate)
+  "Given a certificate, validate that the certificate is not in the CRL. The
+  messaging is specific to the header method of certificate delivery. If the
+  certificate is valid, it is returned, otherwise return nil"
+  [cert :- X509Certificate
+   ca-settings :- ca/CaSettings]
+  (if-not (ca/is-revoked? cert ca-settings)
+    cert
+    (log/warn (i18n/trs "Rejecting certificate request because the {0} was specified and the certificate is revoked." auth-middleware/header-cert-name))))
+
 (schema/defn request->cert :- (schema/maybe X509Certificate)
   "Pull the client certificate from the request.  Response includes the
   certificate as a java.security.cert.X509Certificate object or, if none
@@ -235,15 +245,14 @@
   If the header isn't set, return the cert from the request.
   "
   [request :- ring/Request
-   allow-header-cert-info :- schema/Bool
-   infra-nodes-path :- schema/Str]
+   {:keys [allow-header-cert-info infra-nodes-path] :as ca-settings} :- ca/CaSettings]
   (let [header-cert-val (get-in request [:headers auth-middleware/header-cert-name])]
     (if allow-header-cert-info
-      (auth-middleware/header->cert header-cert-val)
+      (validate-header-cert-not-revoked (auth-middleware/header->cert header-cert-val) ca-settings)
       (if-let [request-cert (:ssl-client-cert request)]
         (if header-cert-val
           (if (validate-cert-in-infra-list request-cert infra-nodes-path)
-            (auth-middleware/header->cert header-cert-val)
+            (validate-header-cert-not-revoked (auth-middleware/header->cert header-cert-val) ca-settings)
             (log/warn (i18n/trs "Rejecting certificate request because the {0} header was specified, but the client making the request was not in the allow list."  auth-middleware/header-cert-name)))
           request-cert)
         (log/warn (i18n/trs "Request is missing a certificate for an endpoint that requires a certificate."))))))
@@ -256,10 +265,10 @@
   the request is valid and signed by the this CA. then generate a renewed cert and
   return it in the response body"
   [request
-   {:keys [cacert cakey allow-auto-renewal allow-header-cert-info infra-nodes-path] :as ca-settings} :- ca/CaSettings
+   {:keys [cacert cakey allow-auto-renewal] :as ca-settings} :- ca/CaSettings
    report-activity]
   (if allow-auto-renewal
-    (if-let [request-cert (request->cert request allow-header-cert-info infra-nodes-path)]
+    (if-let [request-cert (request->cert request ca-settings)]
       (let [signing-cert (utils/pem->ca-cert cacert cakey)]
         (if (ca/cert-authority-id-match-ca-subject-id? request-cert signing-cert)
           (do
@@ -276,8 +285,8 @@
                 (rr/status 403)
                 (rr/content-type "text/plain")))))
         (do
-          (log/info (i18n/trs "No certificate found in renewal request"))
-          (-> (rr/bad-request (i18n/tru "No certificate found in renewal request"))
+          (log/info (i18n/trs "No valid certificate found in renewal request"))
+          (-> (rr/bad-request (i18n/tru "No valid certificate found in renewal request"))
               (rr/content-type "text/plain"))))
     (-> (rr/response "Not Found")
         (rr/status 404)

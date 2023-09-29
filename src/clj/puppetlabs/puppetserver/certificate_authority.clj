@@ -1556,6 +1556,14 @@
     (log/debug (i18n/trs "Saving CSR to ''{0}''" csr-path))
     (write-csr csr csr-path)))
 
+(schema/defn is-revoked? :- schema/Bool
+  [cert :- X509Certificate
+   {:keys [cacert cacrl crl-lock crl-lock-timeout-seconds cakey]} :- CaSettings]
+  (utils/revoked?
+        (common/with-safe-read-lock crl-lock crl-lock-descriptor crl-lock-timeout-seconds
+               (utils/pem->ca-crl cacrl (utils/pem->ca-cert cacert cakey)))
+        cert))
+
 (schema/defn validate-duplicate-cert-policy!
   "Throw a slingshot exception if allow-duplicate-certs is false,
    and we already have a certificate or CSR for the subject.
@@ -1563,17 +1571,14 @@
    {:kind :duplicate-cert
     :msg  <specific error message>}"
   [csr :- CertificateRequest
-   {:keys [allow-duplicate-certs cacert cacrl crl-lock crl-lock-timeout-seconds cakey csrdir signeddir]} :- CaSettings]
+   {:keys [allow-duplicate-certs csrdir signeddir] :as settings} :- CaSettings]
   (let [subject (get-csr-subject csr)
         cert (path-to-cert signeddir subject)
         existing-cert? (fs/exists? cert)
         existing-csr? (fs/exists? (path-to-cert-request csrdir subject))]
     (when (or existing-cert? existing-csr?)
       (let [status (if existing-cert?
-                     (if (utils/revoked?
-                           (common/with-safe-read-lock crl-lock crl-lock-descriptor crl-lock-timeout-seconds
-                             (utils/pem->ca-crl cacrl (utils/pem->ca-cert cacert cakey)))
-                          (utils/pem->cert cert))
+                     (if (is-revoked? (utils/pem->cert cert) settings)
                        "revoked"
                        "signed")
                      "requested")]
