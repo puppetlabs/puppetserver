@@ -1,4 +1,4 @@
-(def ps-version "8.2.2-SNAPSHOT")
+(def ps-version "8.2.4-SNAPSHOT")
 
 (defn deploy-info
   [url]
@@ -62,7 +62,7 @@
                  [puppetlabs/trapperkeeper-status]
                  [puppetlabs/trapperkeeper-filesystem-watcher]
                  [puppetlabs/kitchensink]
-                 [puppetlabs/ssl-utils]
+                 [puppetlabs/ssl-utils "3.5.2"]
                  [puppetlabs/ring-middleware]
                  [puppetlabs/dujour-version-check]
                  [puppetlabs/http-client]

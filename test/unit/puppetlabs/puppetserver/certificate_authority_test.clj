@@ -546,6 +546,10 @@
       (is (true? (revoked? cert1)))
       (is (true? (revoked? cert2))))))
 
+(defn make-big-integers
+  [integers]
+  (map biginteger integers))
+
 (deftest filter-already-revoked-serials-test
   (let [lock (new ReentrantReadWriteLock)
         descriptor "test-crl"
@@ -554,17 +558,17 @@
                 StringReader.
                 utils/pem->crl)]
    (testing "Return an empty vector when all supplied serials are already in CRL"
-     (let [test-serial (vec [4])
+     (let [test-serial (make-big-integers [(biginteger 4)])
            filtered-serial (ca/filter-already-revoked-serials test-serial crl)]
        (is (empty? filtered-serial))))
 
    (testing "Return a vector of serials not yet in CRL"
-     (let [test-serial (vec [1 2 3 4])
+     (let [test-serial (make-big-integers [1 2 3 4])
            filtered-serial (ca/filter-already-revoked-serials test-serial crl)]
        (is (true? (= (sort filtered-serial) [1 2 3])))))
 
    (testing "Deduplicates the vector of serials to be revoked"
-     (let [test-serial (vec [1 1 2 2 3 3])
+     (let [test-serial (make-big-integers [1 1 2 2 3 3])
            filtered-serial (ca/filter-already-revoked-serials test-serial crl)]
        (is (apply distinct? filtered-serial))))))
 
@@ -2008,8 +2012,13 @@
           (let [diff (- (.getTime (.getNotAfter renewed-cert)) (.getTime (Date.)))
                 days (.convert TimeUnit/DAYS diff TimeUnit/MILLISECONDS)]
             (is (= 89 days))))
-        (testing "certificate should have been removed"
-          (is (not (fs/exists? expected-cert-path))))
+        (testing "certificate should have been replaced"
+          (is (fs/exists? expected-cert-path))
+          (testing "updated cert on disk matches renewed cert"
+            (let [updated-cert (utils/pem->cert expected-cert-path)]
+              (is (= 6 (.getSerialNumber updated-cert)))
+              (is (zero? (.compareTo (.getNotBefore updated-cert) (.getNotBefore renewed-cert))))
+              (is (zero? (.compareTo (.getNotAfter updated-cert) (.getNotAfter renewed-cert)))))))
         (testing "extensions are preserved"
           (let [extensions-before (utils/get-extensions signed-cert)
                 extensions-after (utils/get-extensions signed-cert)]
