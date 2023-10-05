@@ -673,6 +673,47 @@
 
 (def buffer-copy-size (* 64 1024))
 
+(schema/defn read-infra-nodes
+  "Returns a list of infra nodes or infra node serials from the specified file organized as one item per line."
+  [infra-file-reader :- Reader]
+  (line-seq infra-file-reader))
+
+(schema/defn maybe-write-to-infra-serial!
+  "Determine if the host in question is an infra host, and if it is, add the provided serial number to the
+  infra-serials file"
+  [serial :- BigInteger
+   certname :- schema/Str
+   {:keys [infra-nodes-path infra-node-serials-path]} :- CaSettings]
+  (when (fs/exists? infra-nodes-path)
+    (with-open [infra-nodes-reader (io/reader infra-nodes-path)]
+      (let [infra-nodes (read-infra-nodes infra-nodes-reader)]
+        (when (seq (filter #(= certname %) infra-nodes))
+          (log/debug (i18n/trs "Appending serial number {0} for {1} " serial certname))
+          (let [stream-content-fn
+                (fn [^BufferedWriter writer]
+                  (log/trace (i18n/trs "Begin append to serial file."))
+                  (let [copy-buffer (CharBuffer/allocate buffer-copy-size)]
+                    (try
+                      (with-open [^BufferedReader reader (io/reader infra-node-serials-path)]
+                        ;; copy all the existing content
+                        (loop [read-length (.read reader copy-buffer)]
+                          ;; theoretically read can return 0, which means try again
+                          (when (<= 0 read-length)
+                            (when (pos? read-length)
+                              (.write writer (.array copy-buffer) 0 read-length))
+                            (.clear copy-buffer)
+                            (recur (.read reader copy-buffer)))))
+                      (catch FileNotFoundException _e
+                        (log/trace (i18n/trs "Inventory serial file not found.  Assume empty.")))
+                      (catch Throwable e
+                        (log/error e (i18n/trs "Error while appending to serial file."))
+                        (throw e))))
+                  (.write writer (str serial))
+                  (.newLine writer)
+                  (.flush writer)
+                  (log/trace (i18n/trs "Finish append to serial file. ")))]
+            (ks-file/atomic-write infra-node-serials-path stream-content-fn)))))))
+
 (schema/defn ^:always-validate
   write-cert-to-inventory!
   "Writes an entry into Puppet's inventory file for a given certificate.
@@ -688,11 +729,11 @@
     * $NA = The 'not after' field of the cert, as a date/timestamp in UTC.
     * $S  = The distinguished name of the cert's subject."
   [cert :- Certificate
-   {:keys [cert-inventory inventory-lock inventory-lock-timeout-seconds]} :- CaSettings]
-  (let [serial-number (->> cert
-                           (.getSerialNumber)
-                           (format-serial-number)
-                           (str "0x"))
+   {:keys [cert-inventory inventory-lock inventory-lock-timeout-seconds] :as settings} :- CaSettings]
+  (let [serial-number (.getSerialNumber cert)
+        formatted-serial-number (->> serial-number
+                                  (format-serial-number)
+                                  (str "0x"))
         not-before    (-> cert
                           (.getNotBefore)
                           (format-date-time))
@@ -700,7 +741,8 @@
                           (.getNotAfter)
                           (format-date-time))
         subject       (utils/get-subject-from-x509-certificate cert)
-        entry (str serial-number " " not-before " " not-after " /" subject "\n")
+        cert-name (utils/x500-name->CN subject)
+        entry (str formatted-serial-number " " not-before " " not-after " /" subject "\n")
         stream-content-fn (fn [^BufferedWriter writer]
                             (log/trace (i18n/trs "Begin append to inventory file."))
                             (let [copy-buffer (CharBuffer/allocate buffer-copy-size)]
@@ -708,11 +750,12 @@
                                 (with-open [^BufferedReader reader (io/reader cert-inventory)]
                                   ;; copy all the existing content
                                   (loop [read-length (.read reader copy-buffer)]
-                                    (when (< 0 read-length)
-                                        (when (pos? read-length)
-                                          (.write writer (.array copy-buffer) 0 read-length))
-                                        (.clear copy-buffer)
-                                        (recur (.read reader copy-buffer)))))
+                                    ;; theoretically read can return 0, which means try again
+                                    (when (<= 0 read-length)
+                                      (when (pos? read-length)
+                                        (.write writer (.array copy-buffer) 0 read-length))
+                                      (.clear copy-buffer)
+                                      (recur (.read reader copy-buffer)))))
                                 (catch FileNotFoundException _e
                                   (log/trace (i18n/trs "Inventory file not found.  Assume empty.")))
                                 (catch Throwable e
@@ -723,7 +766,8 @@
                             (log/trace (i18n/trs "Finish append to inventory file. ")))]
     (common/with-safe-write-lock inventory-lock inventory-lock-descriptor inventory-lock-timeout-seconds
       (log/debug (i18n/trs "Append \"{1}\" to inventory file {0}" cert-inventory entry))
-      (ks-file/atomic-write cert-inventory stream-content-fn))))
+      (ks-file/atomic-write cert-inventory stream-content-fn)
+      (maybe-write-to-infra-serial! serial-number cert-name settings))))
 
 (schema/defn is-subject-in-inventory-row? :- schema/Bool
   [cn-subject :- utils/ValidX500Name
@@ -732,6 +776,7 @@
    (if (some? row-subject)
      (= (subs row-subject 1) cn-subject)
      false))
+
 (schema/defn is-not-expired? :- schema/Bool
   [now :- DateTime
    [_serial _not-before not-after _row-subject] :- [schema/Str]]
@@ -840,11 +885,6 @@
     (cons (utils/netscape-comment
            netscape-comment-value)
           (utils/create-ca-extensions issuer-public-key ca-public-key))))
-
-(schema/defn read-infra-nodes
-    "Returns a list of infra nodes or infra node serials from the specified file organized as one item per line."
-    [infra-file-reader :- Reader]
-    (line-seq infra-file-reader))
 
 (schema/defn extract-active-infra-serials :- [BigInteger]
   "Read the infra nodes file to determine which nodes are infrastructure nodes.
