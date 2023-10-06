@@ -79,7 +79,7 @@
                            (= (.getCanonicalPath (:changed-path %))
                               infra-nodes-file))
                      events)
-           (ca/generate-infra-serials settings))))
+           (ca/generate-infra-serials! settings))))
       (register-status
         "ca"
         (status-core/get-artifact-version "puppetlabs" "puppetserver")

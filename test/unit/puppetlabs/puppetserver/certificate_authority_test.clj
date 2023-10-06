@@ -2033,7 +2033,74 @@
             ;; there are four fields, serial number, not before, not after, and subject
             ;; for ease of testing, just test the first and last
             (is (= "0x0006" (first last-entry-fields)))
-            (is (= "/CN=foo" (last last-entry-fields)))))))))
+            (is (= "/CN=foo" (last last-entry-fields)))))
+        (testing "the new entry is not in the infra-serial file"
+          (is (=  "" (slurp (:infra-node-serials-path settings))))))))
+  (testing "infra inventory correctly writes files"
+    (let [settings (testutils/ca-sandbox! cadir)
+          ;; auto-renewal-cert-ttl is expected to be an int
+          ;; unit tests skip some of the conversion flow so
+          ;; transform the duration here
+          converted-auto-renewal-cert-ttl (ca/duration-str->sec (:auto-renewal-cert-ttl settings))
+          updated-settings (assoc settings :auto-renewal-cert-ttl converted-auto-renewal-cert-ttl)
+          ;; simulate the node being in the infra inventory file
+          _ (spit (:infra-nodes-path settings) "bar\n")
+          ca-cert (create-ca-cert "ca1" 1)
+          keypair (utils/generate-key-pair)
+          subject (utils/cn "bar")
+          csr  (utils/generate-certificate-request keypair subject)
+          validity (ca/cert-validity-dates 3600)
+          signed-cert (utils/sign-certificate
+                        (utils/get-subject-from-x509-certificate (:cert ca-cert))
+                        (:private-key ca-cert)
+                        (ca/next-serial-number! settings)
+                        (:not-before validity)
+                        (:not-after validity)
+                        subject
+                        (utils/get-public-key csr)
+                        (ca/create-agent-extensions csr (:cert ca-cert)))
+          expected-cert-path (ca/path-to-cert (:signeddir settings) "bar")]
+      (testing "simulate the cert being written"
+        (ca/write-cert signed-cert expected-cert-path)
+        (is (fs/exists? expected-cert-path)))
+      (Thread/sleep 1000) ;; ensure there is some time elapsed between the two
+      (let [renewed-cert (ca/renew-certificate! signed-cert updated-settings (constantly nil))]
+        (is (some? renewed-cert))
+        (testing "serial number has increased"
+          (is (< (.getSerialNumber signed-cert) (.getSerialNumber renewed-cert)))
+          (is (= 6 (.getSerialNumber renewed-cert))))
+        (testing "not before time stamps have changed"
+          (is (= -1 (.compareTo (.getNotBefore signed-cert) (.getNotBefore renewed-cert)))))
+        (testing "new not-after is later than before"
+          (is (= -1 (.compareTo (.getNotAfter signed-cert) (.getNotAfter renewed-cert)))))
+        (testing "new not-after should be 89 days (and some faction) away"
+          (let [diff (- (.getTime (.getNotAfter renewed-cert)) (.getTime (Date.)))
+                days (.convert TimeUnit/DAYS diff TimeUnit/MILLISECONDS)]
+            (is (= 89 days))))
+        (testing "certificate should have been replaced"
+          (is (fs/exists? expected-cert-path))
+          (testing "updated cert on disk matches renewed cert"
+            (let [updated-cert (utils/pem->cert expected-cert-path)]
+              (is (= 6 (.getSerialNumber updated-cert)))
+              (is (zero? (.compareTo (.getNotBefore updated-cert) (.getNotBefore renewed-cert))))
+              (is (zero? (.compareTo (.getNotAfter updated-cert) (.getNotAfter renewed-cert)))))))
+        (testing "extensions are preserved"
+          (let [extensions-before (utils/get-extensions signed-cert)
+                extensions-after (utils/get-extensions signed-cert)]
+            ;; ordering may be different so use an unordered comparison
+            (is (= (set extensions-before)
+                   (set extensions-after)))))
+        (testing "the new entry is written to the inventory file"
+          (let [entries (string/split (slurp (:cert-inventory settings)) #"\n")
+                last-entry-fields (string/split (last entries) #" ")]
+            ;; since the content of the inventory is well established (because of the sandbox), we can
+            ;; just assert that the last entry is there, and makes sense
+            ;; there are four fields, serial number, not before, not after, and subject
+            ;; for ease of testing, just test the first and last
+            (is (= "0x0006" (first last-entry-fields)))
+            (is (= "/CN=bar" (last last-entry-fields)))))
+        (testing "the new entry is in the infra-serial file"
+          (is (= "6\n" (slurp (:infra-node-serials-path settings)))))))))
 (deftest supports-auto-renewal?-test
   (let [keypair (utils/generate-key-pair)
         subject (utils/cn "foo")]

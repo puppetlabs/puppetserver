@@ -523,8 +523,6 @@
             {}
             auth-exts)))
 
-(defn seq-contains? [coll target] (some #(= target %) coll))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Writing various SSL objects safely
 ;; These versions all encode writing atomically and knowledge of file permissions
@@ -658,14 +656,63 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Inventory File
 
+(def inventory-date-formatter
+  (time-format/formatter "YYY-MM-dd'T'HH:mm:ssz"))
+
 (schema/defn format-date-time :- schema/Str
   "Formats a date-time into the format expected by the ruby puppet code."
   [date-time :- Date]
   (time-format/unparse
-    (time-format/formatter "YYY-MM-dd'T'HH:mm:ssz")
+    inventory-date-formatter
     (time-coerce/from-date date-time)))
 
+(schema/defn parse-date-time :- DateTime
+  "parses a date-time string into a DateTime instance"
+  [date-time :- schema/Str]
+  (time-format/parse inventory-date-formatter date-time))
+
 (def buffer-copy-size (* 64 1024))
+
+(schema/defn read-infra-nodes
+  "Returns a list of infra nodes or infra node serials from the specified file organized as one item per line."
+  [infra-file-reader :- Reader]
+  (line-seq infra-file-reader))
+
+(schema/defn maybe-write-to-infra-serial!
+  "Determine if the host in question is an infra host, and if it is, add the provided serial number to the
+  infra-serials file"
+  [serial :- BigInteger
+   certname :- schema/Str
+   {:keys [infra-nodes-path infra-node-serials-path]} :- CaSettings]
+  (when (fs/exists? infra-nodes-path)
+    (with-open [infra-nodes-reader (io/reader infra-nodes-path)]
+      (let [infra-nodes (read-infra-nodes infra-nodes-reader)]
+        (when (seq (filter #(= certname %) infra-nodes))
+          (log/debug (i18n/trs "Appending serial number {0} for {1} " serial certname))
+          (let [stream-content-fn
+                (fn [^BufferedWriter writer]
+                  (log/trace (i18n/trs "Begin append to serial file."))
+                  (let [copy-buffer (CharBuffer/allocate buffer-copy-size)]
+                    (try
+                      (with-open [^BufferedReader reader (io/reader infra-node-serials-path)]
+                        ;; copy all the existing content
+                        (loop [read-length (.read reader copy-buffer)]
+                          ;; theoretically read can return 0, which means try again
+                          (when (<= 0 read-length)
+                            (when (pos? read-length)
+                              (.write writer (.array copy-buffer) 0 read-length))
+                            (.clear copy-buffer)
+                            (recur (.read reader copy-buffer)))))
+                      (catch FileNotFoundException _e
+                        (log/trace (i18n/trs "Inventory serial file not found.  Assume empty.")))
+                      (catch Throwable e
+                        (log/error e (i18n/trs "Error while appending to serial file."))
+                        (throw e))))
+                  (.write writer (str serial))
+                  (.newLine writer)
+                  (.flush writer)
+                  (log/trace (i18n/trs "Finish append to serial file. ")))]
+            (ks-file/atomic-write infra-node-serials-path stream-content-fn)))))))
 
 (schema/defn ^:always-validate
   write-cert-to-inventory!
@@ -682,11 +729,11 @@
     * $NA = The 'not after' field of the cert, as a date/timestamp in UTC.
     * $S  = The distinguished name of the cert's subject."
   [cert :- Certificate
-   {:keys [cert-inventory inventory-lock inventory-lock-timeout-seconds]} :- CaSettings]
-  (let [serial-number (->> cert
-                           (.getSerialNumber)
-                           (format-serial-number)
-                           (str "0x"))
+   {:keys [cert-inventory inventory-lock inventory-lock-timeout-seconds] :as settings} :- CaSettings]
+  (let [serial-number (.getSerialNumber cert)
+        formatted-serial-number (->> serial-number
+                                  (format-serial-number)
+                                  (str "0x"))
         not-before    (-> cert
                           (.getNotBefore)
                           (format-date-time))
@@ -694,7 +741,8 @@
                           (.getNotAfter)
                           (format-date-time))
         subject       (utils/get-subject-from-x509-certificate cert)
-        entry (str serial-number " " not-before " " not-after " /" subject "\n")
+        cert-name (utils/x500-name->CN subject)
+        entry (str formatted-serial-number " " not-before " " not-after " /" subject "\n")
         stream-content-fn (fn [^BufferedWriter writer]
                             (log/trace (i18n/trs "Begin append to inventory file."))
                             (let [copy-buffer (CharBuffer/allocate buffer-copy-size)]
@@ -702,11 +750,12 @@
                                 (with-open [^BufferedReader reader (io/reader cert-inventory)]
                                   ;; copy all the existing content
                                   (loop [read-length (.read reader copy-buffer)]
-                                    (when (< 0 read-length)
-                                        (when (pos? read-length)
-                                          (.write writer (.array copy-buffer) 0 read-length))
-                                        (.clear copy-buffer)
-                                        (recur (.read reader copy-buffer)))))
+                                    ;; theoretically read can return 0, which means try again
+                                    (when (<= 0 read-length)
+                                      (when (pos? read-length)
+                                        (.write writer (.array copy-buffer) 0 read-length))
+                                      (.clear copy-buffer)
+                                      (recur (.read reader copy-buffer)))))
                                 (catch FileNotFoundException _e
                                   (log/trace (i18n/trs "Inventory file not found.  Assume empty.")))
                                 (catch Throwable e
@@ -717,7 +766,8 @@
                             (log/trace (i18n/trs "Finish append to inventory file. ")))]
     (common/with-safe-write-lock inventory-lock inventory-lock-descriptor inventory-lock-timeout-seconds
       (log/debug (i18n/trs "Append \"{1}\" to inventory file {0}" cert-inventory entry))
-      (ks-file/atomic-write cert-inventory stream-content-fn))))
+      (ks-file/atomic-write cert-inventory stream-content-fn)
+      (maybe-write-to-infra-serial! serial-number cert-name settings))))
 
 (schema/defn is-subject-in-inventory-row? :- schema/Bool
   [cn-subject :- utils/ValidX500Name
@@ -726,6 +776,14 @@
    (if (some? row-subject)
      (= (subs row-subject 1) cn-subject)
      false))
+
+(schema/defn is-not-expired? :- schema/Bool
+  [now :- DateTime
+   [_serial _not-before not-after _row-subject] :- [schema/Str]]
+  (if-let [not-after-date (parse-date-time not-after)]
+    (time/before? now not-after-date)
+    ;; lack of an end date means we can't tell if it is expired or not, so assume it isn't.
+    false))
 
 (defn extract-inventory-row-contents
   [row]
@@ -736,26 +794,36 @@
    certname :- schema/Str]
   (common/with-safe-read-lock inventory-lock inventory-lock-descriptor inventory-lock-timeout-seconds
     (log/trace (i18n/trs "Looking for \"{0}\" in inventory file {1}" certname cert-inventory))
-    (with-open [inventory-reader (io/reader cert-inventory)]
-      (let [inventory-rows (map extract-inventory-row-contents (line-seq inventory-reader))
-            cn-subject (utils/cn certname)]
-        (some? (some (partial is-subject-in-inventory-row? cn-subject) inventory-rows))))))
+    (if (fs/exists? cert-inventory)
+      (with-open [inventory-reader (io/reader cert-inventory)]
+        (let [inventory-rows (map extract-inventory-row-contents (line-seq inventory-reader))
+             cn-subject (utils/cn certname)]
+          (some? (some (partial is-subject-in-inventory-row? cn-subject) inventory-rows))))
+      (do
+        (log/debug "Unable to find inventory file {0}" cert-inventory)
+        false))))
 
 (schema/defn find-matching-valid-serial-numbers :- [BigInteger]
   [{:keys [cert-inventory inventory-lock inventory-lock-timeout-seconds]} :- CaSettings
    certname :- schema/Str]
   (common/with-safe-read-lock inventory-lock inventory-lock-descriptor inventory-lock-timeout-seconds
     (log/trace (i18n/trs "Looking for serial numbers for \"{0}\" in inventory file {1}" certname cert-inventory))
-    (with-open [inventory-reader (io/reader cert-inventory)]
-      (let [inventory-rows (map extract-inventory-row-contents (line-seq inventory-reader))
-            cn-subject (utils/cn certname)]
-        (doall
-          (->> inventory-rows
-               (filter (partial is-subject-in-inventory-row? cn-subject))
-               ;; serial number is first entry in the array
-               (map first)
-               ;; assume serials are base 16 strings, drop the `0x` as BigInteger won't deal with them.
-               (map #(BigInteger. ^String (subs % 2) 16))))))))
+    (if (fs/exists? cert-inventory)
+      (with-open [inventory-reader (io/reader cert-inventory)]
+        (let [inventory-rows (map extract-inventory-row-contents (line-seq inventory-reader))
+              cn-subject (utils/cn certname)
+              now (time/now)]
+          (doall
+            (->> inventory-rows
+                 (filter (partial is-subject-in-inventory-row? cn-subject))
+                 (filter (partial is-not-expired? now))
+                 ;; serial number is first entry in the array
+                 (map first)
+                 ;; assume serials are base 16 strings, drop the `0x` as BigInteger won't deal with them.
+                 (map #(BigInteger. ^String (subs % 2) 16))))))
+      (do
+        (log/debug (i18n/trs "Unable to find inventory file {0}" cert-inventory))
+        []))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Initialization
@@ -818,41 +886,49 @@
            netscape-comment-value)
           (utils/create-ca-extensions issuer-public-key ca-public-key))))
 
-(schema/defn read-infra-nodes
-    "Returns a list of infra nodes or infra node serials from the specified file organized as one item per line."
-    [infra-file-reader :- Reader]
-    (line-seq infra-file-reader))
-
-(defn- write-infra-serials-to-writer
-  [writer infra-nodes-path signeddir]
-  (try
+(schema/defn extract-active-infra-serials :- [BigInteger]
+  "Read the infra nodes file to determine which nodes are infrastructure nodes.
+  For each node, check the inventory file for any serial numbers for that node,
+  Also check the filesystem for a signed cert for that node.  Return a sorted unique
+  set of serial numbers for nodes in the infra file"
+  [{:keys [infra-nodes-path signeddir] :as settings} :- CaSettings]
+  (if (fs/exists? infra-nodes-path)
     (with-open [infra-nodes-reader (io/reader infra-nodes-path)]
       (let [infra-nodes (read-infra-nodes infra-nodes-reader)]
-        (doseq [infra-node infra-nodes]
-          (try
-            (let [infra-serial (-> (path-to-cert signeddir infra-node)
-                                   (utils/pem->cert)
-                                   (utils/get-serial))]
-              (.write writer (str infra-serial))
-              (.newLine writer))
-            (catch FileNotFoundException _
-              (log/warn
-               (i18n/trs
-                (str
-                 "Failed to find/load certificate for Puppet Infrastructure Node:"
-                 infra-node))))))))
-    (catch FileNotFoundException _
-      (log/warn (i18n/trs (str infra-nodes-path " does not exist"))))))
+        (loop [local-infra-nodes infra-nodes
+               result []]
+          (if-let [infra-node (first local-infra-nodes)]
+            (let [augmented-results (concat result (find-matching-valid-serial-numbers settings infra-node))
+                  cert-path (path-to-cert signeddir infra-node)]
+              (if (fs/exists? cert-path)
+                (let [serial (-> cert-path
+                                 utils/pem->cert
+                                 utils/get-serial)]
+                  (recur (rest local-infra-nodes)
+                         (conj augmented-results serial)))
+                (do
+                  (log/warn (i18n/trs "Failed to find certificate for Puppet Infrastructure Node: {0}" infra-node))
+                  (recur (rest local-infra-nodes)
+                         augmented-results))))
+            ;; ensure they are unique and ordered so the end result is stable
+            (sort (set result))))))
+    []))
 
-(schema/defn generate-infra-serials
+(schema/defn write-infra-serials-to-writer
+  [writer :- BufferedWriter
+   settings :- CaSettings]
+  (let [infra-serials (extract-active-infra-serials settings)]
+    (doseq [infra-serial infra-serials]
+      (.write writer (str infra-serial))
+      (.newLine writer))))
+
+(schema/defn generate-infra-serials!
   "Given a list of infra nodes it will create a file containing
    serial numbers of their certificates (listed on separate lines).
    It is expected have at least one entry (MoM)"
-  [{:keys [infra-nodes-path infra-node-serials-path signeddir]} :- CaSettings]
+  [{:keys [infra-node-serials-path] :as settings} :- CaSettings]
   (ks-file/atomic-write infra-node-serials-path
-                        #(write-infra-serials-to-writer %
-                                                        infra-nodes-path
-                                                        signeddir)
+                        #(write-infra-serials-to-writer % settings)
                         public-key-perms))
 
 (defn symlink-cadir
@@ -888,7 +964,7 @@
   (-> ca-settings :signeddir fs/file ks/mkdirs!)
   (initialize-serial-file! ca-settings)
   (-> ca-settings :infra-nodes-path fs/file fs/create)
-  (generate-infra-serials ca-settings)
+  (generate-infra-serials! ca-settings)
   (let [keypair     (utils/generate-key-pair (:keylength ca-settings))
         public-key  (utils/get-public-key keypair)
         private-key (utils/get-private-key keypair)
@@ -1835,7 +1911,7 @@
       (do
         (log/info (i18n/trs "CA already initialized for SSL"))
         (when (:enable-infra-crl settings)
-          (generate-infra-serials settings))
+          (generate-infra-serials! settings))
         (when (:manage-internal-file-permissions settings)
           (ensure-ca-file-perms! settings)))
       (let [{found true
