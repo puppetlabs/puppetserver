@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: 6890ea2b3fef2689f5ca8d94c560be8b423ca70b\n"
+"X-Git-Ref: fa5a05c20a487732220c54629419fdcc8c067517\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -38,6 +38,26 @@ msgid "Missing:"
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Appending serial number {0} for {1} "
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Begin append to serial file."
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Inventory serial file not found.  Assume empty."
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Error while appending to serial file."
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Finish append to serial file. "
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 msgid "Begin append to inventory file."
 msgstr ""
 
@@ -63,6 +83,10 @@ msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 msgid "Looking for serial numbers for \"{0}\" in inventory file {1}"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Unable to find inventory file {0}"
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
@@ -96,6 +120,10 @@ msgstr ""
 msgid ""
 "To suppress this warning, remove the ''certificate-authority'' configuration "
 "settings."
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Failed to find certificate for Puppet Infrastructure Node: {0}"
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
