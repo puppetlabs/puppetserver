@@ -149,7 +149,8 @@
                                                environment-class-cache-enabled
                                                boltlib-path
                                                bolt-builtin-content-dir
-                                               bolt-projects-dir))
+                                               bolt-projects-dir
+                                               certname))
          routes (comidi/context path ring-app)
          route-metadata (comidi/route-metadata routes)
          comidi-handler (comidi/routes->handler routes)

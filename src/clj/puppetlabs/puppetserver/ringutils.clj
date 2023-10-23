@@ -75,6 +75,12 @@
       (handler req)
       {:status 403 :body "Forbidden."})))
 
+(defn wrap-with-certname-as-compiler
+  "Function that returns middleware that add X-Puppet-Compiler-Name to the response"
+  [handler name]
+  (fn [request]
+    (ring/header (handler request) "X-Puppet-Compiler-Name" name)))
+
 (defn wrap-with-puppet-version-header
   "Function that returns a middleware that adds an
   X-Puppet-Version header to the response."

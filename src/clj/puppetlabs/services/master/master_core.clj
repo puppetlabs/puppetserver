@@ -1313,14 +1313,16 @@
   wrap-middleware :- IFn
   [handler :- IFn
    authorization-fn :- IFn
-   puppet-version :- schema/Str]
+   puppet-version :- schema/Str
+   certname :- schema/Str]
   (-> handler
       authorization-fn
       (middleware/wrap-uncaught-errors :plain)
       middleware/wrap-request-logging
       i18n/locale-negotiator
       middleware/wrap-response-logging
-      (ringutils/wrap-with-puppet-version-header puppet-version)))
+      (ringutils/wrap-with-puppet-version-header puppet-version)
+      (ringutils/wrap-with-certname-as-compiler certname)))
 
 (schema/defn ^:always-validate get-master-route-config
   "Get the webserver route configuration for the master service"
@@ -1366,15 +1368,18 @@
    environment-class-cache-enabled :- schema/Bool
    boltlib-path :- (schema/maybe [schema/Str])
    bolt-builtin-content-dir :- (schema/maybe [schema/Str])
-   bolt-projects-dir :- (schema/maybe schema/Str)]
+   bolt-projects-dir :- (schema/maybe schema/Str)
+   certname :- schema/Str]
   (let [ruby-request-handler (wrap-middleware handle-request
                                               wrap-with-authorization-check
-                                              puppet-version)
+                                              puppet-version
+                                              certname)
         clojure-request-wrapper (fn [handler]
                                   (wrap-middleware
                                    (ring/wrap-params handler)
                                    wrap-with-authorization-check
-                                   puppet-version))]
+                                   puppet-version
+                                   certname))]
     (root-routes ruby-request-handler
                  clojure-request-wrapper
                  jruby-service
