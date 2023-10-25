@@ -1051,7 +1051,8 @@
   "v3 route tree for the ruby side of the master service."
   [request-handler :- IFn
    bolt-builtin-content-dir :- (schema/maybe [schema/Str])
-   bolt-projects-dir :- (schema/maybe schema/Str)]
+   bolt-projects-dir :- (schema/maybe schema/Str)
+   certname :- schema/Str]
   (comidi/routes
    (comidi/GET ["/node/" [#".*" :rest]] request
                (request-handler request))
@@ -1072,7 +1073,8 @@
    (comidi/GET ["/catalog/" [#".*" :rest]] request
                (request-handler (assoc request :include-code-id? true)))
    (comidi/POST ["/catalog/" [#".*" :rest]] request
-                (request-handler (assoc request :include-code-id? true)))
+               (let [request-handler (ringutils/wrap-with-certname-as-compiler request-handler certname)]
+                 (request-handler (assoc request :include-code-id? true))))
    (comidi/PUT ["/facts/" [#".*" :rest]] request
                (request-handler request))
    (comidi/PUT ["/report/" [#".*" :rest]] request
@@ -1178,9 +1180,10 @@
    wrap-with-jruby-queue-limit :- IFn
    boltlib-path :- (schema/maybe [schema/Str])
    bolt-builtin-content-dir :- (schema/maybe [schema/Str])
-   bolt-projects-dir :- (schema/maybe schema/Str)]
+   bolt-projects-dir :- (schema/maybe schema/Str)
+   certname :- schema/Str]
   (comidi/context "/v3"
-                  (v3-ruby-routes ruby-request-handler bolt-builtin-content-dir bolt-projects-dir)
+                  (v3-ruby-routes ruby-request-handler bolt-builtin-content-dir bolt-projects-dir certname)
                   (comidi/wrap-routes
                    (v3-clojure-routes jruby-service
                                       get-code-content-fn
@@ -1292,7 +1295,8 @@
    environment-class-cache-enabled :- schema/Bool
    boltlib-path :- (schema/maybe [schema/Str])
    bolt-builtin-content-dir :- (schema/maybe [schema/Str])
-   bolt-projects-dir :- (schema/maybe schema/Str)]
+   bolt-projects-dir :- (schema/maybe schema/Str)
+   certname :- schema/Str]
   (comidi/routes
    (v3-routes ruby-request-handler
               clojure-request-wrapper
@@ -1303,7 +1307,8 @@
               wrap-with-jruby-queue-limit
               boltlib-path
               bolt-builtin-content-dir
-              bolt-projects-dir)
+              bolt-projects-dir
+              certname)
    (v4-routes clojure-request-wrapper
               jruby-service
               wrap-with-jruby-queue-limit
@@ -1313,16 +1318,14 @@
   wrap-middleware :- IFn
   [handler :- IFn
    authorization-fn :- IFn
-   puppet-version :- schema/Str
-   certname :- schema/Str]
+   puppet-version :- schema/Str]
   (-> handler
       authorization-fn
       (middleware/wrap-uncaught-errors :plain)
       middleware/wrap-request-logging
       i18n/locale-negotiator
       middleware/wrap-response-logging
-      (ringutils/wrap-with-puppet-version-header puppet-version)
-      (ringutils/wrap-with-certname-as-compiler certname)))
+      (ringutils/wrap-with-puppet-version-header puppet-version)))
 
 (schema/defn ^:always-validate get-master-route-config
   "Get the webserver route configuration for the master service"
@@ -1372,14 +1375,12 @@
    certname :- schema/Str]
   (let [ruby-request-handler (wrap-middleware handle-request
                                               wrap-with-authorization-check
-                                              puppet-version
-                                              certname)
+                                              puppet-version)
         clojure-request-wrapper (fn [handler]
                                   (wrap-middleware
                                    (ring/wrap-params handler)
                                    wrap-with-authorization-check
-                                   puppet-version
-                                   certname))]
+                                   puppet-version))]
     (root-routes ruby-request-handler
                  clojure-request-wrapper
                  jruby-service
@@ -1389,7 +1390,8 @@
                  environment-class-cache-enabled
                  boltlib-path
                  bolt-builtin-content-dir
-                 bolt-projects-dir)))
+                 bolt-projects-dir
+                 certname)))
 
 (def MasterStatusV1
   {(schema/optional-key :experimental) {:http-metrics [http-metrics/RouteSummary]
