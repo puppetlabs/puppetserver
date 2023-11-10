@@ -10,6 +10,15 @@ teardown do
   on(master, "rm -f #{sitepp}")
 end
 
+step 'Update Ubuntu 18 package repo' do
+  if master.platform =~ /ubuntu-18/
+    # bionic is EOL, so get postgresql from the archive
+    on master, 'echo "deb https://apt-archive.postgresql.org/pub/repos/apt bionic-pgdg main" >> /etc/apt/sources.list'
+    on master, 'curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -'
+    on master, 'apt update'
+  end
+end
+
 step 'Install Puppet nightly repo' do
   install_puppetlabs_release_repo_on(master, 'puppet7-nightly')
 end
@@ -23,10 +32,12 @@ if master.platform.variant == 'debian'
 end
 
 step 'Configure PuppetDB via site.pp' do
+  manage_package_repo = ! master.platform.match?(/ubuntu-18/)
   create_remote_file(master, sitepp, <<SITEPP)
 node default {
   class { 'puppetdb':
-    manage_firewall => false,
+    manage_firewall     => false,
+    manage_package_repo => #{manage_package_repo},
   }
 
   class { 'puppetdb::master::config':
