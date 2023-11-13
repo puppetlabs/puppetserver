@@ -694,6 +694,17 @@
          (finally
            (jruby-testutils/return-instance jruby-service jruby-instance :http-report-processor-metrics-test)))))))
 
+(deftest ^:integration compiler-name-as-header
+  (testing "POSTs to the v3 catalog endpoint return the certname as a header"
+    (bootstrap-testutils/with-puppetserver-running
+     app
+     {:jruby-puppet {:gem-path gem-path
+                     :max-active-instances 1
+                     :server-code-dir test-resources-code-dir
+                     :server-conf-dir master-service-test-runtime-dir}}
+     (let [resp (http-post "/puppet/v3/catalog/foo?environment=production" "")]
+       (is (= "localhost" (get-in resp [:headers "x-puppet-compiler-name"])))))))
+
 (deftest encoded-spaces-test
   (testing "Encoded spaces should be routed correctly"
     (bootstrap-testutils/with-puppetserver-running
