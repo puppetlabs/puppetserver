@@ -26,6 +26,11 @@ step 'Update Ubuntu 18 package repo' do
     # Once we have jammy's ssl-cert get rid of jammy packages to avoid unintentially pulling in other packages
     on master, 'rm /etc/apt/sources.list.d/jammy.list'
     on master, 'apt-get update'
+
+    # bionic is EOL, so get postgresql from the archive
+    on master, 'echo "deb https://apt-archive.postgresql.org/pub/repos/apt bionic-pgdg main" >> /etc/apt/sources.list'
+    on master, 'curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -'
+    on master, 'apt update'
   end
 end
 
@@ -50,10 +55,12 @@ if master.platform.variant == 'debian'
 end
 
 step 'Configure PuppetDB via site.pp' do
+  manage_package_repo = ! master.platform.match?(/ubuntu-18/)
   create_remote_file(master, sitepp, <<SITEPP)
 node default {
   class { 'puppetdb':
-    manage_firewall => false,
+    manage_firewall     => false,
+    manage_package_repo => #{manage_package_repo},
   }
 
   class { 'puppetdb::master::config':
