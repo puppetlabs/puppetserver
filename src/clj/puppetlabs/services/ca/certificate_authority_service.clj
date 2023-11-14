@@ -12,6 +12,20 @@
             [puppetlabs.trapperkeeper.services.status.status-core :as status-core]
             [puppetlabs.rbac-client.protocols.activity :refer [ActivityReportingService] :as activity-proto]))
 
+(def one-day-ms
+  (* 24 60 60 1000))
+
+(def ca-scheduled-job-group-id
+  :ca-scheduled-job-group-id)
+
+(defn evaluate-crls-for-expiration
+  [ca-settings]
+  (try
+    ;; don't allow exceptions to escape
+    (ca/maybe-update-crls-for-expiration ca-settings)
+    (catch Exception e
+      (log/error e (i18n/trs "Failed to evaluate crls for expiration")))))
+
 (tk/defservice certificate-authority-service
   CaService
    {:required 
@@ -19,7 +33,8 @@
       [:WebroutingService add-ring-handler get-route]
       [:AuthorizationService wrap-with-authorization-check]
       [:FilesystemWatchService create-watcher]
-      [:StatusService register-status]]
+      [:StatusService register-status]
+      [:SchedulerService interspaced stop-jobs]]
    :optional [ActivityReportingService]}
   (init
     [this context]
@@ -86,7 +101,17 @@
         1
         core/v1-status)
       (assoc context :auth-handler auth-handler
-                     :watcher watcher)))
+                     :watcher watcher
+                     :ca-settings settings)))
+  (start [this context]
+    (log/info (i18n/trs "Starting CA service"))
+    (interspaced one-day-ms #(evaluate-crls-for-expiration (:ca-settings context)) ca-scheduled-job-group-id)
+    context)
+
+  (stop [this context]
+    (log/info (i18n/trs "Stopping CA service"))
+    (stop-jobs ca-scheduled-job-group-id)
+    (dissoc context :ca-settings))
 
   (initialize-master-ssl!
    [this master-settings certname]
