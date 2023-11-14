@@ -8,10 +8,23 @@
 (defprotocol AnalyticsService
   "Protocol placeholder for the analytics service.")
 
+(def analytics-service-job-group-id
+  :analytics-service-job-group)
+
+(defn safe-run-dropsonde
+  "Prevent exceptions from escaping as this is run in a scheduled task"
+  [config]
+  (try
+    (log/debug (i18n/trs "Running dropsonde"))
+    (run-dropsonde config)
+    (log/debug (i18n/trs "dropsonde run complete"))
+    (catch Exception _
+      (log/info (i18n/trs "Failed while running dropsonde")))))
+
 (defservice analytics-service
   AnalyticsService
   [[:PuppetServerConfigService get-config]
-   [:SchedulerService interspaced]]
+   [:SchedulerService interspaced stop-jobs]]
 
   (start
    [this context]
@@ -30,7 +43,8 @@
                          (version-check/check-for-update
                           {:product-name product-name} update-server-url)
                          (catch Exception _
-                           (log/error (i18n/trs "Failed to check for product updates"))))))
+                           (log/error (i18n/trs "Failed to check for product updates")))))
+                      analytics-service-job-group-id)
          (log/info (i18n/trs "Not checking for updates - opt-out setting exists"))))
      (log/info (i18n/trs "Puppet Server Update Service has successfully started and will run in the background"))
 
@@ -40,7 +54,12 @@
            dropsonde-interval-millis (* 1000 (get-in config [:dropsonde :interval]
                                                (* 60 60 24 7)))]
        (if dropsonde-enabled
-         (interspaced dropsonde-interval-millis #(run-dropsonde config))
+         (interspaced dropsonde-interval-millis #(safe-run-dropsonde config) analytics-service-job-group-id)
          (log/info (i18n/trs (str "Not submitting module metrics via Dropsonde -- submission is disabled. "
                                   "Enable this feature by setting `dropsonde.enabled` to true in Puppet Server''s config."))))))
-   context))
+   context)
+
+  (stop [this context]
+    (log/info (i18n/trs "Puppet Server Update Service shutting down"))
+    (stop-jobs analytics-service-job-group-id)
+    context))

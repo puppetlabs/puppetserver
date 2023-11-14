@@ -104,7 +104,6 @@
    [:CaService initialize-master-ssl! retrieve-ca-cert! retrieve-ca-crl! get-auth-handler]
    [:JRubyPuppetService]
    [:AuthorizationService wrap-with-authorization-check]
-   [:SchedulerService interspaced]
    [:StatusService register-status]
    [:VersionedCodeService get-code-content current-code-id]]
   (init
