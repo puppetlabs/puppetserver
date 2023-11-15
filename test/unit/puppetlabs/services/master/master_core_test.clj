@@ -51,7 +51,8 @@
                    true
                    nil
                    ["./dev-resources/puppetlabs/services/master/master_core_test/builtin_bolt_content"]
-                   "./dev-resources/puppetlabs/services/master/master_core_test/bolt_projects")
+                   "./dev-resources/puppetlabs/services/master/master_core_test/bolt_projects"
+                   "test-certname")
       (comidi/routes->handler)
       (wrap-middleware identity puppet-version)))
 
@@ -65,10 +66,12 @@
         request     (partial app-request app)]
     (is (= 200 (:status (request "/v3/environments"))))
     (is (= 200 (:status (request "/v3/catalog/bar?environment=environment1234"))))
-    (is (= 200 (:status (app (-> {:request-method :post
-                                  :uri "/v3/catalog/bar"
-                                  :content-type "application/x-www-form-urlencoded"}
-                                 (ring-mock/body "environment=environment1234"))))))
+    (let [response (app (-> {:request-method :post
+                             :uri "/v3/catalog/bar"
+                             :content-type "application/x-www-form-urlencoded"}
+                            (ring-mock/body "environment=environment1234")))]
+      (is (= "test-certname" (get-in response [:headers "X-Puppet-Compiler-Name"]))
+      (is (= 200 (:status response)))))
     (is (nil? (request "/foo")))
     (is (nil? (request "/foo/bar")))
     (doseq [[method paths]
