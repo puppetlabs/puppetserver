@@ -5,12 +5,14 @@
                     ByteArrayOutputStream)
            (com.puppetlabs.ssl_utils SSLUtils)
            (java.security PublicKey MessageDigest)
+           (java.time LocalDateTime ZoneOffset)
            (java.util Date)
            (java.util.concurrent TimeUnit)
            (java.util.concurrent.locks ReentrantReadWriteLock)
            (org.joda.time DateTime Period)
            (org.bouncycastle.asn1.x509 SubjectPublicKeyInfo))
-  (:require [puppetlabs.puppetserver.certificate-authority :as ca]
+  (:require [clojure.set :as set]
+            [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.trapperkeeper.testutils.logging :refer [logged?] :as logutils]
             [puppetlabs.ssl-utils.core :as utils]
             [puppetlabs.ssl-utils.simple :as simple]
@@ -2118,3 +2120,131 @@
           subject (utils/cn "foo")
           csr  (utils/generate-certificate-request keypair subject [] [{:oid "1.3.6.1.4.1.34380.1.3.2" :value true}])]
       (is (= [{:oid "1.3.6.1.4.1.34380.1.3.2", :values ["true"]}] (ca/get-csr-attributes csr))))))
+
+(deftest crl-expires-in-n-days?-test
+    (let [settings (testutils/ca-sandbox! cadir)]
+      ;; by default the crl expires in 5 years
+      (testing "CRL with long expiration don't expire soon"
+        (is (false? (ca/crl-expires-in-n-days? (:cacrl settings) settings 5))))
+      (testing "CRL with long expiration expires in ~6 years"
+        (is (ca/crl-expires-in-n-days? (:cacrl settings) settings (* 365 6))))
+      (testing "created crl expires in 5 days"
+        (let [[crl & rest-of-full-chain] (utils/pem->crls (:cacrl settings))
+              public-key (utils/pem->public-key (:capub settings))
+              private-key (utils/pem->private-key (:cakey settings))
+              new-crl (utils/generate-crl
+                        (.getIssuerX500Principal (utils/pem->ca-cert (:cacert settings) (:cakey settings)))
+                        private-key
+                        public-key
+                        (.getThisUpdate crl)
+                        ;; create a date 5 days from now using java.time
+                        (-> (LocalDateTime/now)
+                            (.plusDays 5)
+                            (.toInstant (ZoneOffset/UTC))
+                            (Date/from))
+                        (biginteger 1)
+                        nil)
+              new-full-chain (cons new-crl (vec rest-of-full-chain))
+              temp-path (fs/temp-file "crl" "pem")
+              path-as-string (.getCanonicalPath temp-path)]
+          (ca/write-crls new-full-chain (.getCanonicalPath temp-path))
+          (doseq [i (range 0 4)]
+            (is (false? (ca/crl-expires-in-n-days? path-as-string settings i))))
+          (is (ca/crl-expires-in-n-days? path-as-string settings 5))
+          (is (ca/crl-expires-in-n-days? path-as-string settings 6))))))
+
+(deftest overwrite-existing-crl!-test
+  (let [settings (testutils/ca-sandbox! cadir)
+        [crl & rest-of-full-chain] (utils/pem->crls (:cacrl settings))
+        crl-serials  (set (map #(.getSerialNumber %) (.getRevokedCertificates crl)))
+        all-serials (set/union crl-serials (set (map biginteger (range 1000 2000))))
+        ca-cert (utils/pem->ca-cert (:cacert settings) (:cakey settings))
+        before-next-update (.getNextUpdate crl)
+        crl-number (utils/get-crl-number crl)]
+    (ca/overwrite-existing-crl! crl rest-of-full-chain (:capub settings) (:cakey settings) ca-cert (vec all-serials) (:cacrl settings))
+    (testing "overwritten crl has updated properties"
+      (let [[updated-crl & _rest-of-full-chain] (utils/pem->crls (:cacrl settings))]
+        (is (.after (.getNextUpdate updated-crl) before-next-update))
+        (is (< crl-number (utils/get-crl-number updated-crl)))
+        (is (not= (set (map #(.getSerialNumber %) (.getRevokedCertificates updated-crl)))
+                  crl-serials))
+        (is (= (set (map #(.getSerialNumber %) (.getRevokedCertificates updated-crl)))
+               all-serials))))))
+(deftest expired-inventory-serials-test
+  (let [settings (testutils/ca-sandbox! cadir)
+        keypair (utils/generate-key-pair)
+        subject (utils/cn "foo")
+        csr  (utils/generate-certificate-request keypair subject)
+        serial-number  (ca/next-serial-number! settings)
+        ca-cert (utils/pem->ca-cert (:cacert settings) (:cakey settings))
+        private-key (utils/pem->private-key (:cakey settings))
+
+        signed-cert (utils/sign-certificate
+                      (utils/get-subject-from-x509-certificate ca-cert)
+                      private-key
+                      serial-number
+                      ;; valid from 100 days ago until yesterday
+                      (-> (LocalDateTime/now)
+                          (.minusDays 100)
+                          (.toInstant ZoneOffset/UTC)
+                          (Date/from))
+                      (-> (LocalDateTime/now)
+                          (.minusDays 1)
+                          (.toInstant ZoneOffset/UTC)
+                          (Date/from))
+                      subject
+                      (utils/get-public-key csr)
+                      (ca/create-agent-extensions csr ca-cert))]
+    (ca/write-cert-to-inventory! signed-cert settings)
+    ;; there are multiple entries in the inventory file that aren't expired by default
+    (is (= [(biginteger serial-number)] (ca/expired-inventory-serials settings)))))
+
+(deftest update-and-sign-crl!-test
+  (let [settings (testutils/ca-sandbox! cadir)
+        [crl & rest-of-full-chain] (utils/pem->crls (:cacrl settings))
+        crl-serials  (set (map #(.getSerialNumber %) (.getRevokedCertificates crl)))
+        crl-number (utils/get-crl-number crl)
+        serial-number  (ca/next-serial-number! settings)
+        keypair (utils/generate-key-pair)
+        subject (utils/cn "foo")
+        csr  (utils/generate-certificate-request keypair subject)
+        ca-cert (utils/pem->ca-cert (:cacert settings) (:cakey settings))
+        private-key (utils/pem->private-key (:cakey settings))
+        ;; create an add an expired cert to add to the inventory after we update the crl with
+        ;; the serial number of the cert
+        signed-cert (utils/sign-certificate
+                      (utils/get-subject-from-x509-certificate ca-cert)
+                      private-key
+                      serial-number
+                      ;; valid from 100 days ago until yesterday
+                      (-> (LocalDateTime/now)
+                          (.minusDays 100)
+                          (.toInstant ZoneOffset/UTC)
+                          (Date/from))
+                      (-> (LocalDateTime/now)
+                          (.minusDays 1)
+                          (.toInstant ZoneOffset/UTC)
+                          (Date/from))
+                      subject
+                      (utils/get-public-key csr)
+                      (ca/create-agent-extensions csr ca-cert))
+        extra-serials (set (map biginteger (range 1000 2000)))
+        all-serials (set/union crl-serials #{(biginteger serial-number)} extra-serials)]
+    (ca/overwrite-existing-crl! crl rest-of-full-chain (:capub settings) (:cakey settings) ca-cert (vec all-serials) (:cacrl settings))
+    (let [[updated-crl & _rest-of-full-chain] (utils/pem->crls (:cacrl settings))
+          updated-crl-number (utils/get-crl-number updated-crl)]
+      (is (< crl-number updated-crl-number))
+      (ca/write-cert-to-inventory! signed-cert settings)
+      (ca/update-and-sign-crl! (:cacrl settings) settings)
+      (let [[final-updated-crl & _rest-of-full-chain] (utils/pem->crls (:cacrl settings))
+            final-crl-number (utils/get-crl-number final-updated-crl)
+            final-crl-serials  (set (map #(.getSerialNumber %) (.getRevokedCertificates final-updated-crl)))]
+        (is (< updated-crl-number final-crl-number))
+        ;; should not contain the serial that was expired
+        (is (= (set/union crl-serials extra-serials) final-crl-serials))))))
+
+(deftest base-16-str->biginteger-test
+  (testing "returns expected results"
+    (doseq [i (range 1 10000)]
+      (is (= (biginteger i) (ca/base-16-str->biginteger (format "0x%x" i)))))))
+

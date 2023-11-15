@@ -6,6 +6,7 @@
            (java.security PrivateKey PublicKey)
            (java.security.cert X509Certificate CRLException CertPathValidatorException X509CRL)
            (java.text SimpleDateFormat)
+           (java.time LocalDateTime ZoneId)
            (java.util Date)
            (java.util.concurrent.locks ReentrantReadWriteLock)
            (org.apache.commons.io IOUtils)
@@ -245,6 +246,9 @@
 
 (def default-auto-ttl-renewal-seconds
   (duration-str->sec default-auto-ttl-renewal)) ; 90 days by default
+
+;; if the crl is going to expire in less than this number of days, it should be regenerated.
+(def crl-expiration-window-days 30)
 
 (schema/defn ^:always-validate initialize-ca-config
   "Adds in default ca config keys/values, which may be overwritten if a value for
@@ -785,6 +789,15 @@
     ;; lack of an end date means we can't tell if it is expired or not, so assume it isn't.
     false))
 
+(schema/defn is-expired? :- schema/Bool
+  [now :- DateTime
+   [_serial _not-before not-after _row-subject] :- [schema/Str]]
+  (if-let [not-after-date (parse-date-time not-after)]
+    (time/after? now not-after-date)
+    ;; lack of an end date means we can't tell if it is expired or not, so assume it isn't.
+    false))
+
+
 (defn extract-inventory-row-contents
   [row]
   (str/split row #" "))
@@ -803,6 +816,30 @@
         (log/debug "Unable to find inventory file {0}" cert-inventory)
         false))))
 
+(schema/defn base-16-str->biginteger :- BigInteger
+  "Given a base-16 string with a leading 0x, return the result as a BigInteger"
+  [serial :- schema/Str]
+  (BigInteger. ^String (subs serial 2) 16))
+
+(schema/defn expired-inventory-serials :- [BigInteger]
+  [{:keys [cert-inventory inventory-lock inventory-lock-timeout-seconds]} :- CaSettings]
+  (common/with-safe-read-lock inventory-lock inventory-lock-descriptor inventory-lock-timeout-seconds
+    (log/trace (i18n/trs "Extracting expired serials from inventory file {1}" cert-inventory))
+    (if (fs/exists? cert-inventory)
+      (with-open [inventory-reader (io/reader cert-inventory)]
+        (let [now (time/now)]
+          (doall
+            (->>
+              (line-seq inventory-reader)
+              (map extract-inventory-row-contents )
+              (filter (partial is-expired? now))
+              (map first)
+              ;; assume serials are base 16 strings
+              (map base-16-str->biginteger)))))
+      (do
+        (log/debug "Unable to find inventory file {0}" cert-inventory)
+        []))))
+
 (schema/defn find-matching-valid-serial-numbers :- [BigInteger]
   [{:keys [cert-inventory inventory-lock inventory-lock-timeout-seconds]} :- CaSettings
    certname :- schema/Str]
@@ -820,7 +857,7 @@
                  ;; serial number is first entry in the array
                  (map first)
                  ;; assume serials are base 16 strings, drop the `0x` as BigInteger won't deal with them.
-                 (map #(BigInteger. ^String (subs % 2) 16))))))
+                 (map base-16-str->biginteger)))))
       (do
         (log/debug (i18n/trs "Unable to find inventory file {0}" cert-inventory))
         []))))
@@ -2298,3 +2335,68 @@
                                  (.getNotAfter signed-cert))))
     (report-activity [cert-subject] "renewed")
     signed-cert))
+
+(schema/defn crl-expires-in-n-days?
+  [crl-path {:keys [crl-lock crl-lock-timeout-seconds]} :- CaSettings
+   days :- schema/Int]
+  (common/with-safe-write-lock crl-lock crl-lock-descriptor crl-lock-timeout-seconds
+    (let [crl-object (first (utils/pem->crls crl-path))
+          next-update (-> crl-object
+                          .getNextUpdate
+                          .toInstant
+                          (.atZone (ZoneId/systemDefault))
+                          .toLocalDateTime)]
+      (.isBefore next-update (.plusDays (LocalDateTime/now) days)))))
+
+(schema/defn overwrite-existing-crl!
+  [crl :- X509CRL
+   rest-of-full-chain
+   capub :- schema/Str
+   cakey :- schema/Str
+   cacert :- X509Certificate
+   valid-serials :- [BigInteger]
+   crl-path :- schema/Str]
+  (let [^BigInteger crl-number (utils/get-crl-number crl)
+        public-key (utils/pem->public-key capub)
+        private-key (utils/pem->private-key cakey)
+        ;; because we are purging existing serials, we need a whole new CRL
+        ;; the "next update" and "crl-number" will get updated by the process that
+        ;; adds the serial numbers to the crl
+        new-full-crl (utils/generate-crl
+                       (.getIssuerX500Principal cacert)
+                       private-key
+                       public-key
+                       (.getThisUpdate crl)
+                       (.getNextUpdate crl)
+                       crl-number
+                       ;; original crl is generated with no extensions, continue the precedence
+                       nil)
+        ;; create a new CRL with incremented "next update" and crl-number, and all the serials
+        new-crl-with-revoked (utils/revoke-multiple new-full-crl
+                                                    (utils/pem->private-key cakey)
+                                                    (.getPublicKey cacert)
+                                                    valid-serials)
+        new-full-chain (cons new-crl-with-revoked (vec rest-of-full-chain))]
+    (write-crls new-full-chain crl-path)))
+(schema/defn update-and-sign-crl!
+  "Given a path to a CRL, and the ca-settings, update the CRl with all known valid serials that have been revoked"
+  [path-to-crl {:keys [crl-lock crl-lock-timeout-seconds cacert cakey capub] :as settings} :- CaSettings]
+  ;; read in the existing crl, and extract the serial numbers that have expired so we can remove them from the CRL set.
+  (let [expired-serials (set (expired-inventory-serials settings))]
+    (common/with-safe-write-lock crl-lock crl-lock-descriptor crl-lock-timeout-seconds
+      (let [[our-full-crl & rest-of-full-chain] (utils/pem->crls path-to-crl)
+            crl-serials  (set (map #(.getSerialNumber %) (.getRevokedCertificates our-full-crl)))
+            valid-crl-serials (set/difference crl-serials expired-serials)
+            cacert (utils/pem->ca-cert cacert cakey)]
+        (overwrite-existing-crl! our-full-crl rest-of-full-chain capub cakey cacert (vec valid-crl-serials) path-to-crl)))))
+
+(schema/defn maybe-update-crls-for-expiration
+   [{:keys [cacrl enable-infra-crl infra-crl-path] :as settings} :- CaSettings]
+  ;; check the age of the main crl
+  (when (crl-expires-in-n-days? cacrl settings crl-expiration-window-days)
+    (log/info (i18n/trs "CA CRL expiring within 30 days, updating."))
+    (update-and-sign-crl! cacrl settings))
+  (when (and enable-infra-crl (fs/exists? infra-crl-path))
+    (when (crl-expires-in-n-days? infra-crl-path settings crl-expiration-window-days)
+      (log/info (i18n/trs "infra crl expiring within 30 days, updating."))
+      (update-and-sign-crl! infra-crl-path settings))))
