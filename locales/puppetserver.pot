@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: fa5a05c20a487732220c54629419fdcc8c067517\n"
+"X-Git-Ref: 8a918235f8221d1efee28a04f45b31e2a7c686f2\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -79,6 +79,10 @@ msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 msgid "Looking for \"{0}\" in inventory file {1}"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Extracting expired serials from inventory file {1}"
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
@@ -418,6 +422,14 @@ msgstr ""
 msgid "Renewed certificate for \"{0}\" with new expiration of \"{1}\""
 msgstr ""
 
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "CA CRL expiring within 30 days, updating."
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "infra crl expiring within 30 days, updating."
+msgstr ""
+
 #: src/clj/puppetlabs/puppetserver/cli/subcommand.clj
 msgid ""
 "Path to a configuration file or directory of configuration files. See the "
@@ -521,6 +533,18 @@ msgid "Access to {0} rejected; no client certificate found"
 msgstr ""
 
 #: src/clj/puppetlabs/services/analytics/analytics_service.clj
+msgid "Running dropsonde"
+msgstr ""
+
+#: src/clj/puppetlabs/services/analytics/analytics_service.clj
+msgid "dropsonde run complete"
+msgstr ""
+
+#: src/clj/puppetlabs/services/analytics/analytics_service.clj
+msgid "Failed while running dropsonde"
+msgstr ""
+
+#: src/clj/puppetlabs/services/analytics/analytics_service.clj
 msgid "Failed to check for product updates"
 msgstr ""
 
@@ -532,6 +556,10 @@ msgstr ""
 msgid ""
 "Puppet Server Update Service has successfully started and will run in the "
 "background"
+msgstr ""
+
+#: src/clj/puppetlabs/services/analytics/analytics_service.clj
+msgid "Puppet Server Update Service shutting down"
 msgstr ""
 
 #: src/clj/puppetlabs/services/analytics/dropsonde.clj
@@ -646,11 +674,23 @@ msgid "CA disabled; ignoring retrieval of CA CRL"
 msgstr ""
 
 #: src/clj/puppetlabs/services/ca/certificate_authority_service.clj
+msgid "Failed to evaluate crls for expiration"
+msgstr ""
+
+#: src/clj/puppetlabs/services/ca/certificate_authority_service.clj
 msgid "Reporting CA event failed with: {0}nPayload: {1}"
 msgstr ""
 
 #: src/clj/puppetlabs/services/ca/certificate_authority_service.clj
 msgid "CA Service adding a ring handler"
+msgstr ""
+
+#: src/clj/puppetlabs/services/ca/certificate_authority_service.clj
+msgid "Starting CA service"
+msgstr ""
+
+#: src/clj/puppetlabs/services/ca/certificate_authority_service.clj
+msgid "Stopping CA service"
 msgstr ""
 
 #: src/clj/puppetlabs/services/config/puppet_server_config_core.clj
