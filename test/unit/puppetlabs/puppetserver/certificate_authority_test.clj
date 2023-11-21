@@ -5,6 +5,7 @@
                     ByteArrayOutputStream)
            (com.puppetlabs.ssl_utils SSLUtils)
            (java.security PublicKey MessageDigest)
+           (java.security.cert X509CRL)
            (java.time LocalDateTime ZoneOffset)
            (java.util Date)
            (java.util.concurrent TimeUnit)
@@ -2133,7 +2134,7 @@
               public-key (utils/pem->public-key (:capub settings))
               private-key (utils/pem->private-key (:cakey settings))
               new-crl (utils/generate-crl
-                        (.getIssuerX500Principal (utils/pem->ca-cert (:cacert settings) (:cakey settings)))
+                        (.getSubjectX500Principal (utils/pem->ca-cert (:cacert settings) (:cakey settings)))
                         private-key
                         public-key
                         (.getThisUpdate crl)
@@ -2154,7 +2155,7 @@
           (is (ca/crl-expires-in-n-days? path-as-string settings 6))))))
 
 (deftest overwrite-existing-crl!-test
-  (let [settings (testutils/ca-sandbox! cadir)
+  (let [settings (testutils/ca-sandbox! bundle-cadir)
         [crl & rest-of-full-chain] (utils/pem->crls (:cacrl settings))
         crl-serials  (set (map #(.getSerialNumber %) (.getRevokedCertificates crl)))
         all-serials (set/union crl-serials (set (map biginteger (range 1000 2000))))
@@ -2200,7 +2201,7 @@
     (is (= [(biginteger serial-number)] (ca/expired-inventory-serials settings)))))
 
 (deftest update-and-sign-crl!-test
-  (let [settings (testutils/ca-sandbox! cadir)
+  (let [settings (testutils/ca-sandbox! bundle-cadir)
         [crl & rest-of-full-chain] (utils/pem->crls (:cacrl settings))
         crl-serials  (set (map #(.getSerialNumber %) (.getRevokedCertificates crl)))
         crl-number (utils/get-crl-number crl)
@@ -2233,6 +2234,8 @@
     (ca/overwrite-existing-crl! crl rest-of-full-chain (:capub settings) (:cakey settings) ca-cert (vec all-serials) (:cacrl settings))
     (let [[updated-crl & _rest-of-full-chain] (utils/pem->crls (:cacrl settings))
           updated-crl-number (utils/get-crl-number updated-crl)]
+      (is (= (.getName (.getIssuerX500Principal ^X509CRL updated-crl))
+             (.getName (.getIssuerX500Principal ^X509CRL crl))))
       (is (< crl-number updated-crl-number))
       (ca/write-cert-to-inventory! signed-cert settings)
       (ca/update-and-sign-crl! (:cacrl settings) settings)

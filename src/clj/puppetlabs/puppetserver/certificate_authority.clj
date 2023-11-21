@@ -824,7 +824,7 @@
 (schema/defn expired-inventory-serials :- [BigInteger]
   [{:keys [cert-inventory inventory-lock inventory-lock-timeout-seconds]} :- CaSettings]
   (common/with-safe-read-lock inventory-lock inventory-lock-descriptor inventory-lock-timeout-seconds
-    (log/trace (i18n/trs "Extracting expired serials from inventory file {1}" cert-inventory))
+    (log/trace (i18n/trs "Extracting expired serials from inventory file {0}" cert-inventory))
     (if (fs/exists? cert-inventory)
       (with-open [inventory-reader (io/reader cert-inventory)]
         (let [now (time/now)]
@@ -2363,7 +2363,8 @@
         ;; the "next update" and "crl-number" will get updated by the process that
         ;; adds the serial numbers to the crl
         new-full-crl (utils/generate-crl
-                       (.getIssuerX500Principal cacert)
+                       ;; ensure the issuer is identical
+                       (.getIssuerX500Principal crl)
                        private-key
                        public-key
                        (.getThisUpdate crl)
