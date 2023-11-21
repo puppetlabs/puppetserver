@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: 8a918235f8221d1efee28a04f45b31e2a7c686f2\n"
+"X-Git-Ref: ceb06e9ff3ca79e7c06a65560a636fb86aec02e3\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -82,7 +82,7 @@ msgid "Looking for \"{0}\" in inventory file {1}"
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
-msgid "Extracting expired serials from inventory file {1}"
+msgid "Extracting expired serials from inventory file {0}"
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
