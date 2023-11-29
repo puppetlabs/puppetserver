@@ -13,7 +13,7 @@
             [puppetlabs.trapperkeeper.services.metrics.metrics-service :as metrics]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby-puppet]
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
-            [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty9-service]
+            [puppetlabs.trapperkeeper.services.webserver.jetty10-service :as jetty10-service]
             [puppetlabs.services.jruby-pool-manager.jruby-pool-manager-service :as jruby-pool-manager]
             [puppetlabs.trapperkeeper.services.scheduler.scheduler-service :as scheduler-service]
             [puppetlabs.trapperkeeper.services.status.status-service :as status-service]
@@ -46,7 +46,7 @@
    metrics/metrics-service
    scheduler-service/scheduler-service
    status-service/status-service
-   jetty9-service/jetty9-service
+   jetty10-service/jetty10-service
    webrouting-service/webrouting-service])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

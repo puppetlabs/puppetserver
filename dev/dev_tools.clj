@@ -1,5 +1,5 @@
 (ns dev-tools
-  (:require [puppetlabs.trapperkeeper.services.webserver.jetty9-service :refer [jetty9-service]]
+  (:require [puppetlabs.trapperkeeper.services.webserver.jetty10-service :refer [jetty10-service]]
 
             [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :refer [webrouting-service]]
             [puppetlabs.services.master.master-service :refer [master-service]]

@@ -2,7 +2,7 @@
   (:import (com.puppetlabs.puppetserver PuppetProfiler))
   (:require [clojure.test :refer [deftest is testing]]
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :refer [puppet-profiler-service]]
-            [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty9-service]
+            [puppetlabs.trapperkeeper.services.webserver.jetty10-service :as jetty10-service]
             [puppetlabs.trapperkeeper.services.metrics.metrics-service :as metrics-service]
             [puppetlabs.trapperkeeper.services.scheduler.scheduler-service :as scheduler-service]
             [puppetlabs.trapperkeeper.services.status.status-service :as status-service]
@@ -16,7 +16,7 @@
   (bootstrap/with-app-with-config
     app
     [puppet-profiler-service
-     jetty9-service/jetty9-service
+     jetty10-service/jetty10-service
      metrics-service/metrics-service
      scheduler-service/scheduler-service
      status-service/status-service

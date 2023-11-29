@@ -8,7 +8,7 @@
            (java.util.zip GZIPInputStream))
   (:require [clojure.test :refer [deftest is testing use-fixtures]]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
-            [puppetlabs.trapperkeeper.testutils.webserver :as jetty9]
+            [puppetlabs.trapperkeeper.testutils.webserver :as jetty10]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-puppet-testutils]
             [ring.middleware.basic-authentication :as auth]
             [schema.core :as schema]
@@ -170,7 +170,7 @@
 (use-fixtures :once http-client-scripting-container-fixture)
 
 (deftest test-ruby-http-client
-  (jetty9/with-test-webserver ring-app port
+  (jetty10/with-test-webserver ring-app port
     (with-scripting-container sc
       (with-http-client sc {}
         (let [url (str "http://localhost:" port)]
@@ -180,7 +180,7 @@
             (is (= "hi" (.runScriptlet sc (format "$c.post(URI('%s'), 'foo').body" url))))))))))
 
 (deftest http-escaped-urls-test
-  (jetty9/with-test-webserver ring-app port
+  (jetty10/with-test-webserver ring-app port
     (with-scripting-container sc
       (with-http-client sc {}
         (let [url (str "http://localhost:" port)]
@@ -190,7 +190,7 @@
             (is (= (str url "/a%20b%3Fc?foo=bar") (.runScriptlet sc "$response.url.to_s")))))))))
 
 (deftest http-basic-auth
-  (jetty9/with-test-webserver ring-app-with-auth port
+  (jetty10/with-test-webserver ring-app-with-auth port
     (with-scripting-container sc
       (with-http-client sc {}
         (let [url (str "http://localhost:" port)]
@@ -213,7 +213,7 @@
             (is (= "access denied" (.runScriptlet sc "$response.body")))))))))
 
 (deftest http-compressed-requests
-  (jetty9/with-test-webserver ring-app-decompressing-gzipped-request port
+  (jetty10/with-test-webserver ring-app-decompressing-gzipped-request port
     (with-scripting-container sc
       (with-http-client sc {}
         (let [url (str "http://localhost:" port)]
@@ -244,7 +244,7 @@
 
 (defmacro with-webserver-with-protocols
   [protocols cipher-suites & body]
-  `(jetty9/with-test-webserver-and-config ring-app port#
+  `(jetty10/with-test-webserver-and-config ring-app port#
     (merge {:ssl-host    "localhost"
             :ssl-port    10080
             :ssl-ca-cert ca-pem
@@ -304,7 +304,7 @@
 (deftest clients-persist
   (testing "client persists when making HTTP requests"
     (logutils/with-test-logging
-      (jetty9/with-test-webserver ring-app port
+      (jetty10/with-test-webserver ring-app port
         (with-scripting-container sc
           (with-http-client sc {}
             (let [url (str "http://localhost:" port)
@@ -313,7 +313,7 @@
               (is (= client1 client2))))))))
   (testing "all instances of HttpClient have the same underlying client object"
     (logutils/with-test-logging
-      (jetty9/with-test-webserver ring-app port
+      (jetty10/with-test-webserver ring-app port
         (with-scripting-container sc
           (with-http-client sc {}
             (let [client1 (.runScriptlet sc "$c.class.client")
@@ -324,7 +324,7 @@
 (deftest connections-closed
   (testing "connection header always set to close on get"
     (logutils/with-test-logging
-      (jetty9/with-test-webserver ring-app-connection-closed port
+      (jetty10/with-test-webserver ring-app-connection-closed port
         (with-scripting-container sc
           (with-http-client sc {}
             (let [url (str "http://localhost:" port)]
@@ -332,7 +332,7 @@
                      (.runScriptlet sc (format "$c.get(URI('%s')).body" url))))))))))
   (testing "connection header always set to close on post"
     (logutils/with-test-logging
-      (jetty9/with-test-webserver ring-app-connection-closed port
+      (jetty10/with-test-webserver ring-app-connection-closed port
         (with-scripting-container sc
           (with-http-client sc {}
             (let [url (str "http://localhost:" port)]
@@ -340,7 +340,7 @@
                      (.runScriptlet sc (format "$c.post(URI('%s'), 'foo').body" url))))))))))
   (testing "client's terminate function closes the client"
     (logutils/with-test-logging
-      (jetty9/with-test-webserver ring-app-connection-closed port
+      (jetty10/with-test-webserver ring-app-connection-closed port
         (with-scripting-container sc
           (with-http-client sc {}
             (let [url (str "http://localhost:" port)]
@@ -358,7 +358,7 @@
 (deftest http-and-https
   (testing "can make http calls after https calls without a new scripting container"
     (logutils/with-test-logging
-      (jetty9/with-test-webserver ring-app-alternate port
+      (jetty10/with-test-webserver ring-app-alternate port
         (with-webserver-with-protocols nil nil
           (with-scripting-container sc
             (with-http-client sc {}
@@ -373,7 +373,7 @@
 
   (testing "can make https calls after http calls without a new scripting container"
     (logutils/with-test-logging
-      (jetty9/with-test-webserver ring-app-alternate port
+      (jetty10/with-test-webserver ring-app-alternate port
         (with-webserver-with-protocols nil nil
           (with-scripting-container sc
             (with-http-client sc {}

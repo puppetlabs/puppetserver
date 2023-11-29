@@ -54,10 +54,10 @@
                  [puppetlabs/jruby-utils]
                  [puppetlabs/clj-shell-utils]
                  [puppetlabs/trapperkeeper]
-                 [puppetlabs/trapperkeeper-webserver-jetty9]
+                 [com.puppetlabs/trapperkeeper-webserver-jetty10]
                  [puppetlabs/trapperkeeper-authorization]
                  [puppetlabs/trapperkeeper-comidi-metrics]
-                 [puppetlabs/trapperkeeper-metrics]
+                 [puppetlabs/trapperkeeper-metrics "2.0.0"]
                  [puppetlabs/trapperkeeper-scheduler]
                  [puppetlabs/trapperkeeper-status]
                  [puppetlabs/trapperkeeper-filesystem-watcher]
@@ -117,7 +117,7 @@
 
   :profiles {:defaults {:source-paths  ["dev"]
                         :dependencies  [[org.clojure/tools.namespace]
-                                        [puppetlabs/trapperkeeper-webserver-jetty9 :classifier "test"]
+                                        [com.puppetlabs/trapperkeeper-webserver-jetty10 :classifier "test"]
                                         [puppetlabs/trapperkeeper nil :classifier "test" :scope "test"]
                                         [puppetlabs/trapperkeeper-metrics :classifier "test" :scope "test"]
                                         [puppetlabs/kitchensink nil :classifier "test" :scope "test"]
@@ -171,17 +171,17 @@
                                                [org.bouncycastle/bcpkix-jdk18on]
                                                [puppetlabs/jruby-utils]
                                                [puppetlabs/puppetserver ~ps-version]
-                                               [puppetlabs/trapperkeeper-webserver-jetty9]]
+                                               [com.puppetlabs/trapperkeeper-webserver-jetty10]]
                       :plugins [[puppetlabs/lein-ezbake "2.5.5"]]
                       :name "puppetserver"}
              :uberjar {:dependencies [[org.bouncycastle/bcpkix-jdk18on]
-                                      [puppetlabs/trapperkeeper-webserver-jetty9]]
+                                      [com.puppetlabs/trapperkeeper-webserver-jetty10]]
                        :aot [puppetlabs.trapperkeeper.main
                              puppetlabs.trapperkeeper.services.status.status-service
                              puppetlabs.trapperkeeper.services.metrics.metrics-service
                              puppetlabs.services.protocols.jruby-puppet
                              puppetlabs.trapperkeeper.services.watcher.filesystem-watch-service
-                             puppetlabs.trapperkeeper.services.webserver.jetty9-service
+                             puppetlabs.trapperkeeper.services.webserver.jetty10-service
                              puppetlabs.trapperkeeper.services.webrouting.webrouting-service
                              puppetlabs.services.legacy-routes.legacy-routes-core
                              puppetlabs.services.protocols.jruby-metrics
