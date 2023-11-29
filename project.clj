@@ -119,7 +119,7 @@
                         :dependencies  [[org.clojure/tools.namespace]
                                         [com.puppetlabs/trapperkeeper-webserver-jetty10 :classifier "test"]
                                         [puppetlabs/trapperkeeper nil :classifier "test" :scope "test"]
-                                        [puppetlabs/trapperkeeper-metrics :classifier "test" :scope "test"]
+                                        [puppetlabs/trapperkeeper-metrics "2.0.0" :classifier "test" :scope "test"]
                                         [puppetlabs/kitchensink nil :classifier "test" :scope "test"]
                                         [ring-basic-authentication]
                                         [ring/ring-mock]
