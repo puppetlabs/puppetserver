@@ -7,7 +7,7 @@
             [puppetlabs.puppetserver.testutils :as testutils]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-bootstrap-testutils]
-            [puppetlabs.trapperkeeper.testutils.webserver :as jetty9]
+            [puppetlabs.trapperkeeper.testutils.webserver :as jetty10]
             [puppetlabs.services.master.master-core :as master-core]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [cheshire.core :as cheshire]
@@ -615,7 +615,7 @@
                   (apply str (repeat body-length "a"))
                   expected-etag))
                (master-core/wrap-with-cache-check jruby-service))]
-      (jetty9/with-test-webserver
+      (jetty10/with-test-webserver
        app
        port
        (let [request-url (str "http://localhost:" port)
