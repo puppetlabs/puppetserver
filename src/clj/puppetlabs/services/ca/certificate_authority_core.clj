@@ -23,7 +23,7 @@
             [ring.util.request :as request]
             [ring.util.response :as rr]
             [schema.core :as schema]
-            [slingshot.slingshot :as sling])
+            [slingshot.slingshot :refer [try+]])
   (:import (clojure.lang IFn)
            (java.io ByteArrayInputStream InputStream StringWriter)
            (java.security.cert X509Certificate)
@@ -77,7 +77,7 @@
   [ca-settings :- ca/CaSettings
    report-activity
    {:keys [body] {:keys [subject]} :route-params :as request}]
-  (sling/try+
+  (try+
     (let [report-activity-fn (ca/create-report-activity-fn report-activity request)]
       (ca/process-csr-submission! subject body ca-settings report-activity-fn)
       (rr/content-type (rr/response nil) "text/plain"))
@@ -256,6 +256,30 @@
             (log/warn (i18n/trs "Rejecting certificate request because the {0} header was specified, but the client making the request was not in the allow list."  auth-middleware/header-cert-name)))
           request-cert)
         (log/warn (i18n/trs "Request is missing a certificate for an endpoint that requires a certificate."))))))
+
+(schema/def Certnames [schema/Str])
+
+(schema/defn handle-bulk-cert-signing
+  [request
+   _ca-settings :- ca/CaSettings]
+  (let [json-body (try-to-parse (:body request)) 
+        certnames (:certnames json-body)] 
+    (if-let [schema-error (schema/check Certnames certnames)]
+      (-> (rr/response (cheshire/generate-string {:kind :schema-violation
+                                                  :submitted certnames
+                                                  :error (str schema-error)}))
+          (rr/status 422)
+          (rr/content-type "application/json"))
+      (-> (rr/response (cheshire/generate-string {}))
+          (rr/status 200)
+          (rr/content-type "application/json")))))
+
+(schema/defn handle-bulk-cert-signing-all
+  [_request
+   _ca-settings :- ca/CaSettings]
+  (-> (rr/response (cheshire/generate-string {}))
+      (rr/status 200)
+      (rr/content-type "application/json")))
 
 (schema/defn ^:always-validate
   handle-cert-renewal
@@ -540,7 +564,11 @@
       (PUT ["/clean"] request
         (handle-cert-clean request ca-settings report-activity))
       (POST ["/certificate_renewal"] request
-        (handle-cert-renewal request ca-settings report-activity)))
+        (handle-cert-renewal request ca-settings report-activity))
+      (POST ["/sign"] request
+        (handle-bulk-cert-signing request ca-settings))
+      (POST ["/sign/all"] request
+        (handle-bulk-cert-signing-all request ca-settings)))
     (comidi/not-found "Not Found")))
 
 (schema/defn ^:always-validate
