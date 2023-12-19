@@ -126,24 +126,24 @@
                                         [beckon]
                                         [lambdaisland/uri "1.4.70"]
                                         [puppetlabs/rbac-client :classifier "test" :scope "test"]]}
-             :dev [:defaults
-                   {:dependencies [[org.bouncycastle/bcpkix-jdk18on]]}]
-             :fips [:defaults
-                    {:dependencies [[org.bouncycastle/bcpkix-fips]
-                                    [org.bouncycastle/bc-fips]
-                                    [org.bouncycastle/bctls-fips]]
-                     :jvm-opts ~(let [version (System/getProperty "java.specification.version")
-                                      [major minor _] (clojure.string/split version #"\.")
-                                      unsupported-ex (ex-info "Unsupported major Java version."
-                                                       {:major major
-                                                        :minor minor})]
-                                  (condp = (java.lang.Integer/parseInt major)
-                                    1 (if (= 8 (java.lang.Integer/parseInt minor))
-                                        ["-Djava.security.properties==./dev-resources/java.security.jdk8-fips"]
-                                        (throw unsupported-ex))
-                                    11 ["-Djava.security.properties==./dev-resources/java.security.jdk11on-fips"]
-                                    17 ["-Djava.security.properties==./dev-resources/java.security.jdk11on-fips"]
-                                    (throw unsupported-ex)))}]
+             :dev-deps {:dependencies [[org.bouncycastle/bcpkix-jdk18on]]}
+             :dev [:defaults :dev-deps]
+             :fips-deps {:dependencies [[org.bouncycastle/bcpkix-fips]
+                                        [org.bouncycastle/bc-fips]
+                                        [org.bouncycastle/bctls-fips]]
+                         :jvm-opts ~(let [version (System/getProperty "java.specification.version")
+                                          [major minor _] (clojure.string/split version #"\.")
+                                          unsupported-ex (ex-info "Unsupported major Java version."
+                                                           {:major major
+                                                            :minor minor})]
+                                      (condp = (java.lang.Integer/parseInt major)
+                                        1 (if (= 8 (java.lang.Integer/parseInt minor))
+                                            ["-Djava.security.properties==./dev-resources/java.security.jdk8-fips"]
+                                            (throw unsupported-ex))
+                                        11 ["-Djava.security.properties==./dev-resources/java.security.jdk11on-fips"]
+                                        17 ["-Djava.security.properties==./dev-resources/java.security.jdk11on-fips"]
+                                        (throw unsupported-ex)))}
+             :fips [:defaults :fips-deps]
 
              :testutils {:source-paths ["test/unit" "test/integration"]}
              :test {
