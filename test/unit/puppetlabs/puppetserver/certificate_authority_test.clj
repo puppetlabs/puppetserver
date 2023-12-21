@@ -1,34 +1,34 @@
 (ns puppetlabs.puppetserver.certificate-authority-test
-  (:import (java.io StringReader
-                    StringWriter
-                    ByteArrayInputStream
-                    ByteArrayOutputStream)
-           (com.puppetlabs.ssl_utils SSLUtils)
-           (java.security PublicKey MessageDigest)
-           (java.security.cert X509CRL)
+  (:require [clj-time.coerce :as time-coerce]
+            [clj-time.core :as time]
+            [clojure.java.io :as io]
+            [clojure.set :as set]
+            [clojure.string :as string]
+            [clojure.test :refer [deftest is testing use-fixtures]]
+            [me.raynes.fs :as fs]
+            [puppetlabs.kitchensink.core :as ks]
+            [puppetlabs.kitchensink.file :as ks-file]
+            [puppetlabs.puppetserver.certificate-authority :as ca]
+            [puppetlabs.services.ca.ca-testutils :as testutils]
+            [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
+            [puppetlabs.ssl-utils.core :as utils]
+            [puppetlabs.ssl-utils.simple :as simple]
+            [puppetlabs.trapperkeeper.testutils.logging :refer [logged?] :as logutils]
+            [schema.test :as schema-test]
+            [slingshot.test :refer :all])
+  (:import (com.puppetlabs.ssl_utils SSLUtils)
+           (java.io ByteArrayInputStream
+                    ByteArrayOutputStream
+                    StringReader
+                    StringWriter)
+           (java.security MessageDigest PublicKey)
+           (java.security.cert X509CRL X509Certificate)
            (java.time LocalDateTime ZoneOffset)
            (java.util Date)
            (java.util.concurrent TimeUnit)
            (java.util.concurrent.locks ReentrantReadWriteLock)
-           (org.joda.time DateTime Period)
-           (org.bouncycastle.asn1.x509 SubjectPublicKeyInfo))
-  (:require [clojure.set :as set]
-            [puppetlabs.puppetserver.certificate-authority :as ca]
-            [puppetlabs.trapperkeeper.testutils.logging :refer [logged?] :as logutils]
-            [puppetlabs.ssl-utils.core :as utils]
-            [puppetlabs.ssl-utils.simple :as simple]
-            [puppetlabs.services.ca.ca-testutils :as testutils]
-            [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
-            [puppetlabs.kitchensink.core :as ks]
-            [puppetlabs.kitchensink.file :as ks-file]
-            [slingshot.test :refer :all]
-            [schema.test :as schema-test]
-            [clojure.test :refer [deftest is testing use-fixtures]]
-            [clojure.java.io :as io]
-            [clojure.string :as string]
-            [clj-time.core :as time]
-            [clj-time.coerce :as time-coerce]
-            [me.raynes.fs :as fs]))
+           (org.bouncycastle.asn1.x509 SubjectPublicKeyInfo)
+           (org.joda.time DateTime Period)))
 
 (use-fixtures :once schema-test/validate-schemas)
 
@@ -2109,18 +2109,18 @@
         subject (utils/cn "foo")]
     (testing "should not support auto-renewal"
       (is (false? (ca/supports-auto-renewal? (utils/generate-certificate-request keypair subject [] []))))
-      (is (false? (ca/supports-auto-renewal? (utils/generate-certificate-request keypair subject [] [{:oid "1.3.6.1.4.1.34380.1.3.2" :value false}]))))
-      (is (false? (ca/supports-auto-renewal? (utils/generate-certificate-request keypair subject [] [{:oid "1.3.6.1.4.1.34380.1.3.2" :value "false"}])))))
+      (is (false? (ca/supports-auto-renewal? (utils/generate-certificate-request keypair subject [] [{:oid ca/pp_auth_auto_renew-attribute :value false}]))))
+      (is (false? (ca/supports-auto-renewal? (utils/generate-certificate-request keypair subject [] [{:oid ca/pp_auth_auto_renew-attribute :value "false"}])))))
     (testing "should support auto-renewal"
-      (is (true? (ca/supports-auto-renewal? (utils/generate-certificate-request keypair subject [] [{:oid "1.3.6.1.4.1.34380.1.3.2" :value true}]))))
-      (is (true? (ca/supports-auto-renewal? (utils/generate-certificate-request keypair subject [] [{:oid "1.3.6.1.4.1.34380.1.3.2" :value "true"}])))))))
+      (is (true? (ca/supports-auto-renewal? (utils/generate-certificate-request keypair subject [] [{:oid ca/pp_auth_auto_renew-attribute :value true}]))))
+      (is (true? (ca/supports-auto-renewal? (utils/generate-certificate-request keypair subject [] [{:oid ca/pp_auth_auto_renew-attribute :value "true"}])))))))
 
 (deftest get-csr-attributes-test
   (testing "extract attribute from CSR"
     (let [keypair (utils/generate-key-pair)
           subject (utils/cn "foo")
-          csr  (utils/generate-certificate-request keypair subject [] [{:oid "1.3.6.1.4.1.34380.1.3.2" :value true}])]
-      (is (= [{:oid "1.3.6.1.4.1.34380.1.3.2", :values ["true"]}] (ca/get-csr-attributes csr))))))
+          csr  (utils/generate-certificate-request keypair subject [] [{:oid ca/pp_auth_auto_renew-attribute :value true}])]
+      (is (= [{:oid ca/pp_auth_auto_renew-attribute, :values ["true"]}] (ca/get-csr-attributes csr))))))
 
 (deftest crl-expires-in-n-days?-test
     (let [settings (testutils/ca-sandbox! cadir)]
@@ -2251,3 +2251,131 @@
     (doseq [i (range 1 10000)]
       (is (= (biginteger i) (ca/base-16-str->biginteger (format "0x%x" i)))))))
 
+(defn generate-csr
+  [settings
+   extensions
+   attributes]
+  (let [keypair (utils/generate-key-pair)
+        subject-name (ks/rand-str :alpha-digits 8)
+        subject (utils/cn subject-name)
+        csr (utils/generate-certificate-request keypair subject extensions attributes)
+        csr-path (ca/path-to-cert-request (:csrdir settings) subject-name)]
+    (utils/obj->pem! csr csr-path)
+    {:subject subject
+     :subject-name subject-name
+     :csr csr
+     :csr-path csr-path}))
+
+(deftest sign-multiple-certificate-signing-requests!-test
+  (let [inventory-file (str (ks/temp-file))
+        settings (-> (testutils/ca-sandbox! bundle-cadir)
+                     (assoc :cert-inventory inventory-file
+                            :allow-auto-renewal true)
+                     (update :auto-renewal-cert-ttl ca/duration-str->sec))
+        report-activity (fn [_a _b] nil)]
+    (testing "single entry"
+      (testing "happy path"
+        (let [csr-info (generate-csr settings [] [{:oid ca/pp_auth_auto_renew-attribute :value true}])]
+          (testing "csr should exist before the operation"
+            (is (fs/exists? (:csr-path csr-info))))
+          (testing "correctly signs"
+            (is (= {:signed     [(:subject-name csr-info)]
+                    :not-signed []}
+                   (ca/sign-multiple-certificate-signing-requests! [(:subject-name csr-info)] settings report-activity))))
+          (testing "csr is removed after routine"
+            (is (not (fs/exists? (:csr-path csr-info)))))
+          (testing "signed cert"
+            (let [cert-path (ca/path-to-cert (:signeddir settings) (:subject-name csr-info))]
+              (testing "should exist"
+                (is (fs/exists? cert-path)))
+              (testing "signed cert should be valid"
+                (let [^X509Certificate cert (utils/pem->cert cert-path)
+                      capub (-> (:cacert settings)
+                                (utils/pem->certs)
+                                (first)
+                                (.getPublicKey))]
+                  ;; this will throw an exception, causing the test to fail if it isn't valid.  It returns void
+                  (.checkValidity cert)
+                  (is (nil? (.verify cert capub)))
+                  (testing "not after date should be ~90 days in the future"
+                    (let [diff (- (.getTime (.getNotAfter cert)) (.getTime (Date.)))
+                          days (.convert TimeUnit/DAYS diff TimeUnit/MILLISECONDS)]
+                      ;; 89 days plus some number of hour, minutes seconds
+                      (is (= 89 days))))))
+              ;; certificate should be in inventory
+              (testing "should be in the inventory"
+                (let [inventory (slurp inventory-file)
+                      entries (string/split inventory #"\n")]
+                  (is (= (count entries) 1))
+                  (let [row (string/split (first entries) #" ")]
+                    ;; row is constructed of serial-number, start date, end date and name
+                    ;; sandbox has some used serial numbers
+                    (is (= "0x0003" (first row)))
+                    (is (= (str "/" (:subject csr-info)) (nth row 3))))))))))
+      (testing "correctly rejects a non-existent csr"
+        (let [random-csr-name (ks/rand-str :alpha-digits 8)]
+          (is (= {:signed     []
+                  :not-signed [random-csr-name]}
+                 (ca/sign-multiple-certificate-signing-requests! [random-csr-name] settings report-activity)))))
+      (testing "correctly rejects a cert with Subject alternative names"
+        (let [alt-name-ext {:oid      utils/subject-alt-name-oid
+                            :value    {:dns-name ["bad-name"]}
+                            :critical false}
+              csr-info (generate-csr settings [alt-name-ext] [{:oid ca/pp_auth_auto_renew-attribute :value true}])]
+          (is (= {:signed     []
+                  :not-signed [(:subject-name csr-info)]}
+                 (ca/sign-multiple-certificate-signing-requests! [(:subject-name csr-info)] settings report-activity)))))
+      (testing "correctly rejects a cert with authorization extensions when disabled"
+        (let [csr-info (generate-csr settings [{:oid ca/ppAuthCertExt :value "true" :critical false}] [{:oid ca/pp_auth_auto_renew-attribute :value true}])]
+          (is (= {:signed     []
+                  :not-signed [(:subject-name csr-info)]}
+                 (ca/sign-multiple-certificate-signing-requests! [(:subject-name csr-info)] settings report-activity)))))
+      (testing "correctly rejects a cert with unapproved extensions"
+        (let [csr-info (generate-csr settings [{:oid "1.9.9.9.9.9.0" :value "true" :critical false}] [{:oid ca/pp_auth_auto_renew-attribute :value true}])]
+          (is (= {:signed     []
+                  :not-signed [(:subject-name csr-info)]}
+                 (ca/sign-multiple-certificate-signing-requests! [(:subject-name csr-info)] settings report-activity))))))
+    (testing "multiple entry with both bad and good csrs"
+      (let [count-range (range 0 100)
+            _ (println "begin generate good csrs")
+            good-csrs (doall (pmap (fn [_i] (generate-csr settings [] [{:oid ca/pp_auth_auto_renew-attribute :value true}]))
+                                   count-range))
+            _ (println "begin generate random csr names")
+            random-csr-names (doall (pmap (fn [_i] (ks/rand-str :alpha-digits 8)) count-range))
+            _ (println "begin generate alt-name csrs")
+            alt-name-ext {:oid      utils/subject-alt-name-oid
+                          :value    {:dns-name ["bad-name"]}
+                          :critical false}
+            bad-names (doall (pmap (fn [_i] (generate-csr settings [alt-name-ext] [{:oid ca/pp_auth_auto_renew-attribute :value true}]))
+                                   count-range))
+            _ (println "begin generate unauthorized csrs")
+            unauthorized (doall (pmap (fn [_i] (generate-csr settings [{:oid ca/ppAuthCertExt :value "true" :critical false}] [{:oid ca/pp_auth_auto_renew-attribute :value true}]))
+                                      count-range))
+            _ (println "begin generate unapproved csrs")
+            unapproved-extensions (doall (pmap (fn [_i] (generate-csr settings [{:oid "1.9.9.9.9.9.0" :value "true" :critical false}] [{:oid ca/pp_auth_auto_renew-attribute :value true}]))
+                                               count-range))
+            _ (println "combining all of them")
+            all-csrs (concat good-csrs bad-names unauthorized unapproved-extensions)
+            _ (println "add in bad names and shuffle")
+            all-names (shuffle (concat (map :subject-name all-csrs) random-csr-names))
+            result (ca/sign-multiple-certificate-signing-requests! all-names settings report-activity)
+            signed-set (set (:signed result))
+            unsigned-set (set (:not-signed result))
+            good-csrs-set (set (map :subject-name good-csrs))
+            random-names-set (set random-csr-names)
+            bad-names-set (set (map :subject-name bad-names))
+            unauthorized-set (set (map :subject-name unauthorized))
+            unapproved-extensions-set (set (map :subject-name unapproved-extensions))]
+        (testing "all the signed entries should be present"
+          (is (= good-csrs-set
+                 signed-set))
+          (testing "none of the valid csrs should be in the not-signed set"
+            (is (empty? (clojure.set/intersection unsigned-set good-csrs-set))))
+          (testing "all of the random names should be in the not-signed"
+            (is (= random-names-set (clojure.set/intersection unsigned-set random-names-set))))
+          (testing "all of the alt names should be in the not-signed"
+            (is (= bad-names-set (clojure.set/intersection unsigned-set bad-names-set))))
+          (testing "all of the unauthorized names should be in the not-signed"
+            (is (= unauthorized-set (clojure.set/intersection unsigned-set unauthorized-set))))
+          (testing "all of the unapproved names should be in the not-signed"
+            (is (= unapproved-extensions-set (clojure.set/intersection unsigned-set unapproved-extensions-set)))))))))

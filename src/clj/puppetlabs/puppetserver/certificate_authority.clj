@@ -1,34 +1,34 @@
 (ns puppetlabs.puppetserver.certificate-authority
-  (:import (java.io BufferedReader BufferedWriter FileNotFoundException InputStream ByteArrayOutputStream ByteArrayInputStream File Reader StringReader IOException)
+  (:require [clj-time.coerce :as time-coerce]
+            [clj-time.core :as time]
+            [clj-time.format :as time-format]
+            [clojure.java.io :as io]
+            [clojure.set :as set]
+            [clojure.string :as str]
+            [clojure.tools.logging :as log]
+            [me.raynes.fs :as fs]
+            [puppetlabs.i18n.core :as i18n]
+            [puppetlabs.kitchensink.core :as ks]
+            [puppetlabs.kitchensink.file :as ks-file]
+            [puppetlabs.puppetserver.common :as common]
+            [puppetlabs.puppetserver.ringutils :as ringutils]
+            [puppetlabs.puppetserver.shell-utils :as shell-utils]
+            [puppetlabs.ssl-utils.core :as utils]
+            [schema.core :as schema]
+            [slingshot.slingshot :as sling])
+  (:import (java.io BufferedReader BufferedWriter ByteArrayInputStream ByteArrayOutputStream File FileNotFoundException IOException InputStream Reader StringReader)
            (java.nio CharBuffer)
            (java.nio.file Files)
            (java.nio.file.attribute FileAttribute PosixFilePermissions)
            (java.security PrivateKey PublicKey)
-           (java.security.cert X509Certificate CRLException CertPathValidatorException X509CRL)
+           (java.security.cert CRLException CertPathValidatorException X509CRL X509Certificate)
            (java.text SimpleDateFormat)
            (java.time LocalDateTime ZoneId)
            (java.util Date)
            (java.util.concurrent.locks ReentrantReadWriteLock)
            (org.apache.commons.io IOUtils)
            (org.bouncycastle.pkcs PKCS10CertificationRequest)
-           (org.joda.time DateTime))
-  (:require [me.raynes.fs :as fs]
-            [schema.core :as schema]
-            [clojure.string :as str]
-            [clojure.set :as set]
-            [clojure.java.io :as io]
-            [clojure.tools.logging :as log]
-            [clj-time.core :as time]
-            [clj-time.format :as time-format]
-            [clj-time.coerce :as time-coerce]
-            [slingshot.slingshot :as sling]
-            [puppetlabs.kitchensink.core :as ks]
-            [puppetlabs.kitchensink.file :as ks-file]
-            [puppetlabs.puppetserver.common :as common]
-            [puppetlabs.puppetserver.ringutils :as ringutils]
-            [puppetlabs.ssl-utils.core :as utils]
-            [puppetlabs.puppetserver.shell-utils :as shell-utils]
-            [puppetlabs.i18n.core :as i18n]))
+           (org.joda.time DateTime)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public utilities
@@ -718,8 +718,32 @@
                   (log/trace (i18n/trs "Finish append to serial file. ")))]
             (ks-file/atomic-write infra-node-serials-path stream-content-fn)))))))
 
+(defn stream-content-to-file
+  [^String cert-inventory ^String entry ^BufferedWriter writer]
+   (log/trace (i18n/trs "Begin append to inventory file."))
+   (let [copy-buffer (CharBuffer/allocate buffer-copy-size)]
+     (try
+       (with-open [^BufferedReader reader (io/reader cert-inventory)]
+         ;; copy all the existing content
+         (loop [read-length (.read reader copy-buffer)]
+           ;; theoretically read can return 0, which means try again
+           (when (<= 0 read-length)
+             (when (pos? read-length)
+               (.write writer (.array copy-buffer) 0 read-length))
+             (.clear copy-buffer)
+             (recur (.read reader copy-buffer)))))
+       (catch FileNotFoundException _e
+         (log/trace (i18n/trs "Inventory file not found.  Assume empty.")))
+       (catch Throwable e
+         (log/error e (i18n/trs "Error while appending to inventory file."))
+         (throw e))))
+   (.write writer entry)
+   (.flush writer)
+   (log/trace (i18n/trs "Finish append to inventory file. ")))
+
+
 (schema/defn ^:always-validate
-  write-cert-to-inventory!
+  write-cert-to-inventory-unlocked!
   "Writes an entry into Puppet's inventory file for a given certificate.
   The location of this file is defined by Puppet's 'cert_inventory' setting.
   The inventory is a text file where each line represents a certificate in the
@@ -733,11 +757,11 @@
     * $NA = The 'not after' field of the cert, as a date/timestamp in UTC.
     * $S  = The distinguished name of the cert's subject."
   [cert :- Certificate
-   {:keys [cert-inventory inventory-lock inventory-lock-timeout-seconds] :as settings} :- CaSettings]
+   {:keys [cert-inventory] :as settings} :- CaSettings]
   (let [serial-number (.getSerialNumber cert)
         formatted-serial-number (->> serial-number
-                                  (format-serial-number)
-                                  (str "0x"))
+                                     (format-serial-number)
+                                     (str "0x"))
         not-before    (-> cert
                           (.getNotBefore)
                           (format-date-time))
@@ -746,32 +770,30 @@
                           (format-date-time))
         subject       (utils/get-subject-from-x509-certificate cert)
         cert-name (utils/x500-name->CN subject)
-        entry (str formatted-serial-number " " not-before " " not-after " /" subject "\n")
-        stream-content-fn (fn [^BufferedWriter writer]
-                            (log/trace (i18n/trs "Begin append to inventory file."))
-                            (let [copy-buffer (CharBuffer/allocate buffer-copy-size)]
-                              (try
-                                (with-open [^BufferedReader reader (io/reader cert-inventory)]
-                                  ;; copy all the existing content
-                                  (loop [read-length (.read reader copy-buffer)]
-                                    ;; theoretically read can return 0, which means try again
-                                    (when (<= 0 read-length)
-                                      (when (pos? read-length)
-                                        (.write writer (.array copy-buffer) 0 read-length))
-                                      (.clear copy-buffer)
-                                      (recur (.read reader copy-buffer)))))
-                                (catch FileNotFoundException _e
-                                  (log/trace (i18n/trs "Inventory file not found.  Assume empty.")))
-                                (catch Throwable e
-                                  (log/error e (i18n/trs "Error while appending to inventory file."))
-                                  (throw e))))
-                            (.write writer entry)
-                            (.flush writer)
-                            (log/trace (i18n/trs "Finish append to inventory file. ")))]
+        entry (str formatted-serial-number " " not-before " " not-after " /" subject "\n")]
+    (log/debug (i18n/trs "Append \"{1}\" to inventory file {0}" cert-inventory entry))
+    (ks-file/atomic-write cert-inventory (partial stream-content-to-file cert-inventory entry))
+    (maybe-write-to-infra-serial! serial-number cert-name settings)))
+
+(schema/defn ^:always-validate
+  write-cert-to-inventory!
+  "Same behavior as `write-cert-to-inventory-unlocked! but acquires the inventory lock prior to doing the work.
+  Writes an entry into Puppet's inventory file for a given certificate.
+  The location of this file is defined by Puppet's 'cert_inventory' setting.
+  The inventory is a text file where each line represents a certificate in the
+  following format:
+  $SN $NB $NA /$S
+  where:
+    * $SN = The serial number of the cert.  The serial number is formatted as a
+            hexadecimal number, with a leading 0x, and zero-padded up to four
+            digits, eg. 0x002f.
+    * $NB = The 'not before' field of the cert, as a date/timestamp in UTC.
+    * $NA = The 'not after' field of the cert, as a date/timestamp in UTC.
+    * $S  = The distinguished name of the cert's subject."
+  [cert :- Certificate
+   {:keys [inventory-lock inventory-lock-timeout-seconds] :as settings} :- CaSettings]
     (common/with-safe-write-lock inventory-lock inventory-lock-descriptor inventory-lock-timeout-seconds
-      (log/debug (i18n/trs "Append \"{1}\" to inventory file {0}" cert-inventory entry))
-      (ks-file/atomic-write cert-inventory stream-content-fn)
-      (maybe-write-to-infra-serial! serial-number cert-name settings))))
+      (write-cert-to-inventory-unlocked! cert settings)))
 
 (schema/defn is-subject-in-inventory-row? :- schema/Bool
   [cn-subject :- utils/ValidX500Name
@@ -796,7 +818,6 @@
     (time/after? now not-after-date)
     ;; lack of an end date means we can't tell if it is expired or not, so assume it isn't.
     false))
-
 
 (defn extract-inventory-row-contents
   [row]
@@ -1776,7 +1797,6 @@
         (validate-csr-signature! csr)
         (autosign-certificate-request! subject csr settings report-activity)))))
 
-
 (schema/defn ^:always-validate
   get-certificate-revocation-list :- schema/Str
   "Given the value of the 'cacrl' setting from Puppet,
@@ -2401,3 +2421,82 @@
     (when (crl-expires-in-n-days? infra-crl-path settings crl-expiration-window-days)
       (log/info (i18n/trs "infra crl expiring within 30 days, updating."))
       (update-and-sign-crl! infra-crl-path settings))))
+
+(schema/defn maybe-sign-one :- (schema/enum :signed :not-signed)
+  [subject :- schema/Str
+   csr-path :- schema/Str
+   cacert :- Certificate
+   casubject  :- schema/Str
+   ca-private-key :- PrivateKey
+   {:keys [signeddir ca-ttl allow-auto-renewal allow-subject-alt-names
+           allow-authorization-extensions auto-renewal-cert-ttl] :as ca-settings} :- CaSettings]
+  (try
+    (let [csr (utils/pem->csr csr-path)
+          renewal-ttl (if (and allow-auto-renewal (supports-auto-renewal? csr))
+                        auto-renewal-cert-ttl
+                        ca-ttl)
+          _           (log/debug (i18n/trs "Calculating validity dates from ttl of {0} " renewal-ttl))
+          validity    (cert-validity-dates renewal-ttl)]
+      ;; these ensure/validate functions throw exceptions if the criteria isn't met
+      (ensure-subject-alt-names-allowed! csr allow-subject-alt-names)
+      (ensure-no-authorization-extensions! csr allow-authorization-extensions)
+      (validate-extensions! (utils/get-extensions csr))
+      (validate-csr-signature! csr)
+      (let [signed-cert (utils/sign-certificate casubject
+                                                ca-private-key
+                                                (next-serial-number! ca-settings)
+                                                (:not-before validity)
+                                                (:not-after validity)
+                                                (utils/cn subject)
+                                                (utils/get-public-key csr)
+                                                (create-agent-extensions csr cacert))]
+        (write-cert-to-inventory-unlocked! signed-cert ca-settings)
+        (write-cert signed-cert (path-to-cert signeddir subject))
+        (delete-certificate-request! ca-settings subject)
+        ;; success case, add the host to the set of signed results
+        :signed))
+    (catch Throwable e
+      (log/debug e (i18n/trs "Failed in bulk signing for entry {0}" subject))
+      ;; failure case, add the host to the set of not signed results
+      :not-signed)))
+
+(schema/defn ^:always-validate
+  sign-multiple-certificate-signing-requests! :- {:signed [schema/Str]
+                                                  :not-signed [schema/Str]}
+  [subjects :- [schema/Str]
+   {:keys [cacert cakey csrdir
+           inventory-lock inventory-lock-timeout-seconds
+           serial-lock serial-lock-timeout-seconds] :as ca-settings} :- CaSettings
+   report-activity]
+  (let [;; if part of a CA bundle, the intermediate CA will be first in the chain
+        cacert      (utils/pem->ca-cert cacert cakey)
+        casubject (utils/get-subject-from-x509-certificate cacert)
+        ca-private-key  (utils/pem->private-key cakey)]
+    (when-not (empty? subjects)
+      ;; since we are going to be manipulating the serial file and the inventory file for multiple entries,
+      ;; acquire the locks to prevent lock thrashing
+      (common/with-safe-write-lock serial-lock serial-lock-descriptor serial-lock-timeout-seconds
+        (common/with-safe-write-lock inventory-lock inventory-lock-descriptor inventory-lock-timeout-seconds
+          (let [results
+                ;; loop through the subjects, one at a time, and collect the results for success or failure.
+                (loop [s subjects
+                       result {:signed []
+                               :not-signed []}]
+                  (if-not (empty? s)
+                    (let [subject (first s)
+                          csr-path (path-to-cert-request csrdir subject)]
+                      (if (fs/exists? csr-path)
+                        (let [_ (log/trace (i18n/trs "File exists at {0}" csr-path))
+                              one-result (maybe-sign-one subject csr-path cacert casubject ca-private-key ca-settings)]
+                          ;; one-result is either :signed or :not-signed
+                          (recur (rest s)
+                                 (update result one-result conj subject)))
+                        (do
+                          (log/trace (i18n/trs "File does not exist at {0}" csr-path))
+                          (recur (rest s)
+                                 (update result :not-signed conj subject)))))
+                    result))]
+            ;; submit the signing activity as one entry for all the hosts.
+            (when-not (empty? (:signed results))
+              (report-activity (:signed results) "signed"))
+            results))))))
