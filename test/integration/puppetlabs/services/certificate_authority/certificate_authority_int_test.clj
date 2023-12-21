@@ -72,23 +72,29 @@
              public-key
              ca-exts)}))
 
+(defn generate-a-csr
+  [certname extensions attributes]
+  (let [key-pair (ssl-utils/generate-key-pair)
+        csr (ssl-utils/generate-certificate-request
+              key-pair
+              (ssl-utils/cn certname)
+              extensions
+              attributes)
+        csr-path (str bootstrap/server-conf-dir "/ca/requests/" certname ".pem")]
+    (ssl-utils/obj->pem! csr csr-path)
+    key-pair))
+
 (defn generate-and-sign-a-cert!
   [certname]
   (let [cert-path (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")
         key-path (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
         ca-cert-path (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
-        key-pair (ssl-utils/generate-key-pair)
-        csr (ssl-utils/generate-certificate-request
-              key-pair
-              (ssl-utils/cn certname))
-        csr-path (str bootstrap/server-conf-dir "/ca/requests/" certname ".pem")
         status-url (str "https://localhost:8140/puppet-ca/v1/certificate_status/" certname)
         cert-endpoint (str "https://localhost:8140/puppet-ca/v1/certificate/" certname)
         request-opts {:ssl-cert cert-path
                       :ssl-key key-path
-                      :ssl-ca-cert ca-cert-path}]
-
-    (ssl-utils/obj->pem! csr csr-path)
+                      :ssl-ca-cert ca-cert-path}
+        key-pair (generate-a-csr certname [] [])]
     (http-client/put
       status-url
       (merge request-opts
@@ -1166,17 +1172,26 @@
         :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
         :ssl-crl-path (str bootstrap/server-conf-dir "/ssl/crl.pem")}}
       
-      (testing "returns 200 with valid payload" 
-        (let [random-certname (ks/rand-str :alpha-lower 16) 
+      (testing "returns 200 with valid payload"
+        ;; note- more extensive testing of the behavior is done with the testing in sign-multiple-certificate-signing-requests!-test
+        (let [certname (ks/rand-str :alpha-lower 16)
+              certname-no-exist (ks/rand-str :alpha-lower 16)
+              certname-with-bad-extension (ks/rand-str :alpha-lower 16)
+              _ (generate-a-csr certname [] [])
+              _ (generate-a-csr certname-with-bad-extension [{:oid "1.9.9.9.9.9.0" :value "true" :critical false}] [])
               response (http-client/post
                         "https://localhost:8140/puppet-ca/v1/sign" 
-                        {:body (json/encode {:certnames [random-certname]})
+                        {:body (json/encode {:certnames [certname certname-no-exist certname-with-bad-extension]})
                          :ssl-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
                          :ssl-key (str bootstrap/server-conf-dir "/ca/ca_key.pem")
                          :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
                          :as :text
                          :headers {"Accept" "application/json"}})]
-        (is (= 200 (:status response)))))
+        (is (= 200 (:status response)))
+        (is (= {:signed [certname]
+                :no-csr [certname-no-exist]
+                :signing-errors [certname-with-bad-extension]}
+               (json/parse-string (:body response) true)))))
       (testing "throws schema violation for invalid certname"
         (let [error-msg "{\"kind\":\"schema-violation\""
               response (http-client/post

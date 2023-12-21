@@ -261,7 +261,8 @@
 
 (schema/defn handle-bulk-cert-signing
   [request
-   _ca-settings :- ca/CaSettings]
+   ca-settings :- ca/CaSettings
+   report-activity]
   (let [json-body (try-to-parse (:body request)) 
         certnames (:certnames json-body)] 
     (if-let [schema-error (schema/check Certnames certnames)]
@@ -270,7 +271,7 @@
                                                   :error (str schema-error)}))
           (rr/status 422)
           (rr/content-type "application/json"))
-      (-> (rr/response (cheshire/generate-string {}))
+      (-> (rr/response (cheshire/generate-string (ca/sign-multiple-certificate-signing-requests! certnames ca-settings report-activity)))
           (rr/status 200)
           (rr/content-type "application/json")))))
 
@@ -566,7 +567,7 @@
       (POST ["/certificate_renewal"] request
         (handle-cert-renewal request ca-settings report-activity))
       (POST ["/sign"] request
-        (handle-bulk-cert-signing request ca-settings))
+        (handle-bulk-cert-signing request ca-settings report-activity))
       (POST ["/sign/all"] request
         (handle-bulk-cert-signing-all request ca-settings)))
     (comidi/not-found "Not Found")))
