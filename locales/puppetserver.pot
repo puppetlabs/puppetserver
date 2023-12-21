@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: ceb06e9ff3ca79e7c06a65560a636fb86aec02e3\n"
+"X-Git-Ref: c5e352f934be554524cf5828c7b3933ed4f11951\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -428,6 +428,22 @@ msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 msgid "infra crl expiring within 30 days, updating."
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Calculating validity dates from ttl of {0} "
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Failed in bulk signing for entry {0}"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "File exists at {0}"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "File does not exist at {0}"
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/cli/subcommand.clj
