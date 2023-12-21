@@ -1152,6 +1152,67 @@
                       :body "Bad data"})]
        (is (= 400 (:status response)))))))
 
+(deftest ca-bulk-signing-endpoint-test 
+  (testing "ca bulk signing endpoint "
+    (bootstrap/with-puppetserver-running-with-mock-jrubies
+      "JRuby mocking is safe here because all of the requests are to the CA
+       endpoints, which are implemented in Clojure."
+      app
+      {:jruby-puppet
+       {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
+       :webserver
+       {:ssl-cert (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")
+        :ssl-key (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
+        :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+        :ssl-crl-path (str bootstrap/server-conf-dir "/ssl/crl.pem")}}
+      
+      (testing "returns 200 with valid payload" 
+        (let [random-certname (ks/rand-str :alpha-lower 16) 
+              response (http-client/post
+                        "https://localhost:8140/puppet-ca/v1/sign" 
+                        {:body (json/encode {:certnames [random-certname]})
+                         :ssl-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                         :ssl-key (str bootstrap/server-conf-dir "/ca/ca_key.pem")
+                         :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                         :as :text
+                         :headers {"Accept" "application/json"}})]
+        (is (= 200 (:status response)))))
+      (testing "throws schema violation for invalid certname"
+        (let [error-msg "{\"kind\":\"schema-violation\""
+              response (http-client/post
+                        "https://localhost:8140/puppet-ca/v1/sign"
+                        {:body (json/encode {:certnames [1 2 3]})
+                         :ssl-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                         :ssl-key (str bootstrap/server-conf-dir "/ca/ca_key.pem")
+                         :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                         :as :text
+                         :headers {"Accept" "application/json"}})
+              body (:body response)]
+          (is (= 422 (:status response)))
+          (is (.contains body error-msg)))))))
+
+(deftest ca-bulk-signing-all-endpoint-test
+  (testing "returns 200 response"
+    (bootstrap/with-puppetserver-running-with-mock-jrubies
+      "JRuby mocking is safe here because all of the requests are to the CA
+       endpoints, which are implemented in Clojure."
+      app
+      {:jruby-puppet
+       {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
+       :webserver
+       {:ssl-cert (str bootstrap/server-conf-dir "/ssl/certs/localhost.pem")
+        :ssl-key (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
+        :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+        :ssl-crl-path (str bootstrap/server-conf-dir "/ssl/crl.pem")}}
+      (let [response (http-client/post
+                      "https://localhost:8140/puppet-ca/v1/sign/all"
+                      {:ssl-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                       :ssl-key (str bootstrap/server-conf-dir "/ca/ca_key.pem")
+                       :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                       :as :text
+                       :headers {"Accept" "application/json"}})]
+        (is (= 200 (:status response)))))))
+
 (deftest ca-certificate-renew-endpoint-test
   (testing "with the feature enabled"
     (testing "with allow-header-cert-info = false (default)"
