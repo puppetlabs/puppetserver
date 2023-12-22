@@ -2422,7 +2422,7 @@
       (log/info (i18n/trs "infra crl expiring within 30 days, updating."))
       (update-and-sign-crl! infra-crl-path settings))))
 
-(schema/defn maybe-sign-one :- (schema/enum :signed :not-signed)
+(schema/defn maybe-sign-one :- (schema/enum :signed :signing-errors)
   [subject :- schema/Str
    csr-path :- schema/Str
    cacert :- Certificate
@@ -2458,11 +2458,12 @@
     (catch Throwable e
       (log/debug e (i18n/trs "Failed in bulk signing for entry {0}" subject))
       ;; failure case, add the host to the set of not signed results
-      :not-signed)))
+      :signing-errors)))
 
 (schema/defn ^:always-validate
   sign-multiple-certificate-signing-requests! :- {:signed [schema/Str]
-                                                  :not-signed [schema/Str]}
+                                                  :no-csr [schema/Str]
+                                                  :signing-errors [schema/Str]}
   [subjects :- [schema/Str]
    {:keys [cacert cakey csrdir
            inventory-lock inventory-lock-timeout-seconds
@@ -2481,20 +2482,21 @@
                 ;; loop through the subjects, one at a time, and collect the results for success or failure.
                 (loop [s subjects
                        result {:signed []
-                               :not-signed []}]
+                               :no-csr []
+                               :signing-errors[]}]
                   (if-not (empty? s)
                     (let [subject (first s)
                           csr-path (path-to-cert-request csrdir subject)]
                       (if (fs/exists? csr-path)
                         (let [_ (log/trace (i18n/trs "File exists at {0}" csr-path))
                               one-result (maybe-sign-one subject csr-path cacert casubject ca-private-key ca-settings)]
-                          ;; one-result is either :signed or :not-signed
+                          ;; one-result is either :signed or :signing-errors
                           (recur (rest s)
                                  (update result one-result conj subject)))
                         (do
                           (log/trace (i18n/trs "File does not exist at {0}" csr-path))
                           (recur (rest s)
-                                 (update result :not-signed conj subject)))))
+                                 (update result :no-csr conj subject)))))
                     result))]
             ;; submit the signing activity as one entry for all the hosts.
             (when-not (empty? (:signed results))

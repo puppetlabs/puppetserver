@@ -2280,7 +2280,8 @@
             (is (fs/exists? (:csr-path csr-info))))
           (testing "correctly signs"
             (is (= {:signed     [(:subject-name csr-info)]
-                    :not-signed []}
+                    :no-csr []
+                    :signing-errors []}
                    (ca/sign-multiple-certificate-signing-requests! [(:subject-name csr-info)] settings report-activity))))
           (testing "csr is removed after routine"
             (is (not (fs/exists? (:csr-path csr-info)))))
@@ -2315,7 +2316,8 @@
       (testing "correctly rejects a non-existent csr"
         (let [random-csr-name (ks/rand-str :alpha-digits 8)]
           (is (= {:signed     []
-                  :not-signed [random-csr-name]}
+                  :no-csr [random-csr-name]
+                  :signing-errors []}
                  (ca/sign-multiple-certificate-signing-requests! [random-csr-name] settings report-activity)))))
       (testing "correctly rejects a cert with Subject alternative names"
         (let [alt-name-ext {:oid      utils/subject-alt-name-oid
@@ -2323,17 +2325,20 @@
                             :critical false}
               csr-info (generate-csr settings [alt-name-ext] [{:oid ca/pp_auth_auto_renew-attribute :value true}])]
           (is (= {:signed     []
-                  :not-signed [(:subject-name csr-info)]}
+                  :no-csr []
+                  :signing-errors [(:subject-name csr-info)]}
                  (ca/sign-multiple-certificate-signing-requests! [(:subject-name csr-info)] settings report-activity)))))
       (testing "correctly rejects a cert with authorization extensions when disabled"
         (let [csr-info (generate-csr settings [{:oid ca/ppAuthCertExt :value "true" :critical false}] [{:oid ca/pp_auth_auto_renew-attribute :value true}])]
           (is (= {:signed     []
-                  :not-signed [(:subject-name csr-info)]}
+                  :no-csr []
+                  :signing-errors [(:subject-name csr-info)]}
                  (ca/sign-multiple-certificate-signing-requests! [(:subject-name csr-info)] settings report-activity)))))
       (testing "correctly rejects a cert with unapproved extensions"
         (let [csr-info (generate-csr settings [{:oid "1.9.9.9.9.9.0" :value "true" :critical false}] [{:oid ca/pp_auth_auto_renew-attribute :value true}])]
           (is (= {:signed     []
-                  :not-signed [(:subject-name csr-info)]}
+                  :no-csr []
+                  :signing-errors [(:subject-name csr-info)]}
                  (ca/sign-multiple-certificate-signing-requests! [(:subject-name csr-info)] settings report-activity))))))
     (testing "multiple entry with both bad and good csrs"
       (let [count-range (range 0 100)
@@ -2360,7 +2365,8 @@
             all-names (shuffle (concat (map :subject-name all-csrs) random-csr-names))
             result (ca/sign-multiple-certificate-signing-requests! all-names settings report-activity)
             signed-set (set (:signed result))
-            unsigned-set (set (:not-signed result))
+            not-found-set (set (:no-csr result))
+            unsigned-set (set (:signing-errors result))
             good-csrs-set (set (map :subject-name good-csrs))
             random-names-set (set random-csr-names)
             bad-names-set (set (map :subject-name bad-names))
@@ -2371,8 +2377,8 @@
                  signed-set))
           (testing "none of the valid csrs should be in the not-signed set"
             (is (empty? (clojure.set/intersection unsigned-set good-csrs-set))))
-          (testing "all of the random names should be in the not-signed"
-            (is (= random-names-set (clojure.set/intersection unsigned-set random-names-set))))
+          (testing "all of the random names should be in the not-found-set"
+            (is (= random-names-set (clojure.set/intersection not-found-set random-names-set))))
           (testing "all of the alt names should be in the not-signed"
             (is (= bad-names-set (clojure.set/intersection unsigned-set bad-names-set))))
           (testing "all of the unauthorized names should be in the not-signed"
