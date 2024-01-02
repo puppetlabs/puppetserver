@@ -9,6 +9,7 @@
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.kitchensink.file :as ks-file]
             [puppetlabs.puppetserver.certificate-authority :as ca]
+            [puppetlabs.puppetserver.common :as common]
             [puppetlabs.services.ca.ca-testutils :as testutils]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.ssl-utils.core :as utils]
@@ -19,8 +20,10 @@
   (:import (com.puppetlabs.ssl_utils SSLUtils)
            (java.io ByteArrayInputStream
                     ByteArrayOutputStream
-                    StringReader
+                    File StringReader
                     StringWriter)
+           (java.nio.file Files Path)
+           (java.nio.file.attribute FileAttribute)
            (java.security MessageDigest PublicKey)
            (java.security.cert X509CRL X509Certificate)
            (java.time LocalDateTime ZoneOffset)
@@ -2385,3 +2388,30 @@
             (is (= unauthorized-set (clojure.set/intersection unsigned-set unauthorized-set))))
           (testing "all of the unapproved names should be in the not-signed"
             (is (= unapproved-extensions-set (clojure.set/intersection unsigned-set unapproved-extensions-set)))))))))
+
+(def default-permissions
+  (into-array FileAttribute [(ks-file/perms->attribute "rw-------")]))
+
+(deftest get-paths-to-all-certificate-requests-test
+  (testing "finds all files in directory ending with the pem suffix"
+    (let [^File temp-directory (ks/temp-dir)
+          path-to-file (.toPath temp-directory)
+          a-pem-file-names (set (for [i (range 0 100)]
+                                  (format "a-%d.pem" i)))
+          b-pem-file-names (set (for [i (range 0 100)]
+                                  (format "b-%d.pem" i)))
+          a-foo-file-names  (set (for [i (range 0 100)]
+                                   (format "a-%d.foo" i)))
+          all-pem-file-names (clojure.set/union a-pem-file-names b-pem-file-names)]
+
+      ;; create a lot of files that match that end with pem
+      (doall
+        (for [^String i all-pem-file-names]
+          (Files/createFile (.resolve ^Path path-to-file i) default-permissions)))
+      ;; create a lot of files that don't end that start with pem
+      (doall
+        (for [^String i a-foo-file-names]
+          (Files/createFile (.resolve path-to-file i) default-permissions)))
+      (let [result (ca/get-paths-to-all-certificate-requests (.toString temp-directory))
+            file-names (set (common/extract-file-names-from-paths result))]
+        (is (= (set file-names) all-pem-file-names))))))

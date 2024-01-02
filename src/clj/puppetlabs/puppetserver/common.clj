@@ -1,7 +1,8 @@
 (ns puppetlabs.puppetserver.common
-  (:require [clojure.tools.logging :as log]
-            [schema.core :as schema]
+  (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [puppetlabs.i18n.core :as i18n]
+            [schema.core :as schema]
             [slingshot.slingshot :as sling])
   (:import (java.util List Map Set)
            (java.util.concurrent TimeUnit)
@@ -124,3 +125,19 @@
   (let [yaml (new Yaml)
         data (.load yaml ^String yaml-string)]
     (java->clj data)))
+
+(defn extract-file-names-from-paths
+  "Given a sequence of java.nio.file.Path objects, return a lazy sequence of the file names of the file represented
+  by those paths. Example ['/foo/bar/baz.tmp'] will result in ['baz.tmp']"
+  [paths-to-files]
+  (map #(.toString (.getFileName %)) paths-to-files))
+
+(defn remove-suffix-from-file-names
+  "Given a suffix, and a sequence of file-names, remove the suffix from the filenames"
+  [files suffix]
+  (let [suffix-size (count suffix)]
+    (map (fn [s]
+           (if (str/ends-with? s suffix)
+             (subs s 0 (- (count s) suffix-size))
+             s))
+         files)))

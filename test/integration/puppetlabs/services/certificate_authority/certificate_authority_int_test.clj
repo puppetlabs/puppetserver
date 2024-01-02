@@ -8,6 +8,7 @@
     [me.raynes.fs :as fs]
     [puppetlabs.http.client.sync :as http-client]
     [puppetlabs.kitchensink.core :as ks]
+    [puppetlabs.kitchensink.file :as ks-file]
     [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
     [puppetlabs.puppetserver.certificate-authority :as ca]
     [puppetlabs.puppetserver.testutils :as testutils :refer [http-get]]
@@ -83,6 +84,11 @@
         csr-path (str bootstrap/server-conf-dir "/ca/requests/" certname ".pem")]
     (ssl-utils/obj->pem! csr csr-path)
     key-pair))
+
+(defn delete-all-csrs
+  []
+  (let [csr-path (str bootstrap/server-conf-dir "/ca/requests/")]
+    (ks-file/delete-recursively csr-path)))
 
 (defn generate-and-sign-a-cert!
   [certname]
@@ -1207,6 +1213,8 @@
           (is (.contains body error-msg)))))))
 
 (deftest ca-bulk-signing-all-endpoint-test
+  ;; ensure the csr directory is empty as other tests leave cruft behind
+  (delete-all-csrs)
   (testing "returns 200 response"
     (bootstrap/with-puppetserver-running-with-mock-jrubies
       "JRuby mocking is safe here because all of the requests are to the CA
@@ -1219,14 +1227,25 @@
         :ssl-key (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
         :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
         :ssl-crl-path (str bootstrap/server-conf-dir "/ssl/crl.pem")}}
-      (let [response (http-client/post
+      (testing "returns 200 with valid payload"
+        ;; note- more extensive testing of the behavior is done with the testing in sign-multiple-certificate-signing-requests!-test
+        (let [certname (ks/rand-str :alpha-lower 16)
+              certname-with-bad-extension (ks/rand-str :alpha-lower 16)
+              _ (generate-a-csr certname [] [])
+              _ (generate-a-csr certname-with-bad-extension [{:oid "1.9.9.9.9.9.0" :value "true" :critical false}] [])
+              response (http-client/post
                       "https://localhost:8140/puppet-ca/v1/sign/all"
                       {:ssl-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
                        :ssl-key (str bootstrap/server-conf-dir "/ca/ca_key.pem")
                        :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
                        :as :text
                        :headers {"Accept" "application/json"}})]
-        (is (= 200 (:status response)))))))
+          (is (= 200 (:status response)))
+          (is (= {:signed [certname]
+                  ;; this would represent any files that are removed between when the set is collected, and when they are processed.
+                  :no-csr []
+                  :signing-errors [certname-with-bad-extension]}
+                 (json/parse-string (:body response) true))))))))
 
 (deftest ca-certificate-renew-endpoint-test
   (testing "with the feature enabled"
