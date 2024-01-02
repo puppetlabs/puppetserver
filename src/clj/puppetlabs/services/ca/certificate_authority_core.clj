@@ -276,11 +276,14 @@
           (rr/content-type "application/json")))))
 
 (schema/defn handle-bulk-cert-signing-all
-  [_request
-   _ca-settings :- ca/CaSettings]
-  (-> (rr/response (cheshire/generate-string {}))
-      (rr/status 200)
-      (rr/content-type "application/json")))
+  [ca-settings :- ca/CaSettings report-activity]
+  (let [csr-files (-> (ca/get-paths-to-all-certificate-requests (:csrdir ca-settings))
+                      (common/extract-file-names-from-paths)
+                      (common/remove-suffix-from-file-names ".pem"))
+        results (ca/sign-multiple-certificate-signing-requests! csr-files ca-settings report-activity)]
+    (-> (rr/response (cheshire/generate-string results))
+        (rr/status 200)
+        (rr/content-type "application/json"))))
 
 (schema/defn ^:always-validate
   handle-cert-renewal
@@ -568,8 +571,8 @@
         (handle-cert-renewal request ca-settings report-activity))
       (POST ["/sign"] request
         (handle-bulk-cert-signing request ca-settings report-activity))
-      (POST ["/sign/all"] request
-        (handle-bulk-cert-signing-all request ca-settings)))
+      (POST ["/sign/all"] _request
+        (handle-bulk-cert-signing-all  ca-settings report-activity)))
     (comidi/not-found "Not Found")))
 
 (schema/defn ^:always-validate

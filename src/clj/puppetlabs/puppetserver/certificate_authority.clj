@@ -18,7 +18,7 @@
             [slingshot.slingshot :as sling])
   (:import (java.io BufferedReader BufferedWriter ByteArrayInputStream ByteArrayOutputStream File FileNotFoundException IOException InputStream Reader StringReader)
            (java.nio CharBuffer)
-           (java.nio.file Files)
+           (java.nio.file Files Path Paths)
            (java.nio.file.attribute FileAttribute PosixFilePermissions)
            (java.security PrivateKey PublicKey)
            (java.security.cert CRLException CertPathValidatorException X509CRL X509Certificate)
@@ -1529,6 +1529,18 @@
   (let [cert-request-path (path-to-cert-request csrdir subject)]
     (when (fs/exists? cert-request-path)
       (slurp cert-request-path))))
+
+(schema/defn ^:always-validate
+  get-paths-to-all-certificate-requests :- [Path]
+  "Given a csr directory, return Path entries to all the files that could be CSRs"
+  [csrdir :- schema/Str]
+  (let [csr-dir-as-path (Paths/get csrdir (into-array String []))]
+    (if (Files/isDirectory csr-dir-as-path ks-file/nofollow-links)
+      (with-open [dir-stream (Files/newDirectoryStream csr-dir-as-path "*.pem")]
+        (doall (iterator-seq (.iterator dir-stream))))
+      (do
+        (log/error (i18n/trs "Attempting to use {0} as CSR directory, but it is not a directory." csrdir))
+        []))))
 
 (schema/defn ^:always-validate
   autosign-csr? :- schema/Bool
