@@ -24,7 +24,7 @@
                                              :env {"GEM_HOME" dropsonde-dir
                                                    "GEM_PATH" dropsonde-dir
                                                    "HOME" dropsonde-dir
-                                                   "PUPPET_CONFDIF" confdir
+                                                   "PUPPET_CONFDIR" confdir
                                                    "PUPPET_CODEDIR" codedir
                                                    "PUPPET_VARDIR" vardir
                                                    "PUPPET_LOGDIR" logdir}})]
