@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: c5e352f934be554524cf5828c7b3933ed4f11951\n"
+"X-Git-Ref: f3edc7e8a031be290af5a8ac2e04a2357968bfe0\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -266,6 +266,10 @@ msgstr ""
 msgid ""
 "Autosign command ''{0}'' rejected certificate ''{1}'' because the exit code "
 "was {2}, not zero"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Attempting to use {0} as CSR directory, but it is not a directory."
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
