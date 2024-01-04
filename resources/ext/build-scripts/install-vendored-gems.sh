@@ -33,6 +33,13 @@ echo "jruby-puppet: { gem-home: ${DESTDIR}/opt/puppetlabs/server/data/puppetserv
 
 install_gems "${DIR}/jruby-gem-list.txt"
 
+echo "Installing JRuby Standard Library gems"
+cat "${DIR}/jruby-stdlib-gem-list.txt"
+
+echo "jruby-puppet: { gem-home: ${DESTDIR}/opt/puppetlabs/server/data/puppetserver/vendored-jruby-gems }" > jruby.conf
+
+install_gems "${DIR}/jruby-stdlib-gem-list.txt"
+
 # We need to ignore dependencies to prevent puppetserver-ca from being installed
 # with facter2 (from gem dependency resolution) and facter3 (from puppet-agent packages)
 # If puppetserver ever loses its dependency on puppet-agent or if puppet-agent ever loses
