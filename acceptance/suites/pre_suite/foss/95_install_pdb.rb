@@ -38,6 +38,7 @@ node default {
   class { 'puppetdb':
     manage_firewall     => false,
     manage_package_repo => #{manage_package_repo},
+    postgres_version    => '14',
   }
 
   class { 'puppetdb::master::config':
