@@ -47,7 +47,9 @@ step 'Update EL 8 postgresql repos' do
 end
 
 step 'Install PuppetDB module' do
-  on(master, puppet('module install puppetlabs-puppetdb'))
+  # While we sort out a new puppetlabs-puppetdb module release, point to a branch that allows us to take the latest puppetlabs-postgresql module
+  on(master, 'curl -L https://github.com/puppetlabs/puppetlabs-puppetdb/archive/refs/heads/bump-postgres.tar.gz --output /tmp/puppetlabs-puppetdb')
+  on(master, puppet('module install /tmp/puppetlabs-puppetdb'))
 end
 
 if master.platform.variant == 'debian'
@@ -61,6 +63,7 @@ node default {
   class { 'puppetdb':
     manage_firewall     => false,
     manage_package_repo => #{manage_package_repo},
+    postgres_version    => '14',
   }
 
   class { 'puppetdb::master::config':
