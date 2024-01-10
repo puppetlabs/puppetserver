@@ -121,8 +121,6 @@ end
 
 step 'SETUP: Install and configure r10k, and perform the initial commit' do
   on master, "puppet config set server #{fqdn}"
-  # For puppet 7 with ruby 2.7 we need to pin back to a ruby 2 compatable gem
-  on master, '/opt/puppetlabs/puppet/bin/gem install faraday -v 2.8.1'
   on master, '/opt/puppetlabs/puppet/bin/gem install r10k'
   on master, "cd #{git_local_repo} && git checkout -b production"
   r10k_yaml=<<-R10K
