@@ -25,6 +25,9 @@
 (defproject puppetlabs/puppetserver ps-version
   :description "Puppet Server"
 
+  :license {:name "Apache License, Version 2.0"
+              :url "http://www.apache.org/licenses/LICENSE-2.0.html"}
+
   :min-lein-version "2.9.1"
 
   :parent-project {:coords [puppetlabs/clj-parent "5.6.7"]
@@ -126,13 +129,13 @@
              :dev-deps  {:dependencies [[org.bouncycastle/bcpkix-jdk18on]]}
              :dev [:defaults :dev-deps]
              :fips-deps {:dependencies [[org.bouncycastle/bcpkix-fips]
-                                       [org.bouncycastle/bc-fips]
-                                       [org.bouncycastle/bctls-fips]]
+                                        [org.bouncycastle/bc-fips]
+                                        [org.bouncycastle/bctls-fips]]
                          :jvm-opts ~(let [version (System/getProperty "java.specification.version")
-                                         [major minor _] (clojure.string/split version #"\.")
-                                         unsupported-ex (ex-info "Unsupported major Java version."
-                                                          {:major major
-                                                           :minor minor})]
+                                          [major minor _] (clojure.string/split version #"\.")
+                                          unsupported-ex (ex-info "Unsupported major Java version."
+                                                           {:major major
+                                                            :minor minor})]
                                       (condp = (java.lang.Integer/parseInt major)
                                         1 (if (= 8 (java.lang.Integer/parseInt minor))
                                             ["-Djava.security.properties==./dev-resources/java.security.jdk8-fips"]
