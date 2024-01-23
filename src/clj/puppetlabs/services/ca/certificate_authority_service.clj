@@ -29,7 +29,7 @@
 (tk/defservice certificate-authority-service
   CaService
    {:required 
-    [[:PuppetServerConfigService get-config get-in-config]
+    [[:CertificateAuthorityConfigService get-config get-in-config]
       [:WebroutingService add-ring-handler get-route]
       [:AuthorizationService wrap-with-authorization-check]
       [:FilesystemWatchService create-watcher]
@@ -39,10 +39,9 @@
   (init
     [this context]
     (let [path (get-route this)
-          settings (ca/config->ca-settings (get-config))
           puppet-version (get-in-config [:puppetserver :puppet-version])
-          custom-oid-file (get-in-config [:puppetserver :trusted-oid-mapping-file])
-          oid-mappings (ca/get-oid-mappings custom-oid-file)
+          settings (:ca-settings (get-config))
+          oid-mappings (:oid-mappings settings)
           auth-handler (fn [request] (wrap-with-authorization-check request {:oid-map oid-mappings}))
           ca-crl-file (.getCanonicalPath (fs/file
                                           (get-in-config [:puppetserver :cacrl])))
@@ -60,7 +59,6 @@
                                             (.getMessage e)
                                             (first payload))))))
                             (constantly nil))]
-      (ca/validate-settings! settings)
       (ca/initialize! settings)
       (log/info (i18n/trs "CA Service adding a ring handler"))
       (add-ring-handler
@@ -115,7 +113,7 @@
 
   (initialize-master-ssl!
    [this master-settings certname]
-   (let [settings (ca/config->ca-settings (get-config))]
+   (let [settings (:ca-settings (get-config))]
      (ca/initialize-master-ssl! master-settings certname settings)))
 
   (retrieve-ca-cert!

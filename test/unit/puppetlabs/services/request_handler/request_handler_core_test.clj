@@ -22,6 +22,7 @@
             [puppetlabs.services.config.puppet-server-config-service :as ps-config]
             [puppetlabs.services.master.master-service :as master-service]
             [puppetlabs.services.ca.certificate-authority-service :as ca-service]
+            [puppetlabs.services.config.certificate-authority-config-service :as ca-config-service]
             [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :as routing-service]
             [puppetlabs.trapperkeeper.services.authorization.authorization-service :as authorization-service]
             [puppetlabs.trapperkeeper.services.metrics.metrics-service :as metrics]
@@ -327,6 +328,7 @@
                      ps-config/puppet-server-config-service
                      jetty10/jetty10-service
                      ca-service/certificate-authority-service
+                     ca-config-service/certificate-authority-config-service
                      authorization-service/authorization-service
                      routing-service/webrouting-service
                      custom-vcs

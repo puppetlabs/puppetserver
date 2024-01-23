@@ -1,12 +1,14 @@
 (ns puppetlabs.services.config.puppet-server-config-service-test
   (:require [clojure.test :refer [deftest is testing]]
             [puppetlabs.services.protocols.puppet-server-config :refer [get-config get-in-config]]
+            [puppetlabs.services.protocols.certificate-authority-config :as ca-conf-proto]
             [puppetlabs.services.config.puppet-server-config-service :refer [puppet-server-config-service]]
+            [puppetlabs.services.config.certificate-authority-config-service :refer [certificate-authority-config-service]]
             [puppetlabs.services.config.puppet-server-config-core :as core]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
-            [puppetlabs.puppetserver.certificate-authority :as ca]
+            [puppetlabs.services.config.certificate-authority-config-core :as ca-settings]
             [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging logged?]]
             [clj-semver.core :as semver]
             [puppetlabs.trapperkeeper.core :as tk]
@@ -15,7 +17,8 @@
 
 (def service-and-deps
   (conj jruby-testutils/jruby-service-and-dependencies
-        puppet-server-config-service))
+        puppet-server-config-service
+        certificate-authority-config-service))
 
 (defn service-and-deps-with-mock-jruby
   [config]
@@ -112,12 +115,12 @@
                     (assoc :webserver {:port 8081
                                        :shutdown-timeout-seconds 1}))
                 service (tk-app/get-service app :PuppetServerConfigService)
-                service-config (get-config service)
+                service-config (ca-conf-proto/get-config service)
                 merged-config (merge service-config  {:certificate-authority
                                                       {:allow-auto-renewal true
                                                        :auto-renewal-cert-ttl "50d"
                                                        :ca-ttl "50d"}})
-                settings (ca/config->ca-settings merged-config)
+                settings (ca-settings/config->ca-settings merged-config)
                 app (tk/boot-services-with-config
                       (service-and-deps-with-mock-jruby config)
                        config)]
@@ -142,11 +145,8 @@
                                                                    12}))
                            (assoc :webserver {:port 8081
                                               :shutdown-timeout-seconds 1}))
-                service (tk-app/get-service app :PuppetServerConfigService)
-                service-config (get-config service)
-                merged-config (merge service-config  {:certificate-authority
-                                                      {}})
-                settings (ca/config->ca-settings merged-config)
+                service (tk-app/get-service app :CertificateAuthorityConfigService)
+                settings (-> service ca-conf-proto/get-config :ca-settings)
                 app (tk/boot-services-with-config
                       (service-and-deps-with-mock-jruby config)
                       config)]

@@ -4,7 +4,6 @@
             [puppetlabs.comidi :as comidi]
             [puppetlabs.services.legacy-routes.legacy-routes-core :as legacy-routes-core]
             [puppetlabs.services.ca.certificate-authority-core :as ca-core]
-            [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.services.master.master-core :as master-core]
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.i18n.core :as i18n]
@@ -13,7 +12,7 @@
 (tk/defservice legacy-routes-service
   [[:WebroutingService add-ring-handler get-route]
    [:RequestHandlerService handle-request]
-   [:PuppetServerConfigService get-config]
+   [:CertificateAuthorityConfigService get-config]
    [:JRubyPuppetService]
    [:AuthorizationService wrap-with-authorization-check]
    [:CaService get-auth-handler]
@@ -65,7 +64,7 @@
                                :api-version master-core/puppet-API-version}
           real-ca-service? (= (namespace (tk-services/service-symbol ca-service))
                               "puppetlabs.services.ca.certificate-authority-service")
-          ca-settings (ca/config->ca-settings (get-config))
+          ca-settings (:ca-settings config)
           ca-route-handler (-> (ca-core/web-routes ca-settings nil)
                                ((partial comidi/context path))
                                comidi/routes->handler)

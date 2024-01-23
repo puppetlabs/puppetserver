@@ -16,6 +16,7 @@
             [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.ring-middleware.core :as middleware]
             [puppetlabs.ring-middleware.utils :as middleware-utils]
+            [puppetlabs.services.config.certificate-authority-schemas :as opts]
             [puppetlabs.ssl-utils.core :as utils]
             [puppetlabs.trapperkeeper.authorization.ring :as ring]
             [puppetlabs.trapperkeeper.authorization.ring-middleware :as auth-middleware]
@@ -74,7 +75,7 @@
 
 
 (schema/defn handle-put-certificate-request!
-  [ca-settings :- ca/CaSettings
+  [ca-settings :- opts/CaSettings
    report-activity
    {:keys [body] {:keys [subject]} :route-params :as request}]
   (try+
@@ -89,7 +90,7 @@
 
 (schema/defn resolve-crl-information
   "Create a map that has the appropriate path, lock, timeout and descriptor for the crl being used"
-  [{:keys [enable-infra-crl cacrl infra-crl-path crl-lock crl-lock-timeout-seconds]} :- ca/CaSettings]
+  [{:keys [enable-infra-crl cacrl infra-crl-path crl-lock crl-lock-timeout-seconds]} :- opts/CaSettings]
   {:path (if (true? enable-infra-crl) infra-crl-path cacrl)
    :lock crl-lock
    :descriptor ca/crl-lock-descriptor
@@ -119,7 +120,7 @@
 
 (schema/defn handle-put-certificate-revocation-list!
   [incoming-crl-pem :- InputStream
-   {:keys [cacrl cacert] :as ca-settings} :- ca/CaSettings]
+   {:keys [cacrl cacert] :as ca-settings} :- opts/CaSettings]
   (try
     (let [byte-stream (-> incoming-crl-pem
                           ca/input-stream->byte-array
@@ -139,7 +140,7 @@
 
 (schema/defn handle-delete-certificate-request!
   [subject :- String
-   ca-settings :- ca/CaSettings]
+   ca-settings :- opts/CaSettings]
   (let [response (ca/delete-certificate-request! ca-settings subject)
         outcomes->codes {:success 204 :not-found 404 :error 500}]
     (if (not= (response :outcome) :success) 
@@ -150,7 +151,7 @@
           (rr/status ((response :outcome) outcomes->codes))))))
 
 (schema/defn handle-get-ca-expirations
-  [ca-settings :- ca/CaSettings]
+  [ca-settings :- opts/CaSettings]
   (let [response {:ca-certs (ca/ca-expiration-dates (:cacert ca-settings))
                   :crls (ca/crl-expiration-dates (:cacrl ca-settings))}]
     (-> (rr/response (cheshire/generate-string response))
@@ -165,14 +166,14 @@
       (log/debug e))))
 
 (schema/defn certificate-issued? :- schema/Bool
-  [settings :- ca/CaSettings
+  [settings :- opts/CaSettings
    subject :- schema/Str]
   (or (ca/certificate-exists? settings subject)
       (ca/in-cert-inventory-file? settings subject)))
 
 (schema/defn handle-cert-clean
   [request
-   ca-settings :- ca/CaSettings
+   ca-settings :- opts/CaSettings
    report-activity]
   (if-let [json-body (try-to-parse (:body request))]
     ;; TODO support async mode
@@ -227,7 +228,7 @@
   messaging is specific to the header method of certificate delivery. If the
   certificate is valid, it is returned, otherwise return nil"
   [cert :- X509Certificate
-   ca-settings :- ca/CaSettings]
+   ca-settings :- opts/CaSettings]
   (if-not (ca/is-revoked? cert ca-settings)
     cert
     (log/warn (i18n/trs "Rejecting certificate request because the {0} was specified and the certificate is revoked." auth-middleware/header-cert-name))))
@@ -245,7 +246,7 @@
   If the header isn't set, return the cert from the request.
   "
   [request :- ring/Request
-   {:keys [allow-header-cert-info infra-nodes-path] :as ca-settings} :- ca/CaSettings]
+   {:keys [allow-header-cert-info infra-nodes-path] :as ca-settings} :- opts/CaSettings]
   (let [header-cert-val (get-in request [:headers auth-middleware/header-cert-name])]
     (if allow-header-cert-info
       (validate-header-cert-not-revoked (auth-middleware/header->cert header-cert-val) ca-settings)
@@ -261,7 +262,7 @@
 
 (schema/defn handle-bulk-cert-signing
   [request
-   ca-settings :- ca/CaSettings
+   ca-settings :- opts/CaSettings
    report-activity]
   (let [json-body (try-to-parse (:body request)) 
         certnames (:certnames json-body)] 
@@ -276,7 +277,7 @@
           (rr/content-type "application/json")))))
 
 (schema/defn handle-bulk-cert-signing-all
-  [ca-settings :- ca/CaSettings report-activity]
+  [ca-settings :- opts/CaSettings report-activity]
   (let [csr-files (-> (ca/get-paths-to-all-certificate-requests (:csrdir ca-settings))
                       (common/extract-file-names-from-paths)
                       (common/remove-suffix-from-file-names ".pem"))
@@ -293,7 +294,7 @@
   the request is valid and signed by the this CA. then generate a renewed cert and
   return it in the response body"
   [request
-   {:keys [cacert cakey allow-auto-renewal] :as ca-settings} :- ca/CaSettings
+   {:keys [cacert cakey allow-auto-renewal] :as ca-settings} :- opts/CaSettings
    report-activity]
   (if allow-auto-renewal
     (if-let [request-cert (request->cert request ca-settings)]
@@ -540,7 +541,7 @@
         (as-json-or-pson context)))))
 
 (schema/defn ^:always-validate web-routes :- bidi-schema/RoutePair
-  [ca-settings :- ca/CaSettings
+  [ca-settings :- opts/CaSettings
    report-activity]
   (comidi/routes
     (comidi/context ["/v1"]
@@ -588,7 +589,7 @@
 (schema/defn ^:always-validate
   get-wrapped-handler :- IFn
   [route-handler :- IFn
-   ca-settings :- ca/CaSettings
+   ca-settings :- opts/CaSettings
    path :- schema/Str
    authorization-fn :- IFn
    puppet-version :- schema/Str]

@@ -12,6 +12,8 @@
             [puppetlabs.puppetserver.common :as common]
             [puppetlabs.services.ca.ca-testutils :as testutils]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
+            ;[puppetlabs.services.config.certificate-authority-schemas :as ca-schemas]
+            [puppetlabs.services.config.certificate-authority-config-core :as ca-conf]
             [puppetlabs.ssl-utils.core :as utils]
             [puppetlabs.ssl-utils.simple :as simple]
             [puppetlabs.trapperkeeper.testutils.logging :refer [logged?] :as logutils]
@@ -211,9 +213,9 @@
     (let [settings (assoc
                      (testutils/ca-settings cadir)
                      :ca-ttl
-                     (+ ca/max-ca-ttl 1))]
+                     (+ ca-conf/max-ca-ttl 1))]
       (is (thrown-with-msg? IllegalStateException #"ca_ttl must have a value below"
-                            (ca/validate-settings! settings)))))
+                            (ca-conf/validate-settings! settings)))))
 
   (testing "warns if :client-whitelist is set in c-a.c-s section"
     (let [settings (assoc-in
@@ -221,7 +223,7 @@
                      [:access-control :certificate-status :client-whitelist]
                      ["whitelist"])]
       (logutils/with-test-logging
-        (ca/validate-settings! settings)
+        (ca-conf/validate-settings! settings)
         (is (logutils/logged? #"Remove these settings and create" :warn)))))
 
   (testing "warns if :authorization-required is overridden in c-a.c-s section"
@@ -232,7 +234,7 @@
                       :authorization-required]
                      false)]
       (logutils/with-test-logging
-        (ca/validate-settings! settings)
+        (ca-conf/validate-settings! settings)
         (is (logutils/logged? #"Remove these settings and create" :warn)))))
 
   (testing "warns if :client-whitelist is set incorrectly"
@@ -241,7 +243,7 @@
                      [:access-control :certificate-status :client-whitelist]
                      [])]
       (logutils/with-test-logging
-        (ca/validate-settings! settings)
+        (ca-conf/validate-settings! settings)
         (is (logutils/logged?
               #"remove the 'certificate-authority' configuration"
               :warn))))))
@@ -1961,10 +1963,10 @@
           duration-str-2 "800y 0d 0h 0m 0s"
           duration-str-3 "22d1s"
           duration-str-4 "0s"]
-      (is (= 31626061 (ca/duration-str->sec duration-str-1)))
-      (is (= 25228800000 (ca/duration-str->sec duration-str-2)))
-      (is (= 1900801 (ca/duration-str->sec duration-str-3)))
-      (is (= 0 (ca/duration-str->sec duration-str-4)))))
+      (is (= 31626061 (common/duration-str->sec duration-str-1)))
+      (is (= 25228800000 (common/duration-str->sec duration-str-2)))
+      (is (= 1900801 (common/duration-str->sec duration-str-3)))
+      (is (= 0 (common/duration-str->sec duration-str-4)))))
   (testing "an invalid duration string returns nil"
     (let [duration-str-1 "not a duration string 283q 3z 3x 03o"
           duration-str-2 "not a duration string 20d 20s"
@@ -1972,19 +1974,20 @@
           duration-str-4 "0y 0d 0h 0m 0s 0x 0y 0z"
           duration-str-5 33
           duration-str-6 nil]
-      (is (= nil (ca/duration-str->sec duration-str-1)))
-      (is (= nil (ca/duration-str->sec duration-str-2)))
-      (is (= nil (ca/duration-str->sec duration-str-3)))
-      (is (= nil (ca/duration-str->sec duration-str-4)))
-      (is (= nil (ca/duration-str->sec duration-str-5)))
-      (is (= nil (ca/duration-str->sec duration-str-6))))))
+      (is (= nil (common/duration-str->sec duration-str-1)))
+      (is (= nil (common/duration-str->sec duration-str-2)))
+      (is (= nil (common/duration-str->sec duration-str-3)))
+      (is (= nil (common/duration-str->sec duration-str-4)))
+      (is (= nil (common/duration-str->sec duration-str-5)))
+      (is (= nil (common/duration-str->sec duration-str-6))))))
+
 (deftest renew-certificate!-test
   (testing "creates a new signed cert"
     (let [settings (testutils/ca-sandbox! cadir)
           ;; auto-renewal-cert-ttl is expected to be an int
           ;; unit tests skip some of the conversion flow so
           ;; transform the duration here
-          converted-auto-renewal-cert-ttl (ca/duration-str->sec (:auto-renewal-cert-ttl settings))
+          converted-auto-renewal-cert-ttl (common/duration-str->sec (:auto-renewal-cert-ttl settings))
           updated-settings (assoc settings :auto-renewal-cert-ttl converted-auto-renewal-cert-ttl)
           ca-cert (create-ca-cert "ca1" 1)
           keypair (utils/generate-key-pair)
@@ -2047,7 +2050,7 @@
           ;; auto-renewal-cert-ttl is expected to be an int
           ;; unit tests skip some of the conversion flow so
           ;; transform the duration here
-          converted-auto-renewal-cert-ttl (ca/duration-str->sec (:auto-renewal-cert-ttl settings))
+          converted-auto-renewal-cert-ttl (common/duration-str->sec (:auto-renewal-cert-ttl settings))
           updated-settings (assoc settings :auto-renewal-cert-ttl converted-auto-renewal-cert-ttl)
           ;; simulate the node being in the infra inventory file
           _ (spit (:infra-nodes-path settings) "bar\n")
@@ -2274,7 +2277,7 @@
         settings (-> (testutils/ca-sandbox! bundle-cadir)
                      (assoc :cert-inventory inventory-file
                             :allow-auto-renewal true)
-                     (update :auto-renewal-cert-ttl ca/duration-str->sec))
+                     (update :auto-renewal-cert-ttl common/duration-str->sec))
         report-activity (fn [_a _b] nil)]
     (testing "single entry"
       (testing "happy path"

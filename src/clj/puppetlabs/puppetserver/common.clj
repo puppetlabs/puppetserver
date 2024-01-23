@@ -17,10 +17,53 @@
   '-', '_', ';', or ':'."
   (schema/pred (comp not (partial re-find #"[^_\-:;a-zA-Z0-9]")) "code-id"))
 
+(defn positive-integer?
+  [i]
+  (and (integer? i)
+       (pos? i)))
+
+(def PosInt
+  "Any integer z in Z where z > 0."
+  (schema/pred positive-integer? 'positive-integer?))
+
 (schema/defn environment-validation-error-msg
   [environment :- schema/Str]
   (i18n/tru "The environment must be purely alphanumeric, not ''{0}''"
             environment))
+
+;; Pattern is one or more digit followed by time unit
+(def digits-with-unit-pattern #"(\d+)(y|d|h|m|s)")
+(def repeated-digits-with-unit-pattern #"((\d+)(y|d|h|m|s))+")
+
+(defn duration-string?
+  "Returns true if string is formatted with duration string pairs only, otherwise returns nil.
+   Ignores whitespace."
+  [maybe-duration-string]
+  (when (string? maybe-duration-string)
+    (let [no-whitespace-string (clojure.string/replace maybe-duration-string #" " "")]
+      (some? (re-matches repeated-digits-with-unit-pattern no-whitespace-string)))))
+
+(defn duration-str->sec
+  "Converts a string containing any combination of duration string pairs in the format '<num>y' '<num>d' '<num>m' '<num>h' '<num>s'
+   to a total number of seconds.
+   nil is returned if the input is not a string or not a string containing any valid duration string pairs."
+  [string-input]
+  (when (duration-string? string-input)
+    (let [pattern-matcher (re-matcher digits-with-unit-pattern string-input)
+          first-match (re-find pattern-matcher)]
+      (loop [[_match-str digits unit] first-match
+             running-total 0]
+        (let [unit-in-seconds (case unit
+                                "y" 31536000 ;; 365 day year, not a real year
+                                "d" 86400
+                                "h" 3600
+                                "m" 60
+                                "s" 1)
+              total-seconds (+ running-total (* (Integer/parseInt digits) unit-in-seconds))
+              next-match (re-find pattern-matcher)]
+          (if (some? next-match)
+            (recur next-match total-seconds)
+            total-seconds))))))
 
 (schema/defn code-id-validation-error-msg
   [code-id :- schema/Str]

@@ -11,8 +11,8 @@
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.kitchensink.file :as ks-file]
             [puppetlabs.puppetserver.common :as common]
-            [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.puppetserver.shell-utils :as shell-utils]
+            [puppetlabs.services.config.certificate-authority-schemas :as opts]
             [puppetlabs.ssl-utils.core :as utils]
             [schema.core :as schema]
             [slingshot.slingshot :as sling])
@@ -31,64 +31,10 @@
            (org.joda.time DateTime)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Public utilities
-
-;; Pattern is one or more digit followed by time unit
-(def digits-with-unit-pattern #"(\d+)(y|d|h|m|s)")
-(def repeated-digits-with-unit-pattern #"((\d+)(y|d|h|m|s))+")
-
-(defn duration-string?
-  "Returns true if string is formatted with duration string pairs only, otherwise returns nil.
-   Ignores whitespace."
-  [maybe-duration-string]
-  (when (string? maybe-duration-string)
-    (let [no-whitespace-string (clojure.string/replace maybe-duration-string #" " "")]
-      (some? (re-matches repeated-digits-with-unit-pattern no-whitespace-string)))))
-
-(defn duration-str->sec
-  "Converts a string containing any combination of duration string pairs in the format '<num>y' '<num>d' '<num>m' '<num>h' '<num>s'
-   to a total number of seconds.
-   nil is returned if the input is not a string or not a string containing any valid duration string pairs."
-  [string-input]
-  (when (duration-string? string-input)
-    (let [pattern-matcher (re-matcher digits-with-unit-pattern string-input)
-          first-match (re-find pattern-matcher)]
-      (loop [[_match-str digits unit] first-match
-             running-total 0]
-        (let [unit-in-seconds (case unit
-                                "y" 31536000 ;; 365 day year, not a real year
-                                "d" 86400
-                                "h" 3600
-                                "m" 60
-                                "s" 1)
-              total-seconds (+ running-total (* (Integer/parseInt digits) unit-in-seconds))
-              next-match (re-find pattern-matcher)]
-          (if (some? next-match)
-            (recur next-match total-seconds)
-            total-seconds))))))
-
-(defn get-ca-ttl
-  "Returns ca-ttl value as an integer. If a value is set in certificate-authority that value is returned.
-   Otherwise puppet config setting is returned"
-  [puppetserver certificate-authority]
-  (let [ca-config-value (duration-str->sec (:ca-ttl certificate-authority))
-        puppet-config-value (:ca-ttl puppetserver)]
-    (when (and ca-config-value puppet-config-value)
-        (log/warn (i18n/trs "Detected ca-ttl setting in CA config which will take precedence over puppet.conf setting")))
-    (or ca-config-value puppet-config-value)))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
-
-(def AutoSignInput
-  (schema/cond-pre schema/Bool schema/Str))
 
 (def CertificateOrCSR
   (schema/cond-pre X509Certificate PKCS10CertificationRequest))
-
-(def TTLDuration
-  (schema/cond-pre schema/Int schema/Str))
 
 (def MasterSettings
   "Settings from Puppet that are necessary for SSL initialization on the master.
@@ -106,66 +52,6 @@
    :privatekeydir  schema/Str
    :requestdir     schema/Str
    :csr-attributes schema/Str})
-
-(def AccessControl
-  "Defines which clients are allowed access to the various CA endpoints.
-   Each endpoint has a sub-section containing the client whitelist.
-   Currently we only control access to the certificate_status(es) endpoints."
-  {(schema/optional-key :certificate-status) ringutils/WhitelistSettings})
-
-(defn positive-integer?
-  [i]
-  (and (integer? i)
-       (pos? i)))
-
-(def PosInt
-  "Any integer z in Z where z > 0."
-  (schema/pred positive-integer? 'positive-integer?))
-
-(def CaSettings
-  "Settings from Puppet that are necessary for CA initialization
-   and request handling during normal Puppet operation.
-   Most of these are Puppet configuration settings."
-  {:access-control                   (schema/maybe AccessControl)
-   :allow-authorization-extensions   schema/Bool
-   :allow-duplicate-certs            schema/Bool
-   :allow-subject-alt-names          schema/Bool
-   :allow-auto-renewal               schema/Bool
-   :auto-renewal-cert-ttl            TTLDuration
-   :allow-header-cert-info           schema/Bool
-   :autosign                         AutoSignInput
-   :cacert                           schema/Str
-   :cadir                            schema/Str
-   :cacrl                            schema/Str
-   :cakey                            schema/Str
-   :capub                            schema/Str
-   :ca-name                          schema/Str
-   :ca-ttl                           schema/Int
-   :cert-inventory                   schema/Str
-   :csrdir                           schema/Str
-   :keylength                        schema/Int
-   :manage-internal-file-permissions schema/Bool
-   :ruby-load-path                   [schema/Str]
-   :gem-path                         schema/Str
-   :signeddir                        schema/Str
-   :serial                           schema/Str
-   ;; Path to file containing list of infra node certificates including MoM
-   ;; provisioned by PE or user in case of FOSS
-   :infra-nodes-path                 schema/Str
-   ;; Path to file containing serial numbers of infra node certificates
-   ;; This would be re-generated anytime the infra-nodes list is updated.
-   :infra-node-serials-path          schema/Str
-   ;; Path to Infrastructure CRL file containing infra certificates
-   :infra-crl-path                   schema/Str
-   ;; Option to continue using full CRL instead of infra CRL if desired
-   ;; Infra CRL would be enabled by default.
-   :enable-infra-crl                 schema/Bool
-   :serial-lock                      ReentrantReadWriteLock
-   :serial-lock-timeout-seconds      PosInt
-   :crl-lock                         ReentrantReadWriteLock
-   :crl-lock-timeout-seconds         PosInt
-   :inventory-lock                   ReentrantReadWriteLock
-   :inventory-lock-timeout-seconds   PosInt})
 
 (def DesiredCertificateState
   "The pair of states that may be submitted to the certificate
@@ -222,52 +108,8 @@
   {:outcome (schema/enum :success :not-found :error)
    :message schema/Str})
 
-(def OIDMappings
-  {schema/Str schema/Keyword})
-
-(def default-allow-subj-alt-names
-  false)
-
-(def default-allow-auth-extensions
-  false)
-
-(def default-serial-lock-timeout-seconds
-  5)
-
-(def default-crl-lock-timeout-seconds
-  ;; for large crls, and a slow disk a longer timeout is needed
-  60)
-
-(def default-inventory-lock-timeout-seconds
-  60)
-
-(def default-auto-ttl-renewal
-  "90d") ; 90 days by default
-
-(def default-auto-ttl-renewal-seconds
-  (duration-str->sec default-auto-ttl-renewal)) ; 90 days by default
-
 ;; if the crl is going to expire in less than this number of days, it should be regenerated.
 (def crl-expiration-window-days 30)
-
-(schema/defn ^:always-validate initialize-ca-config
-  "Adds in default ca config keys/values, which may be overwritten if a value for
-  any of those keys already exists in the ca-data"
-  [ca-data]
-  (let [cadir (:cadir ca-data)
-        defaults {:infra-nodes-path (str cadir "/infra_inventory.txt")
-                  :infra-node-serials-path (str cadir "/infra_serials")
-                  :infra-crl-path (str cadir "/infra_crl.pem")
-                  :enable-infra-crl false
-                  :allow-subject-alt-names default-allow-subj-alt-names
-                  :allow-authorization-extensions default-allow-auth-extensions
-                  :serial-lock-timeout-seconds default-serial-lock-timeout-seconds
-                  :crl-lock-timeout-seconds default-crl-lock-timeout-seconds
-                  :inventory-lock-timeout-seconds default-inventory-lock-timeout-seconds
-                  :allow-auto-renewal false
-                  :auto-renewal-cert-ttl default-auto-ttl-renewal
-                  :allow-header-cert-info false}]
-    (merge defaults ca-data)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Definitions
@@ -356,10 +198,6 @@
   (set/union #{:cacert :cacrl :cakey :cert-inventory :serial}
      (if enable-infra-crl #{:infra-nodes-path :infra-crl-path} #{})))
 
-(def max-ca-ttl
-  "The longest valid duration for CA certs, in seconds. 50 standard years."
-  1576800000)
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
 
@@ -405,7 +243,7 @@
   "Trim down the CA settings to include only paths to files and directories.
   These paths are necessary during CA initialization for determining what needs
   to be created and where they should be placed."
-  [ca-settings :- CaSettings]
+  [ca-settings :- opts/CaSettings]
   (let [settings' (dissoc ca-settings
                     :access-control
                     :allow-authorization-extensions
@@ -427,7 +265,8 @@
                     :inventory-lock
                     :inventory-lock-timeout-seconds
                     :allow-auto-renewal
-                    :auto-renewal-cert-ttl)]
+                    :auto-renewal-cert-ttl
+                    :oid-mappings)]
     (if (:enable-infra-crl ca-settings)
       settings'
       (dissoc settings' :infra-crl-path :infra-node-serials-path))))
@@ -597,7 +436,7 @@
 
 (schema/defn get-serial-number! :- schema/Int
   "Reads the serial number file from disk and returns the serial number."
-  [{:keys [serial serial-lock serial-lock-timeout-seconds]} :- CaSettings]
+  [{:keys [serial serial-lock serial-lock-timeout-seconds]} :- opts/CaSettings]
   (common/with-safe-read-lock serial-lock serial-lock-descriptor serial-lock-timeout-seconds
     (-> serial
         (slurp)
@@ -620,7 +459,7 @@
   Reads the serial number as a hex value from the given file and replaces the
   contents of `serial-file` with the next serial number for a subsequent call.
   Puppet's $serial setting defines the location of the serial number file."
-  [{:keys [serial serial-lock serial-lock-timeout-seconds] :as ca-settings} :- CaSettings]
+  [{:keys [serial serial-lock serial-lock-timeout-seconds] :as ca-settings} :- opts/CaSettings]
   (common/with-safe-write-lock serial-lock serial-lock-descriptor serial-lock-timeout-seconds
     (let [serial-number (get-serial-number! ca-settings)]
       (ks-file/atomic-write-string serial
@@ -630,7 +469,7 @@
 
 (schema/defn initialize-serial-file!
   "Initializes the serial number file on disk.  Serial numbers start at 1."
-  [{:keys [serial serial-lock serial-lock-timeout-seconds]} :- CaSettings]
+  [{:keys [serial serial-lock serial-lock-timeout-seconds]} :- opts/CaSettings]
   (common/with-safe-write-lock serial-lock serial-lock-descriptor serial-lock-timeout-seconds
     (ks-file/atomic-write-string serial
                                  (format-serial-number 1)
@@ -687,7 +526,7 @@
   infra-serials file"
   [serial :- BigInteger
    certname :- schema/Str
-   {:keys [infra-nodes-path infra-node-serials-path]} :- CaSettings]
+   {:keys [infra-nodes-path infra-node-serials-path]} :- opts/CaSettings]
   (when (fs/exists? infra-nodes-path)
     (with-open [infra-nodes-reader (io/reader infra-nodes-path)]
       (let [infra-nodes (read-infra-nodes infra-nodes-reader)]
@@ -757,7 +596,7 @@
     * $NA = The 'not after' field of the cert, as a date/timestamp in UTC.
     * $S  = The distinguished name of the cert's subject."
   [cert :- Certificate
-   {:keys [cert-inventory] :as settings} :- CaSettings]
+   {:keys [cert-inventory] :as settings} :- opts/CaSettings]
   (let [serial-number (.getSerialNumber cert)
         formatted-serial-number (->> serial-number
                                      (format-serial-number)
@@ -791,7 +630,7 @@
     * $NA = The 'not after' field of the cert, as a date/timestamp in UTC.
     * $S  = The distinguished name of the cert's subject."
   [cert :- Certificate
-   {:keys [inventory-lock inventory-lock-timeout-seconds] :as settings} :- CaSettings]
+   {:keys [inventory-lock inventory-lock-timeout-seconds] :as settings} :- opts/CaSettings]
     (common/with-safe-write-lock inventory-lock inventory-lock-descriptor inventory-lock-timeout-seconds
       (write-cert-to-inventory-unlocked! cert settings)))
 
@@ -824,7 +663,7 @@
   (str/split row #" "))
 
 (schema/defn in-cert-inventory-file? :- schema/Bool
-  [{:keys [cert-inventory inventory-lock inventory-lock-timeout-seconds]} :- CaSettings
+  [{:keys [cert-inventory inventory-lock inventory-lock-timeout-seconds]} :- opts/CaSettings
    certname :- schema/Str]
   (common/with-safe-read-lock inventory-lock inventory-lock-descriptor inventory-lock-timeout-seconds
     (log/trace (i18n/trs "Looking for \"{0}\" in inventory file {1}" certname cert-inventory))
@@ -843,7 +682,7 @@
   (BigInteger. ^String (subs serial 2) 16))
 
 (schema/defn expired-inventory-serials :- [BigInteger]
-  [{:keys [cert-inventory inventory-lock inventory-lock-timeout-seconds]} :- CaSettings]
+  [{:keys [cert-inventory inventory-lock inventory-lock-timeout-seconds]} :- opts/CaSettings]
   (common/with-safe-read-lock inventory-lock inventory-lock-descriptor inventory-lock-timeout-seconds
     (log/trace (i18n/trs "Extracting expired serials from inventory file {0}" cert-inventory))
     (if (fs/exists? cert-inventory)
@@ -862,7 +701,7 @@
         []))))
 
 (schema/defn find-matching-valid-serial-numbers :- [BigInteger]
-  [{:keys [cert-inventory inventory-lock inventory-lock-timeout-seconds]} :- CaSettings
+  [{:keys [cert-inventory inventory-lock inventory-lock-timeout-seconds]} :- opts/CaSettings
    certname :- schema/Str]
   (common/with-safe-read-lock inventory-lock inventory-lock-descriptor inventory-lock-timeout-seconds
     (log/trace (i18n/trs "Looking for serial numbers for \"{0}\" in inventory file {1}" certname cert-inventory))
@@ -885,30 +724,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Initialization
-
-(schema/defn validate-settings!
-  "Ensure config values are valid for basic CA behaviors."
-  [settings :- CaSettings]
-  (let [ca-ttl (:ca-ttl settings)
-        certificate-status-access-control (get-in settings
-                                                  [:access-control
-                                                   :certificate-status])
-        certificate-status-whitelist (:client-whitelist
-                                      certificate-status-access-control)]
-    (when (> ca-ttl max-ca-ttl)
-      (throw (IllegalStateException.
-              (i18n/trs "Config setting ca_ttl must have a value below {0}" max-ca-ttl))))
-    (cond
-      (or (false? (:authorization-required certificate-status-access-control))
-          (not-empty certificate-status-whitelist))
-      (log/warn (format "%s %s"
-                        (i18n/trs "The ''client-whitelist'' and ''authorization-required'' settings in the ''certificate-authority.certificate-status'' section are deprecated and will be removed in a future release.")
-                        (i18n/trs "Remove these settings and create an appropriate authorization rule in the /etc/puppetlabs/puppetserver/conf.d/auth.conf file.")))
-      (not (nil? certificate-status-whitelist))
-      (log/warn (format "%s %s %s"
-                        (i18n/trs "The ''client-whitelist'' and ''authorization-required'' settings in the ''certificate-authority.certificate-status'' section are deprecated and will be removed in a future release.")
-                        (i18n/trs "Because the ''client-whitelist'' is empty and ''authorization-required'' is set to ''false'', the ''certificate-authority.certificate-status'' settings will be ignored and authorization for the ''certificate_status'' endpoints will be done per the authorization rules in the /etc/puppetlabs/puppetserver/conf.d/auth.conf file.")
-                        (i18n/trs "To suppress this warning, remove the ''certificate-authority'' configuration settings."))))))
 
 (schema/defn ensure-cn-as-san :- utils/SSLExtension
   "Given the SSLExtension for subject alt names and a common name, ensure that the CN is listed in the SAN dns name list."
@@ -949,7 +764,7 @@
   For each node, check the inventory file for any serial numbers for that node,
   Also check the filesystem for a signed cert for that node.  Return a sorted unique
   set of serial numbers for nodes in the infra file"
-  [{:keys [infra-nodes-path signeddir] :as settings} :- CaSettings]
+  [{:keys [infra-nodes-path signeddir] :as settings} :- opts/CaSettings]
   (if (fs/exists? infra-nodes-path)
     (with-open [infra-nodes-reader (io/reader infra-nodes-path)]
       (let [infra-nodes (read-infra-nodes infra-nodes-reader)]
@@ -974,7 +789,7 @@
 
 (schema/defn write-infra-serials-to-writer
   [writer :- BufferedWriter
-   settings :- CaSettings]
+   settings :- opts/CaSettings]
   (let [infra-serials (extract-active-infra-serials settings)]
     (doseq [infra-serial infra-serials]
       (.write writer (str infra-serial))
@@ -984,7 +799,7 @@
   "Given a list of infra nodes it will create a file containing
    serial numbers of their certificates (listed on separate lines).
    It is expected have at least one entry (MoM)"
-  [{:keys [infra-node-serials-path] :as settings} :- CaSettings]
+  [{:keys [infra-node-serials-path] :as settings} :- opts/CaSettings]
   (ks-file/atomic-write infra-node-serials-path
                         #(write-infra-serials-to-writer % settings)
                         public-key-perms))
@@ -1013,7 +828,7 @@
 (schema/defn generate-ssl-files!
   "Given the CA settings, generate and write to disk all of the necessary
   SSL files for the CA. Any existing files will be replaced."
-  [ca-settings :- CaSettings]
+  [ca-settings :- opts/CaSettings]
   (log/debug (str (i18n/trs "Initializing SSL for the CA; settings:")
                   "\n"
                   (ks/pprint-to-string ca-settings)))
@@ -1264,7 +1079,7 @@
    the master. Any existing files will be replaced."
   [settings :- MasterSettings
    certname :- schema/Str
-   ca-settings :- CaSettings]
+   ca-settings :- opts/CaSettings]
   (log/debug (format "%s\n%s"
                      (i18n/trs "Initializing SSL for the Master; settings:")
                      (ks/pprint-to-string settings)))
@@ -1301,7 +1116,7 @@
    are found to be missing."
   [{:keys [hostprivkey hostcert] :as settings} :- MasterSettings
    certname :- schema/Str
-   ca-settings :- CaSettings]
+   ca-settings :- opts/CaSettings]
   (cond
     (and (fs/exists? hostcert) (fs/exists? hostprivkey))
     (log/info (i18n/trs "Master already initialized for SSL"))
@@ -1468,27 +1283,6 @@
 ;;; Public
 
 (schema/defn ^:always-validate
-  config->ca-settings :- CaSettings
-  "Given the configuration map from the Puppet Server config
-   service return a map with of all the CA settings."
-  [{:keys [puppetserver jruby-puppet certificate-authority authorization]}]
-  (let [merged (-> (select-keys puppetserver (keys CaSettings))
-                   (merge (select-keys certificate-authority (keys CaSettings)))
-                   (initialize-ca-config))]
-    (assoc merged :ruby-load-path (:ruby-load-path jruby-puppet)
-           :allow-auto-renewal (:allow-auto-renewal merged)
-           :auto-renewal-cert-ttl (duration-str->sec (:auto-renewal-cert-ttl merged))
-           :ca-ttl (get-ca-ttl puppetserver certificate-authority)
-           :allow-header-cert-info (get authorization :allow-header-cert-info false)
-           :gem-path (str/join (System/getProperty "path.separator")
-                               (:gem-path jruby-puppet))
-           :access-control (select-keys certificate-authority
-                                        [:certificate-status])
-           :serial-lock (new ReentrantReadWriteLock)
-           :crl-lock (new ReentrantReadWriteLock)
-           :inventory-lock (new ReentrantReadWriteLock))))
-
-(schema/defn ^:always-validate
   config->master-settings :- MasterSettings
   "Given the configuration map from the Puppet Server config
   service return a map with of all the master settings."
@@ -1546,11 +1340,11 @@
   autosign-csr? :- schema/Bool
   "Return true if the CSR should be automatically signed given
   Puppet's autosign setting, and false otherwise."
-  ([autosign :- AutoSignInput
+  ([autosign :- opts/AutoSignInput
     subject :- schema/Str
     csr-stream :- InputStream]
    (autosign-csr? autosign subject csr-stream [] ""))
-  ([autosign :- AutoSignInput
+  ([autosign :- opts/AutoSignInput
     subject :- schema/Str
     csr-stream :- InputStream
     ruby-load-path :- [schema/Str]
@@ -1641,7 +1435,7 @@
 
 (schema/defn ^:always-validate delete-certificate-request! :- OutcomeInfo
   "Delete pending certificate requests for subject"
-  [{:keys [csrdir]} :- CaSettings
+  [{:keys [csrdir]} :- opts/CaSettings
    subject :- schema/Str]
   (let [csr-path (path-to-cert-request csrdir subject)]
 
@@ -1667,7 +1461,7 @@
   from Puppet, auto-sign the request and write the certificate to disk."
   [subject :- schema/Str
    csr :- CertificateRequest
-   {:keys [cacert cakey signeddir ca-ttl allow-auto-renewal auto-renewal-cert-ttl] :as ca-settings} :- CaSettings
+   {:keys [cacert cakey signeddir ca-ttl allow-auto-renewal auto-renewal-cert-ttl] :as ca-settings} :- opts/CaSettings
    report-activity]
   (let [renewal-ttl (if (and allow-auto-renewal (supports-auto-renewal? csr))
                       auto-renewal-cert-ttl
@@ -1704,7 +1498,7 @@
 
 (schema/defn is-revoked? :- schema/Bool
   [cert :- X509Certificate
-   {:keys [cacert cacrl crl-lock crl-lock-timeout-seconds cakey]} :- CaSettings]
+   {:keys [cacert cacrl crl-lock crl-lock-timeout-seconds cakey]} :- opts/CaSettings]
   (utils/revoked?
         (common/with-safe-read-lock crl-lock crl-lock-descriptor crl-lock-timeout-seconds
                (utils/pem->ca-crl cacrl (utils/pem->ca-cert cacert cakey)))
@@ -1717,7 +1511,7 @@
    {:kind :duplicate-cert
     :msg  <specific error message>}"
   [csr :- CertificateRequest
-   {:keys [allow-duplicate-certs csrdir signeddir] :as settings} :- CaSettings]
+   {:keys [allow-duplicate-certs csrdir signeddir] :as settings} :- opts/CaSettings]
   (let [subject (get-csr-subject csr)
         cert (path-to-cert signeddir subject)
         existing-cert? (fs/exists? cert)
@@ -1792,7 +1586,7 @@
    Throws a slingshot exception if the CSR is invalid."
   [subject :- schema/Str
    certificate-request :- InputStream
-   {:keys [autosign csrdir ruby-load-path gem-path allow-subject-alt-names allow-authorization-extensions] :as settings} :- CaSettings
+   {:keys [autosign csrdir ruby-load-path gem-path allow-subject-alt-names allow-authorization-extensions] :as settings} :- opts/CaSettings
    report-activity]
   (with-open [byte-stream (-> certificate-request
                               input-stream->byte-array
@@ -1816,7 +1610,7 @@
   [cacrl :- schema/Str
    lock :- ReentrantReadWriteLock
    lock-descriptor :- schema/Str
-   lock-timeout :- PosInt]
+   lock-timeout :- common/PosInt]
   (common/with-safe-read-lock lock lock-descriptor lock-timeout
     (slurp cacrl)))
 
@@ -1830,7 +1624,7 @@
   ([path :- schema/Str
     lock :- ReentrantReadWriteLock
     lock-descriptor :- schema/Str
-    lock-timeout :- PosInt]
+    lock-timeout :- common/PosInt]
    (common/with-safe-read-lock lock lock-descriptor lock-timeout
      (let [last-modified-milliseconds (.lastModified (io/file path))]
           (time-coerce/from-long last-modified-milliseconds)))))
@@ -1937,7 +1731,7 @@
   [incoming-crls :- [X509CRL]
    crl-path :- schema/Str
    cacert :- schema/Str
-   {:keys [crl-lock crl-lock-timeout-seconds enable-infra-crl infra-crl-path]}  :- CaSettings]
+   {:keys [crl-lock crl-lock-timeout-seconds enable-infra-crl infra-crl-path]}  :- opts/CaSettings]
   (common/with-safe-write-lock crl-lock crl-lock-descriptor crl-lock-timeout-seconds
     (update-crls incoming-crls crl-path cacert)
     (when enable-infra-crl
@@ -1945,7 +1739,7 @@
 
 (schema/defn ensure-directories-exist!
   "Create any directories used by the CA if they don't already exist."
-  [settings :- CaSettings]
+  [settings :- opts/CaSettings]
   (doseq [dir [:csrdir :signeddir]]
     (let [path (get settings dir)]
       (when-not (fs/exists? path)
@@ -1954,7 +1748,7 @@
 (schema/defn ensure-ca-file-perms!
   "Ensure that the CA's private key file has the correct permissions set. If it
   does not, then correct them."
-  [settings :- CaSettings]
+  [settings :- opts/CaSettings]
   (let [ca-p-key (:cakey settings)
         cur-perms (ks-file/get-perms ca-p-key)]
     (when-not (= private-key-perms cur-perms)
@@ -1971,7 +1765,7 @@
    required SSL files exist. If all files exist,
    new ones will not be generated. If only some are found
    (but others are missing), an exception is thrown."
-  [settings :- CaSettings]
+  [settings :- opts/CaSettings]
   (ensure-directories-exist! settings)
   (let [required-files (-> (settings->cadir-paths settings)
                            (select-keys (required-ca-files (:enable-infra-crl settings)))
@@ -2050,7 +1844,7 @@
   "Get the status of the subject's certificate or certificate request.
    The status includes the state of the certificate (signed, revoked, requested),
    DNS alt names, and several different fingerprint hashes of the certificate."
-  [{:keys [csrdir signeddir cacert cacrl cakey]} :- CaSettings
+  [{:keys [csrdir signeddir cacert cacrl cakey]} :- opts/CaSettings
    subject :- schema/Str]
   (let [crl (utils/pem->ca-crl cacrl (utils/pem->ca-cert cacert cakey))
         cert-path (path-to-cert signeddir subject)
@@ -2074,7 +1868,7 @@
 
 (schema/defn ^:always-validate get-cert-and-csr-statuses :- [CertificateStatusResult]
   "Get the status of all certificates and certificate requests."
-  [{:keys [csrdir signeddir cacert cacrl cakey]} :- CaSettings]
+  [{:keys [csrdir signeddir cacert cacrl cakey]} :- opts/CaSettings]
   (let [crl (utils/pem->ca-crl cacrl (utils/pem->ca-cert cacert cakey))
         all-csr (get-cert-or-csr-statuses csrdir crl false)
         all-certs (get-cert-or-csr-statuses signeddir crl true)]
@@ -2082,7 +1876,7 @@
 
 (schema/defn ^:always-validate filter-by-certificate-state :- [CertificateStatusResult]
   "Get the status of all certificates in the given state."
-  [{:keys [csrdir signeddir cacert cacrl cakey]} :- CaSettings
+  [{:keys [csrdir signeddir cacert cacrl cakey]} :- opts/CaSettings
    state :- schema/Str]
   (let [crl (utils/pem->ca-crl cacrl (utils/pem->ca-cert cacert cakey))]
     (if (= "requested" state)
@@ -2092,7 +1886,7 @@
 
 (schema/defn sign-existing-csr!
   "Sign the subject's certificate request."
-  [{:keys [csrdir] :as settings} :- CaSettings
+  [{:keys [csrdir] :as settings} :- opts/CaSettings
    subject :- schema/Str
    report-activity]
   (let [csr-path (path-to-cert-request csrdir subject)]
@@ -2126,7 +1920,7 @@
     []))
 
 (schema/defn look-for-serial-numbers :- [BigInteger]
-  [settings :- CaSettings
+  [settings :- opts/CaSettings
    certname :- schema/Str]
   ;; first look in the inventory (it is cheaper than reading certs).  If it isn't there, read the cert
   (let [inventory-certs (find-matching-valid-serial-numbers settings certname)
@@ -2142,7 +1936,7 @@
    The certificates will remain in the signed directory despite being revoked."
   [{:keys [cacert cacrl cakey infra-crl-path
            crl-lock crl-lock-timeout-seconds
-           infra-node-serials-path enable-infra-crl] :as settings} :- CaSettings
+           infra-node-serials-path enable-infra-crl] :as settings} :- opts/CaSettings
    subjects :- [schema/Str]
    report-activity]
   ;; because we need the crl to be consistent for the serials, maintain a write lock on the crl
@@ -2184,7 +1978,7 @@
 
 (schema/defn ^:always-validate set-certificate-status!
   "Sign or revoke the certificate for the given subject."
-  [settings :- CaSettings
+  [settings :- opts/CaSettings
    subject :- schema/Str
    desired-state :- DesiredCertificateState
    report-activity]
@@ -2194,13 +1988,13 @@
 
 (schema/defn ^:always-validate certificate-exists? :- schema/Bool
   "Do we have a certificate for the given subject?"
-  [{:keys [signeddir]} :- CaSettings
+  [{:keys [signeddir]} :- opts/CaSettings
    subject :- schema/Str]
   (fs/exists? (path-to-cert signeddir subject)))
 
 (schema/defn ^:always-validate csr-exists? :- schema/Bool
   "Do we have a CSR for the given subject?"
-  [{:keys [csrdir]} :- CaSettings
+  [{:keys [csrdir]} :- opts/CaSettings
    subject :- schema/Str]
   (fs/exists? (path-to-cert-request csrdir subject)))
 
@@ -2223,7 +2017,7 @@
    certificate policy will not be checked.
    If the CSR is invalid, returns a user-facing message.
    Otherwise, returns nil."
-  [{:keys [csrdir allow-subject-alt-names allow-authorization-extensions] :as _settings} :- CaSettings
+  [{:keys [csrdir allow-subject-alt-names allow-authorization-extensions] :as _settings} :- opts/CaSettings
    subject :- schema/Str]
   (let [csr         (utils/pem->csr (path-to-cert-request csrdir subject))
         csr-subject (get-csr-subject csr)
@@ -2243,7 +2037,7 @@
 (schema/defn ^:always-validate delete-certificate!
   "Delete the certificate for the given subject.
    Note this does not revoke the certificate."
-  [{signeddir :signeddir} :- CaSettings
+  [{signeddir :signeddir} :- opts/CaSettings
    subject :- schema/Str]
   (let [cert (path-to-cert signeddir subject)]
     (when (fs/exists? cert)
@@ -2253,25 +2047,10 @@
 (schema/defn ^:always-validate delete-certificates!
   "Delete each of the given certificates.
   Note that this does not revoke the certs."
-  [ca-settings :- CaSettings
+  [ca-settings :- opts/CaSettings
    subjects :- [schema/Str]]
   (doseq [subj subjects]
     (delete-certificate! ca-settings subj)))
-
-(schema/defn ^:always-validate get-custom-oid-mappings :- (schema/maybe OIDMappings)
-  "Given a path to a custom OID mappings file, return a map of all oids to
-  shortnames"
-  [custom-oid-mapping-file :- schema/Str]
-  (if (fs/file? custom-oid-mapping-file)
-    (let [oid-mappings (:oid_mapping (common/parse-yaml (slurp custom-oid-mapping-file)))]
-      (into {} (for [[oid names] oid-mappings] [(name oid) (keyword (:shortname names))])))
-    (log/debug (i18n/trs "No custom OID mapping configuration file found at {0}, custom OID mappings will not be loaded"
-                custom-oid-mapping-file))))
-
-(schema/defn ^:always-validate get-oid-mappings :- OIDMappings
-  [custom-oid-mapping-file :- (schema/maybe schema/Str)]
-  (merge (get-custom-oid-mappings custom-oid-mapping-file)
-         (clojure.set/map-invert puppet-short-names)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; CA status info
@@ -2341,9 +2120,9 @@
   "Given a certificate and CaSettings create a new signed certificate using the public key from the certificate.
   It recreates all the extensions in the original certificate."
   [certificate :- X509Certificate
-   {:keys [cacert cakey auto-renewal-cert-ttl signeddir] :as ca-settings} :- CaSettings
+   {:keys [cacert cakey auto-renewal-cert-ttl signeddir] :as ca-settings} :- opts/CaSettings
    report-activity]
-  (let [validity (cert-validity-dates (or auto-renewal-cert-ttl default-auto-ttl-renewal-seconds))
+  (let [validity (cert-validity-dates (or auto-renewal-cert-ttl opts/default-auto-ttl-renewal-seconds))
         cacert (utils/pem->ca-cert cacert cakey)
         cert-subject (utils/get-subject-from-x509-certificate certificate)
         cert-name (utils/x500-name->CN cert-subject)
@@ -2369,7 +2148,7 @@
     signed-cert))
 
 (schema/defn crl-expires-in-n-days?
-  [crl-path {:keys [crl-lock crl-lock-timeout-seconds]} :- CaSettings
+  [crl-path {:keys [crl-lock crl-lock-timeout-seconds]} :- opts/CaSettings
    days :- schema/Int]
   (common/with-safe-write-lock crl-lock crl-lock-descriptor crl-lock-timeout-seconds
     (let [crl-object (first (utils/pem->crls crl-path))
@@ -2413,7 +2192,7 @@
     (write-crls new-full-chain crl-path)))
 (schema/defn update-and-sign-crl!
   "Given a path to a CRL, and the ca-settings, update the CRl with all known valid serials that have been revoked"
-  [path-to-crl {:keys [crl-lock crl-lock-timeout-seconds cacert cakey capub] :as settings} :- CaSettings]
+  [path-to-crl {:keys [crl-lock crl-lock-timeout-seconds cacert cakey capub] :as settings} :- opts/CaSettings]
   ;; read in the existing crl, and extract the serial numbers that have expired so we can remove them from the CRL set.
   (let [expired-serials (set (expired-inventory-serials settings))]
     (common/with-safe-write-lock crl-lock crl-lock-descriptor crl-lock-timeout-seconds
@@ -2424,7 +2203,7 @@
         (overwrite-existing-crl! our-full-crl rest-of-full-chain capub cakey cacert (vec valid-crl-serials) path-to-crl)))))
 
 (schema/defn maybe-update-crls-for-expiration
-   [{:keys [cacrl enable-infra-crl infra-crl-path] :as settings} :- CaSettings]
+   [{:keys [cacrl enable-infra-crl infra-crl-path] :as settings} :- opts/CaSettings]
   ;; check the age of the main crl
   (when (crl-expires-in-n-days? cacrl settings crl-expiration-window-days)
     (log/info (i18n/trs "CA CRL expiring within 30 days, updating."))
@@ -2441,7 +2220,7 @@
    casubject  :- schema/Str
    ca-private-key :- PrivateKey
    {:keys [signeddir ca-ttl allow-auto-renewal allow-subject-alt-names
-           allow-authorization-extensions auto-renewal-cert-ttl] :as ca-settings} :- CaSettings]
+           allow-authorization-extensions auto-renewal-cert-ttl] :as ca-settings} :- opts/CaSettings]
   (try
     (let [csr (utils/pem->csr csr-path)
           renewal-ttl (if (and allow-auto-renewal (supports-auto-renewal? csr))
@@ -2479,7 +2258,7 @@
   [subjects :- [schema/Str]
    {:keys [cacert cakey csrdir
            inventory-lock inventory-lock-timeout-seconds
-           serial-lock serial-lock-timeout-seconds] :as ca-settings} :- CaSettings
+           serial-lock serial-lock-timeout-seconds] :as ca-settings} :- opts/CaSettings
    report-activity]
   (let [;; if part of a CA bundle, the intermediate CA will be first in the chain
         cacert      (utils/pem->ca-cert cacert cakey)
