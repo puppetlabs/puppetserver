@@ -114,7 +114,7 @@
                                                           12}))
                     (assoc :webserver {:port 8081
                                        :shutdown-timeout-seconds 1}))
-                service (tk-app/get-service app :PuppetServerConfigService)
+                service (tk-app/get-service app :CertificateAuthorityConfigService)
                 service-config (ca-conf-proto/get-config service)
                 merged-config (merge service-config  {:certificate-authority
                                                       {:allow-auto-renewal true
