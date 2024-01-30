@@ -5,6 +5,7 @@
             [puppetlabs.trapperkeeper.services :refer [maybe-get-service] :as tk-services]
             [puppetlabs.trapperkeeper.services.protocols.filesystem-watch-service :as watch-protocol]
             [puppetlabs.puppetserver.certificate-authority :as ca]
+            [puppetlabs.puppetserver.legacy-certificate-authority-generation :as ca-gen]
             [puppetlabs.services.ca.certificate-authority-core :as core]
             [puppetlabs.services.protocols.ca :refer [CaService]]
             [puppetlabs.comidi :as comidi]
@@ -59,7 +60,7 @@
                                             (.getMessage e)
                                             (first payload))))))
                             (constantly nil))]
-      (ca/initialize! settings)
+      (ca-gen/initialize! settings)
       (log/info (i18n/trs "CA Service adding a ring handler"))
       (add-ring-handler
         this

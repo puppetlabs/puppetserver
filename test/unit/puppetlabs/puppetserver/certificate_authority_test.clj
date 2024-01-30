@@ -12,7 +12,7 @@
             [puppetlabs.puppetserver.common :as common]
             [puppetlabs.services.ca.ca-testutils :as testutils]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
-            ;[puppetlabs.services.config.certificate-authority-schemas :as ca-schemas]
+            [puppetlabs.puppetserver.legacy-certificate-authority-generation :as ca-gen]
             [puppetlabs.services.config.certificate-authority-config-core :as ca-conf]
             [puppetlabs.ssl-utils.core :as utils]
             [puppetlabs.ssl-utils.simple :as simple]
@@ -194,7 +194,7 @@
           ssldir (str tmpdir "puppet/ssl")]
       (fs/mkdirs cadir)
       (fs/mkdirs ssldir)
-      (ca/symlink-cadir cadir)
+      (ca-gen/symlink-cadir cadir)
       (is (not (fs/exists? (str ssldir "/ca"))))))
   (testing "symlinks correctly and removes existing old-cadir if needed"
     (let [tmpdir (ks/temp-dir)
@@ -203,7 +203,7 @@
           old-cadir (str ssldir "/ca")]
       (fs/mkdirs ssldir)
       (fs/mkdirs cadir)
-      (ca/symlink-cadir cadir)
+      (ca-gen/symlink-cadir cadir)
       (is (fs/link? old-cadir))
       (let [target (-> old-cadir fs/read-sym-link str)]
         (is (= target cadir))))))
@@ -688,11 +688,11 @@
 (deftest initialize!-test
   (let [settings (testutils/ca-settings (ks/temp-dir))]
 
-    (ca/initialize! settings)
+    (ca-gen/initialize! settings)
 
     (testing "Generated SSL file"
-      (doseq [file (-> (ca/settings->cadir-paths settings)
-                       (select-keys (ca/required-ca-files
+      (doseq [file (-> (ca-gen/settings->cadir-paths settings)
+                       (select-keys (ca-gen/required-ca-files
                                       (:enable-infra-crl settings)))
                        (vals))]
         (testing file
@@ -744,17 +744,17 @@
       (is (= "90d" (:auto-renewal-cert-ttl settings))))
 
     (testing "Does not replace files if they all exist"
-      (let [files (-> (ca/settings->cadir-paths (assoc settings :enable-infra-crl false))
+      (let [files (-> (ca-gen/settings->cadir-paths (assoc settings :enable-infra-crl false))
                       (dissoc :csrdir :signeddir :cadir)
                       (vals))]
         (doseq [f files] (spit f "testable string"))
-        (ca/initialize! settings)
+        (ca-gen/initialize! settings)
         (doseq [f files] (is (= "testable string" (slurp f))
                              (str "File " f " was replaced")))))))
 
 (deftest initialize!-test-with-keylength-in-settings
   (let [settings (assoc (testutils/ca-settings (ks/temp-dir)) :keylength 768)]
-    (ca/initialize! settings)
+    (ca-gen/initialize! settings)
     (testing "cakey with keylength"
       (let [key (-> settings :cakey utils/pem->private-key)]
         (is (utils/private-key? key))
@@ -771,16 +771,16 @@
       (testing dir
         (let [settings (testutils/ca-sandbox! cadir)]
           (fs/delete-dir (get settings dir))
-          (is (nil? (ca/initialize! settings)))
+          (is (nil? (ca-gen/initialize! settings)))
           (is (true? (fs/exists? (get settings dir))))))))
 
   (testing "CA public key not required"
     (let [settings (testutils/ca-sandbox! cadir)]
       (fs/delete (:capub settings))
-      (is (nil? (ca/initialize! settings)))))
+      (is (nil? (ca-gen/initialize! settings)))))
 
   (testing "Exception is thrown when required file is missing"
-    (doseq [file (ca/required-ca-files true)]
+    (doseq [file (ca-gen/required-ca-files true)]
       (testing file
         (let [settings (assoc (testutils/ca-sandbox! cadir) :enable-infra-crl true)
               path     (get settings file)]
@@ -788,13 +788,13 @@
           (is (thrown-with-msg?
                IllegalStateException
                (re-pattern (str "Missing:\n" path))
-               (ca/initialize! settings)))))))
+               (ca-gen/initialize! settings)))))))
 
   (testing "The CA private key has its permissions properly reset when :manage-internal-file-permissions is true."
     (let [settings (testutils/ca-sandbox! cadir)]
       (ks-file/set-perms (:cakey settings) "rw-r--r--")
       (logutils/with-test-logging
-        (ca/initialize! settings)
+        (ca-gen/initialize! settings)
         (is (logged? #"/ca/ca_key.pem' was found to have the wrong permissions set as 'rw-r--r--'. This has been corrected to 'rw-r-----'."))
         (is (= ca/private-key-perms (ks-file/get-perms (:cakey settings)))))))
 
@@ -803,7 +803,7 @@
           settings (assoc (testutils/ca-sandbox! cadir)
                      :manage-internal-file-permissions false)]
       (ks-file/set-perms (:cakey settings) perms)
-      (ca/initialize! settings)
+      (ca-gen/initialize! settings)
       (is (= perms (ks-file/get-perms (:cakey settings)))))))
 
 (deftest retrieve-ca-cert!-test
@@ -1042,7 +1042,7 @@
         ca-settings (assoc (testutils/ca-settings (ks/temp-dir))
                       :serial serial-file)]
     (testing "Serial file is initialized to 1"
-      (ca/initialize-serial-file! ca-settings)
+      (ca-gen/initialize-serial-file! ca-settings)
       (is (= (ca/next-serial-number! ca-settings) 1)))
 
     (testing "The serial number file should contain the next serial number"
@@ -1532,7 +1532,7 @@
                                                   :dns-alt-names dns-alt-names))))))
 
     (testing "basic extensions are created for a CA"
-      (let [exts          (ca/create-ca-extensions subject-pub
+      (let [exts          (ca-gen/create-ca-extensions subject-pub
                                                    subject-pub)
             exts-expected [{:oid      "2.16.840.1.113730.1.13"
                             :critical false
@@ -1923,7 +1923,7 @@
         private-key (utils/get-private-key keypair)
         x500-name (utils/cn name)
         validity (ca/cert-validity-dates 3600)
-        ca-exts (ca/create-ca-extensions public-key public-key)]
+        ca-exts (ca-gen/create-ca-extensions public-key public-key)]
     {:public-key public-key
      :private-key private-key
      :x500-name x500-name

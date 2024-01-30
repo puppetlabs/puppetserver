@@ -192,12 +192,6 @@
   "Standard value applied to the Netscape Comment extension for certificates"
   "Puppet Server Internal Certificate")
 
-(defn required-ca-files
-  "The set of SSL related files that are required on the CA."
-  [enable-infra-crl]
-  (set/union #{:cacert :cacrl :cakey :cert-inventory :serial}
-     (if enable-infra-crl #{:infra-nodes-path :infra-crl-path} #{})))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
 
@@ -239,38 +233,6 @@
      :not-after  (.toDate not-after)}))
 
 
-(schema/defn settings->cadir-paths
-  "Trim down the CA settings to include only paths to files and directories.
-  These paths are necessary during CA initialization for determining what needs
-  to be created and where they should be placed."
-  [ca-settings :- opts/CaSettings]
-  (let [settings' (dissoc ca-settings
-                    :access-control
-                    :allow-authorization-extensions
-                    :allow-duplicate-certs
-                    :allow-subject-alt-names
-                    :autosign
-                    :ca-name
-                    :ca-ttl
-                    :allow-header-cert-info
-                    :keylength
-                    :manage-internal-file-permissions
-                    :ruby-load-path
-                    :gem-path
-                    :enable-infra-crl
-                    :serial-lock-timeout-seconds
-                    :serial-lock
-                    :crl-lock-timeout-seconds
-                    :crl-lock
-                    :inventory-lock
-                    :inventory-lock-timeout-seconds
-                    :allow-auto-renewal
-                    :auto-renewal-cert-ttl
-                    :oid-mappings)]
-    (if (:enable-infra-crl ca-settings)
-      settings'
-      (dissoc settings' :infra-crl-path :infra-node-serials-path))))
-
 (schema/defn settings->ssldir-paths
   "Remove all keys from the master settings map which are not file or directory
    paths. These paths are necessary during initialization for determining what
@@ -301,20 +263,6 @@
   (with-open [os (ByteArrayOutputStream.)]
     (IOUtils/copy input-stream os)
     (.toByteArray os)))
-
-(schema/defn partial-state-error :- Exception
-  "Construct an exception appropriate for the end-user to signify that there
-   are missing SSL files and the master or CA cannot start until action is taken."
-  [master-or-ca :- schema/Str
-   found-files :- [schema/Str]
-   missing-files :- [schema/Str]]
-  (IllegalStateException.
-   (format "%s\n%s\n%s\n%s\n%s\n"
-           (i18n/trs "Cannot initialize {0} with partial state; need all files or none." master-or-ca)
-           (i18n/trs "Found:")
-           (str/join "\n" found-files)
-           (i18n/trs "Missing:")
-           (str/join "\n" missing-files))))
 
 ; TODO - PE-5529 - this should be moved to jvm-c-a.
 (schema/defn get-csr-subject :- schema/Str
@@ -466,14 +414,6 @@
                                    (format-serial-number (inc serial-number))
                                    serial-file-permissions)
       serial-number)))
-
-(schema/defn initialize-serial-file!
-  "Initializes the serial number file on disk.  Serial numbers start at 1."
-  [{:keys [serial serial-lock serial-lock-timeout-seconds]} :- opts/CaSettings]
-  (common/with-safe-write-lock serial-lock serial-lock-descriptor serial-lock-timeout-seconds
-    (ks-file/atomic-write-string serial
-                                 (format-serial-number 1)
-                                 serial-file-permissions)))
 
 (schema/defn write-local-cacrl! :- (schema/maybe Exception)
   "Spits the contents of 'cacrl-contents' string to the 'localcacrl' file
@@ -750,127 +690,6 @@
                   (utils/subject-dns-alt-names [cn] false))]
     (conj sans-san new-san)))
 
-(schema/defn create-ca-extensions :- (schema/pred utils/extension-list?)
-  "Create a list of extensions to be added to the CA certificate."
-  [issuer-public-key :- (schema/pred utils/public-key?)
-   ca-public-key :- (schema/pred utils/public-key?)]
-  (vec
-    (cons (utils/netscape-comment
-           netscape-comment-value)
-          (utils/create-ca-extensions issuer-public-key ca-public-key))))
-
-(schema/defn extract-active-infra-serials :- [BigInteger]
-  "Read the infra nodes file to determine which nodes are infrastructure nodes.
-  For each node, check the inventory file for any serial numbers for that node,
-  Also check the filesystem for a signed cert for that node.  Return a sorted unique
-  set of serial numbers for nodes in the infra file"
-  [{:keys [infra-nodes-path signeddir] :as settings} :- opts/CaSettings]
-  (if (fs/exists? infra-nodes-path)
-    (with-open [infra-nodes-reader (io/reader infra-nodes-path)]
-      (let [infra-nodes (read-infra-nodes infra-nodes-reader)]
-        (loop [local-infra-nodes infra-nodes
-               result []]
-          (if-let [infra-node (first local-infra-nodes)]
-            (let [augmented-results (concat result (find-matching-valid-serial-numbers settings infra-node))
-                  cert-path (path-to-cert signeddir infra-node)]
-              (if (fs/exists? cert-path)
-                (let [serial (-> cert-path
-                                 utils/pem->cert
-                                 utils/get-serial)]
-                  (recur (rest local-infra-nodes)
-                         (conj augmented-results serial)))
-                (do
-                  (log/warn (i18n/trs "Failed to find certificate for Puppet Infrastructure Node: {0}" infra-node))
-                  (recur (rest local-infra-nodes)
-                         augmented-results))))
-            ;; ensure they are unique and ordered so the end result is stable
-            (sort (set result))))))
-    []))
-
-(schema/defn write-infra-serials-to-writer
-  [writer :- BufferedWriter
-   settings :- opts/CaSettings]
-  (let [infra-serials (extract-active-infra-serials settings)]
-    (doseq [infra-serial infra-serials]
-      (.write writer (str infra-serial))
-      (.newLine writer))))
-
-(schema/defn generate-infra-serials!
-  "Given a list of infra nodes it will create a file containing
-   serial numbers of their certificates (listed on separate lines).
-   It is expected have at least one entry (MoM)"
-  [{:keys [infra-node-serials-path] :as settings} :- opts/CaSettings]
-  (ks-file/atomic-write infra-node-serials-path
-                        #(write-infra-serials-to-writer % settings)
-                        public-key-perms))
-
-(defn symlink-cadir
-  "Symlinks the new cadir that ends in 'puppetserver/ca' to the old cadir
-  of 'puppet/ssl/ca' for backwards compatibility. Will delete the old cadir
-  if it exists. Does nothing if set to a custom value."
-  [cadir]
-  (let [[_ base] (re-matches #"(.*)puppetserver/ca" cadir)
-        old-cadir (str base "puppet/ssl/ca")]
-    (when base
-      (when (fs/exists? old-cadir)
-        (fs/delete-dir old-cadir))
-      (fs/sym-link old-cadir cadir)
-      ;; Ensure the symlink has the same ownership as the actual cadir.
-      ;; Symlink permissions are ignored in favor of the target's permissions,
-      ;; so we don't have to change those.
-      (let [old-cadir-path (ks-file/str->path old-cadir)
-            cadir-path (ks-file/str->path cadir)
-            owner (Files/getOwner cadir-path ks-file/nofollow-links)
-            group (Files/getAttribute cadir-path "posix:group" ks-file/nofollow-links)]
-        (Files/setOwner old-cadir-path owner)
-        (Files/setAttribute old-cadir-path "posix:group" group ks-file/nofollow-links)))))
-
-(schema/defn generate-ssl-files!
-  "Given the CA settings, generate and write to disk all of the necessary
-  SSL files for the CA. Any existing files will be replaced."
-  [ca-settings :- opts/CaSettings]
-  (log/debug (str (i18n/trs "Initializing SSL for the CA; settings:")
-                  "\n"
-                  (ks/pprint-to-string ca-settings)))
-  (create-parent-directories! (vals (settings->cadir-paths ca-settings)))
-  (-> ca-settings :csrdir fs/file ks/mkdirs!)
-  (-> ca-settings :signeddir fs/file ks/mkdirs!)
-  (initialize-serial-file! ca-settings)
-  (-> ca-settings :infra-nodes-path fs/file fs/create)
-  (generate-infra-serials! ca-settings)
-  (let [keypair     (utils/generate-key-pair (:keylength ca-settings))
-        public-key  (utils/get-public-key keypair)
-        private-key (utils/get-private-key keypair)
-        x500-name   (utils/cn (:ca-name ca-settings))
-        validity    (cert-validity-dates (:ca-ttl ca-settings))
-        serial      (next-serial-number! ca-settings)
-        ;; Since this is a self-signed cert, the issuer key and the
-        ;; key for this cert are the same
-        ca-exts     (create-ca-extensions public-key
-                                          public-key)
-        cacert      (utils/sign-certificate
-                     x500-name
-                     private-key
-                     serial
-                     (:not-before validity)
-                     (:not-after validity)
-                     x500-name
-                     public-key
-                     ca-exts)
-        cacrl       (utils/generate-crl (.getIssuerX500Principal cacert)
-                                        private-key
-                                        public-key)
-        infra-crl (utils/generate-crl (.getIssuerX500Principal cacert)
-                                      private-key
-                                      public-key)]
-    (write-cert-to-inventory! cacert ca-settings)
-    (write-public-key public-key (:capub ca-settings))
-    (write-private-key private-key (:cakey ca-settings))
-    (write-cert cacert (:cacert ca-settings))
-    (write-crl cacrl (:cacrl ca-settings))
-    (write-crl infra-crl (:infra-crl-path ca-settings))
-    (symlink-cadir (:cadir ca-settings))))
-
 (schema/defn split-hostnames :- (schema/maybe [schema/Str])
   "Given a comma-separated list of hostnames, return a list of the
   individual dns alt names with all surrounding whitespace removed. If
@@ -1072,6 +891,51 @@
       ^String (i18n/trs "Found master private key ''{0}'' but master public key ''{1}'' is missing"
                 hostprivkey
                 hostpubkey)))))
+
+(schema/defn extract-active-infra-serials :- [BigInteger]
+  "Read the infra nodes file to determine which nodes are infrastructure nodes.
+  For each node, check the inventory file for any serial numbers for that node,
+  Also check the filesystem for a signed cert for that node.  Return a sorted unique
+  set of serial numbers for nodes in the infra file"
+  [{:keys [infra-nodes-path signeddir] :as settings} :- opts/CaSettings]
+  (if (fs/exists? infra-nodes-path)
+    (with-open [infra-nodes-reader (io/reader infra-nodes-path)]
+      (let [infra-nodes (read-infra-nodes infra-nodes-reader)]
+        (loop [local-infra-nodes infra-nodes
+               result []]
+          (if-let [infra-node (first local-infra-nodes)]
+            (let [augmented-results (concat result (find-matching-valid-serial-numbers settings infra-node))
+                  cert-path (path-to-cert signeddir infra-node)]
+              (if (fs/exists? cert-path)
+                (let [serial (-> cert-path
+                                 utils/pem->cert
+                                 utils/get-serial)]
+                  (recur (rest local-infra-nodes)
+                         (conj augmented-results serial)))
+                (do
+                  (log/warn (i18n/trs "Failed to find certificate for Puppet Infrastructure Node: {0}" infra-node))
+                  (recur (rest local-infra-nodes)
+                         augmented-results))))
+            ;; ensure they are unique and ordered so the end result is stable
+            (sort (set result))))))
+    []))
+
+(schema/defn write-infra-serials-to-writer
+  [writer :- BufferedWriter
+   settings :- opts/CaSettings]
+  (let [infra-serials (extract-active-infra-serials settings)]
+    (doseq [infra-serial infra-serials]
+      (.write writer (str infra-serial))
+      (.newLine writer))))
+
+(schema/defn generate-infra-serials!
+  "Given a list of infra nodes it will create a file containing
+   serial numbers of their certificates (listed on separate lines).
+   It is expected have at least one entry (MoM)"
+  [{:keys [infra-node-serials-path] :as settings} :- opts/CaSettings]
+  (ks-file/atomic-write infra-node-serials-path
+                        #(write-infra-serials-to-writer % settings)
+                        public-key-perms))
 
 (schema/defn generate-master-ssl-files!
   "Given master configuration settings, certname, and CA settings,
@@ -1736,52 +1600,6 @@
     (update-crls incoming-crls crl-path cacert)
     (when enable-infra-crl
       (update-crls incoming-crls infra-crl-path cacert))))
-
-(schema/defn ensure-directories-exist!
-  "Create any directories used by the CA if they don't already exist."
-  [settings :- opts/CaSettings]
-  (doseq [dir [:csrdir :signeddir]]
-    (let [path (get settings dir)]
-      (when-not (fs/exists? path)
-        (ks/mkdirs! path)))))
-
-(schema/defn ensure-ca-file-perms!
-  "Ensure that the CA's private key file has the correct permissions set. If it
-  does not, then correct them."
-  [settings :- opts/CaSettings]
-  (let [ca-p-key (:cakey settings)
-        cur-perms (ks-file/get-perms ca-p-key)]
-    (when-not (= private-key-perms cur-perms)
-      (ks-file/set-perms ca-p-key private-key-perms)
-      (log/warn (format "%s %s"
-                        (i18n/trs "The private CA key at ''{0}'' was found to have the wrong permissions set as ''{1}''."
-                             ca-p-key cur-perms)
-                        (i18n/trs "This has been corrected to ''{0}''."
-                             private-key-perms))))))
-
-(schema/defn ^:always-validate
-  initialize!
-  "Given the CA configuration settings, ensure that all
-   required SSL files exist. If all files exist,
-   new ones will not be generated. If only some are found
-   (but others are missing), an exception is thrown."
-  [settings :- opts/CaSettings]
-  (ensure-directories-exist! settings)
-  (let [required-files (-> (settings->cadir-paths settings)
-                           (select-keys (required-ca-files (:enable-infra-crl settings)))
-                           (vals))]
-    (if (every? fs/exists? required-files)
-      (do
-        (log/info (i18n/trs "CA already initialized for SSL"))
-        (when (:enable-infra-crl settings)
-          (generate-infra-serials! settings))
-        (when (:manage-internal-file-permissions settings)
-          (ensure-ca-file-perms! settings)))
-      (let [{found true
-             missing false} (group-by fs/exists? required-files)]
-        (if (= required-files missing)
-          (generate-ssl-files! settings)
-          (throw (partial-state-error "CA" found missing)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; certificate_status endpoint

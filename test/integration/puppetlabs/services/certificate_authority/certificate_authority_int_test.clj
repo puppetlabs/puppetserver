@@ -11,6 +11,7 @@
     [puppetlabs.kitchensink.file :as ks-file]
     [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
     [puppetlabs.puppetserver.certificate-authority :as ca]
+    [puppetlabs.puppetserver.legacy-certificate-authority-generation :as ca-gen]
     [puppetlabs.puppetserver.testutils :as testutils :refer [http-get]]
     [puppetlabs.rbac-client.protocols.activity :as act-proto]
     [puppetlabs.rbac-client.testutils.dummy-rbac-service :refer [dummy-rbac-service]]
@@ -58,7 +59,7 @@
         private-key (ssl-utils/get-private-key keypair)
         x500-name (ssl-utils/cn name)
         validity (ca/cert-validity-dates 3600)
-        ca-exts (ca/create-ca-extensions public-key public-key)]
+        ca-exts (ca-gen/create-ca-extensions public-key public-key)]
     {:public-key public-key
      :private-key private-key
      :x500-name x500-name
