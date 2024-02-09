@@ -2465,10 +2465,11 @@
         (write-cert-to-inventory-unlocked! signed-cert ca-settings)
         (write-cert signed-cert (path-to-cert signeddir subject))
         (delete-certificate-request! ca-settings subject)
+        (log/info (i18n/trs "Signed CSR for {0}" subject))
         ;; success case, add the host to the set of signed results
         :signed))
     (catch Throwable e
-      (log/debug e (i18n/trs "Failed in bulk signing for entry {0}" subject))
+      (log/error e (i18n/trs "Failed in bulk signing for entry {0}" subject))
       ;; failure case, add the host to the set of not signed results
       :signing-errors)))
 
