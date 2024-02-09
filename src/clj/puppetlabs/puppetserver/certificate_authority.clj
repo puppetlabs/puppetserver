@@ -720,26 +720,26 @@
 
 (defn stream-content-to-file
   [^String cert-inventory ^String entry ^BufferedWriter writer]
-   (log/trace (i18n/trs "Begin append to inventory file."))
-   (let [copy-buffer (CharBuffer/allocate buffer-copy-size)]
-     (try
-       (with-open [^BufferedReader reader (io/reader cert-inventory)]
-         ;; copy all the existing content
-         (loop [read-length (.read reader copy-buffer)]
-           ;; theoretically read can return 0, which means try again
-           (when (<= 0 read-length)
-             (when (pos? read-length)
-               (.write writer (.array copy-buffer) 0 read-length))
-             (.clear copy-buffer)
-             (recur (.read reader copy-buffer)))))
-       (catch FileNotFoundException _e
-         (log/trace (i18n/trs "Inventory file not found.  Assume empty.")))
-       (catch Throwable e
-         (log/error e (i18n/trs "Error while appending to inventory file."))
-         (throw e))))
-   (.write writer entry)
-   (.flush writer)
-   (log/trace (i18n/trs "Finish append to inventory file. ")))
+  (log/trace (i18n/trs "Begin append to inventory file."))
+  (let [copy-buffer (CharBuffer/allocate buffer-copy-size)]
+    (try
+      (with-open [^BufferedReader reader (io/reader cert-inventory)]
+        ;; copy all the existing content
+        (loop [read-length (.read reader copy-buffer)]
+          ;; theoretically read can return 0, which means try again
+          (when (<= 0 read-length)
+            (when (pos? read-length)
+              (.write writer (.array copy-buffer) 0 read-length))
+            (.clear copy-buffer)
+            (recur (.read reader copy-buffer)))))
+      (catch FileNotFoundException _e
+        (log/trace (i18n/trs "Inventory file not found.  Assume empty.")))
+      (catch Throwable e
+        (log/error e (i18n/trs "Error while appending to inventory file."))
+        (throw e))))
+  (.write writer entry)
+  (.flush writer)
+  (log/trace (i18n/trs "Finish append to inventory file. ")))
 
 
 (schema/defn ^:always-validate
@@ -792,16 +792,16 @@
     * $S  = The distinguished name of the cert's subject."
   [cert :- Certificate
    {:keys [inventory-lock inventory-lock-timeout-seconds] :as settings} :- CaSettings]
-    (common/with-safe-write-lock inventory-lock inventory-lock-descriptor inventory-lock-timeout-seconds
-      (write-cert-to-inventory-unlocked! cert settings)))
+  (common/with-safe-write-lock inventory-lock inventory-lock-descriptor inventory-lock-timeout-seconds
+    (write-cert-to-inventory-unlocked! cert settings)))
 
 (schema/defn is-subject-in-inventory-row? :- schema/Bool
   [cn-subject :- utils/ValidX500Name
    [_serial _not-before _not-after row-subject] :- [schema/Str]]
-   ;; row subject always starts with a slash, so drop it.
-   (if (some? row-subject)
-     (= (subs row-subject 1) cn-subject)
-     false))
+  ;; row subject always starts with a slash, so drop it.
+  (if (some? row-subject)
+    (= (subs row-subject 1) cn-subject)
+    false))
 
 (schema/defn is-not-expired? :- schema/Bool
   [now :- DateTime
@@ -831,7 +831,7 @@
     (if (fs/exists? cert-inventory)
       (with-open [inventory-reader (io/reader cert-inventory)]
         (let [inventory-rows (map extract-inventory-row-contents (line-seq inventory-reader))
-             cn-subject (utils/cn certname)]
+              cn-subject (utils/cn certname)]
           (some? (some (partial is-subject-in-inventory-row? cn-subject) inventory-rows))))
       (do
         (log/debug "Unable to find inventory file {0}" cert-inventory)
@@ -852,7 +852,7 @@
           (doall
             (->>
               (line-seq inventory-reader)
-              (map extract-inventory-row-contents )
+              (map extract-inventory-row-contents)
               (filter (partial is-expired? now))
               (map first)
               ;; assume serials are base 16 strings
