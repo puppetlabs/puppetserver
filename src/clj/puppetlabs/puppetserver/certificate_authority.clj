@@ -2483,35 +2483,35 @@
            serial-lock serial-lock-timeout-seconds] :as ca-settings} :- CaSettings
    report-activity]
   (let [;; if part of a CA bundle, the intermediate CA will be first in the chain
-        cacert      (utils/pem->ca-cert cacert cakey)
+        cacert (utils/pem->ca-cert cacert cakey)
         casubject (utils/get-subject-from-x509-certificate cacert)
-        ca-private-key  (utils/pem->private-key cakey)]
-    (when-not (empty? subjects)
-      ;; since we are going to be manipulating the serial file and the inventory file for multiple entries,
-      ;; acquire the locks to prevent lock thrashing
-      (common/with-safe-write-lock serial-lock serial-lock-descriptor serial-lock-timeout-seconds
-        (common/with-safe-write-lock inventory-lock inventory-lock-descriptor inventory-lock-timeout-seconds
-          (let [results
-                ;; loop through the subjects, one at a time, and collect the results for success or failure.
-                (loop [s subjects
-                       result {:signed []
-                               :no-csr []
-                               :signing-errors[]}]
-                  (if-not (empty? s)
-                    (let [subject (first s)
-                          csr-path (path-to-cert-request csrdir subject)]
-                      (if (fs/exists? csr-path)
-                        (let [_ (log/trace (i18n/trs "File exists at {0}" csr-path))
-                              one-result (maybe-sign-one subject csr-path cacert casubject ca-private-key ca-settings)]
-                          ;; one-result is either :signed or :signing-errors
-                          (recur (rest s)
-                                 (update result one-result conj subject)))
-                        (do
-                          (log/trace (i18n/trs "File does not exist at {0}" csr-path))
-                          (recur (rest s)
-                                 (update result :no-csr conj subject)))))
-                    result))]
-            ;; submit the signing activity as one entry for all the hosts.
-            (when-not (empty? (:signed results))
-              (report-activity (:signed results) "signed"))
-            results))))))
+        ca-private-key (utils/pem->private-key cakey)]
+
+    ;; since we are going to be manipulating the serial file and the inventory file for multiple entries,
+    ;; acquire the locks to prevent lock thrashing
+    (common/with-safe-write-lock serial-lock serial-lock-descriptor serial-lock-timeout-seconds
+      (common/with-safe-write-lock inventory-lock inventory-lock-descriptor inventory-lock-timeout-seconds
+        (let [results
+              ;; loop through the subjects, one at a time, and collect the results for success or failure.
+              (loop [s subjects
+                     result {:signed         []
+                             :no-csr         []
+                             :signing-errors []}]
+                (if-not (empty? s)
+                  (let [subject (first s)
+                        csr-path (path-to-cert-request csrdir subject)]
+                    (if (fs/exists? csr-path)
+                      (let [_ (log/trace (i18n/trs "File exists at {0}" csr-path))
+                            one-result (maybe-sign-one subject csr-path cacert casubject ca-private-key ca-settings)]
+                        ;; one-result is either :signed or :signing-errors
+                        (recur (rest s)
+                               (update result one-result conj subject)))
+                      (do
+                        (log/trace (i18n/trs "File does not exist at {0}" csr-path))
+                        (recur (rest s)
+                               (update result :no-csr conj subject)))))
+                  result))]
+          ;; submit the signing activity as one entry for all the hosts.
+          (when-not (empty? (:signed results))
+            (report-activity (:signed results) "signed"))
+          results)))))
