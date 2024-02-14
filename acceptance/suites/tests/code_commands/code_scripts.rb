@@ -65,6 +65,7 @@ step 'SETUP: Install and configure git server' do
       ensure => present,
       # shell => '/usr/bin/git-shell',
       home => '/home/git',
+      password => '*',
       managehome => true,
       system => true,
       }
