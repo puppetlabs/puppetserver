@@ -25,6 +25,9 @@
 (defproject puppetlabs/puppetserver ps-version
   :description "Puppet Server"
 
+  :license {:name "Apache License, Version 2.0"
+              :url "http://www.apache.org/licenses/LICENSE-2.0.html"}
+
   :min-lein-version "2.9.1"
 
   :parent-project {:coords [puppetlabs/clj-parent "7.3.8"]
