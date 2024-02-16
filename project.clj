@@ -28,7 +28,7 @@
   :license {:name "Apache License, Version 2.0"
               :url "http://www.apache.org/licenses/LICENSE-2.0.html"}
 
-  :min-lein-version "2.9.1"
+  :min-lein-version "2.11.2"
 
   :parent-project {:coords [puppetlabs/clj-parent "7.3.8"]
                    :inherit [:managed-dependencies]}
