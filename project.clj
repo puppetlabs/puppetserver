@@ -25,6 +25,9 @@
 (defproject puppetlabs/puppetserver ps-version
   :description "Puppet Server"
 
+  :license {:name "Apache License, Version 2.0"
+              :url "http://www.apache.org/licenses/LICENSE-2.0.html"}
+
   :min-lein-version "2.9.1"
 
   :parent-project {:coords [puppetlabs/clj-parent "7.3.8"]
@@ -57,7 +60,7 @@
                  [com.puppetlabs/trapperkeeper-webserver-jetty10]
                  [puppetlabs/trapperkeeper-authorization]
                  [puppetlabs/trapperkeeper-comidi-metrics]
-                 [puppetlabs/trapperkeeper-metrics "2.0.1"]
+                 [puppetlabs/trapperkeeper-metrics]
                  [puppetlabs/trapperkeeper-scheduler]
                  [puppetlabs/trapperkeeper-status]
                  [puppetlabs/trapperkeeper-filesystem-watcher]
@@ -84,7 +87,7 @@
                  ["snapshots" "https://artifactory.delivery.puppetlabs.net/artifactory/clojure-snapshots__local/"]]
 
   :plugins [[lein-parent "0.3.7"]
-            [jonase/eastwood "1.2.2" :exclusions [org.clojure/clojure]]
+            [jonase/eastwood "1.4.2" :exclusions [org.clojure/clojure]]
             ;; We have to have this, and it needs to agree with clj-parent
             ;; until/unless you can have managed plugin dependencies.
             [puppetlabs/i18n "0.9.2" :hooks false]]
@@ -119,7 +122,7 @@
                         :dependencies  [[org.clojure/tools.namespace]
                                         [com.puppetlabs/trapperkeeper-webserver-jetty10 :classifier "test"]
                                         [puppetlabs/trapperkeeper nil :classifier "test" :scope "test"]
-                                        [puppetlabs/trapperkeeper-metrics "2.0.1" :classifier "test" :scope "test"]
+                                        [puppetlabs/trapperkeeper-metrics :classifier "test" :scope "test"]
                                         [puppetlabs/kitchensink nil :classifier "test" :scope "test"]
                                         [ring-basic-authentication]
                                         [ring/ring-mock]

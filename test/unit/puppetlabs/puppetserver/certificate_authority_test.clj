@@ -2144,7 +2144,7 @@
                         ;; create a date 5 days from now using java.time
                         (-> (LocalDateTime/now)
                             (.plusDays 5)
-                            (.toInstant (ZoneOffset/UTC))
+                            (.toInstant ZoneOffset/UTC)
                             (Date/from))
                         (biginteger 1)
                         nil)

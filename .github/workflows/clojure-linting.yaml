@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: setup java
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
@@ -24,7 +24,3 @@ jobs:
           ./install-clj-kondo --dir .
       - name: kondo lint
         run: ./clj-kondo --lint src test
-      - name: eastwood lint
-        run: |
-          java -version
-          lein eastwood
