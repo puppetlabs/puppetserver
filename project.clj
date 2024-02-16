@@ -56,7 +56,7 @@
                  [puppetlabs/trapperkeeper]
                  [com.puppetlabs/trapperkeeper-webserver-jetty10]
                  [puppetlabs/trapperkeeper-authorization]
-                 [puppetlabs/trapperkeeper-comidi-metrics]
+                 [puppetlabs/trapperkeeper-comidi-metrics "0.1.1" :exclusions [puppetlabs/trapperkeeper-metrics]]
                  [puppetlabs/trapperkeeper-metrics "2.0.1"]
                  [puppetlabs/trapperkeeper-scheduler]
                  [puppetlabs/trapperkeeper-status]
