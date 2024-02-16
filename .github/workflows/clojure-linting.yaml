@@ -18,7 +18,7 @@ jobs:
       - name: checkout repo
         uses: actions/checkout@v2
       - name: update lein
-        run: yes | lein upgrade
+        run: yes | lein upgrade 2.10.0
       - name: install clj-kondo (this is quite fast)
         run: |
           curl -sLO https://raw.githubusercontent.com/clj-kondo/clj-kondo/master/script/install-clj-kondo
