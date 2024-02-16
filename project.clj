@@ -27,7 +27,7 @@
 
   :min-lein-version "2.9.1"
 
-  :parent-project {:coords [puppetlabs/clj-parent "7.3.1"]
+  :parent-project {:coords [puppetlabs/clj-parent "7.3.8"]
                    :inherit [:managed-dependencies]}
 
   :dependencies [[org.clojure/clojure]
@@ -56,7 +56,7 @@
                  [puppetlabs/trapperkeeper]
                  [com.puppetlabs/trapperkeeper-webserver-jetty10]
                  [puppetlabs/trapperkeeper-authorization]
-                 [puppetlabs/trapperkeeper-comidi-metrics]
+                 [puppetlabs/trapperkeeper-comidi-metrics "0.1.1" :exclusions [puppetlabs/trapperkeeper-metrics]]
                  [puppetlabs/trapperkeeper-metrics "2.0.1"]
                  [puppetlabs/trapperkeeper-scheduler]
                  [puppetlabs/trapperkeeper-status]
