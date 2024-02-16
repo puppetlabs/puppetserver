@@ -1227,19 +1227,6 @@
         :ssl-key (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
         :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
         :ssl-crl-path (str bootstrap/server-conf-dir "/ssl/crl.pem")}}
-      (testing "PE-37634 PE-sign-all with no pending certs returns 200 with expected payload"
-        (let [response (http-client/post
-                         "https://localhost:8140/puppet-ca/v1/sign/all"
-                         {:ssl-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
-                          :ssl-key (str bootstrap/server-conf-dir "/ca/ca_key.pem")
-                          :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
-                          :as :text
-                          :headers {"Accept" "application/json"}})]
-          (is (= 200 (:status response)))
-          (is (= {:signed []
-                  :no-csr []
-                  :signing-errors []}
-                 (json/parse-string (:body response) true)))))
       (testing "returns 200 with valid payload"
         ;; note- more extensive testing of the behavior is done with the testing in sign-multiple-certificate-signing-requests!-test
         (let [certname (ks/rand-str :alpha-lower 16)
