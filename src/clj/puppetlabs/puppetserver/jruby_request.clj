@@ -17,10 +17,22 @@
     (= (:kind x)
        :puppetlabs.services.jruby-pool-manager.jruby-core/jruby-timeout)))
 
+(defn schema-error?
+  "Determine if the supplied slingshot message is for a JRuby borrow timeout."
+  [x]
+  (when (map? x)
+    (= (:type x)
+       :schema.core/error)))
+
 (defn output-error
   [{:keys [uri]} {:keys [msg]} http-status]
   (log/error (i18n/trs "Error {0} on SERVER at {1}: {2}" http-status uri msg))
   (ringutils/plain-response http-status msg))
+
+(defn output-map-error
+  [{:keys [uri]} error http-status]
+  (log/error (i18n/trs "Error {0} on SERVER at {1}: {2}" http-status uri error))
+  (ringutils/json-response http-status error))
 
 (defn wrap-with-error-handling
   "Middleware that wraps a JRuby request with some error handling to return
@@ -34,7 +46,9 @@
      (catch jruby-timeout? e
        (output-error request e 503))
      (catch ringutils/service-unavailable? e
-       (output-error request e 503)))))
+       (output-error request e 503))
+     (catch schema-error? e
+       (output-map-error request e 500)))))
 
 (defn wrap-with-jruby-instance
   "Middleware fn that borrows a jruby instance from the `jruby-service` and makes
