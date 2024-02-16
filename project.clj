@@ -87,7 +87,7 @@
                  ["snapshots" "https://artifactory.delivery.puppetlabs.net/artifactory/clojure-snapshots__local/"]]
 
   :plugins [[lein-parent "0.3.7"]
-            [jonase/eastwood "1.2.2" :exclusions [org.clojure/clojure]]
+            [jonase/eastwood "1.4.2" :exclusions [org.clojure/clojure]]
             ;; We have to have this, and it needs to agree with clj-parent
             ;; until/unless you can have managed plugin dependencies.
             [puppetlabs/i18n "0.9.2" :hooks false]]
