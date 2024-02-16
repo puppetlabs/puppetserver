@@ -17,6 +17,8 @@ jobs:
           java-version: 17
       - name: checkout repo
         uses: actions/checkout@v2
+      - name: update lein
+        run: yes | lein upgrade
       - name: install clj-kondo (this is quite fast)
         run: |
           curl -sLO https://raw.githubusercontent.com/clj-kondo/clj-kondo/master/script/install-clj-kondo
