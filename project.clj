@@ -175,7 +175,7 @@
                                                [puppetlabs/jruby-utils]
                                                [puppetlabs/puppetserver ~ps-version]
                                                [com.puppetlabs/trapperkeeper-webserver-jetty10]
-                                               [puppetlabs/trapperkeeper-metrics "2.0.1"]]
+                                               [puppetlabs/trapperkeeper-metrics]]
                       :plugins [[puppetlabs/lein-ezbake "2.5.5"]]
                       :name "puppetserver"}
              :uberjar {:dependencies [[org.bouncycastle/bcpkix-jdk18on]
