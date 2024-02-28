@@ -141,3 +141,15 @@
              (subs s 0 (- (count s) suffix-size))
              s))
          files)))
+
+(def action-registraton-function (atom (constantly nil)))
+
+(schema/def action-shape
+  {:type (schema/enum "add" "remove" "info" "action")
+   :targets [schema/Str]
+   :meta schema/Any})
+
+(schema/defn record-action
+  [action :- action-shape]
+  (@action-registraton-function action))
+
