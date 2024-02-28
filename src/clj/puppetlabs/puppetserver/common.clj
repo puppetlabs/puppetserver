@@ -142,14 +142,14 @@
              s))
          files)))
 
-(def action-registraton-function (atom (constantly nil)))
+(def action-registration-function (atom (constantly nil)))
 
 (schema/def action-shape
-  {:type (schema/enum "add" "remove" "info" "action")
+  {:type (schema/enum :add :remove :info :action)
    :targets [schema/Str]
    :meta schema/Any})
 
 (schema/defn record-action
   [action :- action-shape]
-  (@action-registraton-function action))
+  (@action-registration-function action))
 

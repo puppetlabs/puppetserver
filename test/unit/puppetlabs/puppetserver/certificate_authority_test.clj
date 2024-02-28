@@ -1303,7 +1303,26 @@
             (is (thrown+?
                  [:kind :hostname-mismatch
                   :msg "Instance name \"hostwithaltnames\" does not match requested key \"foo\""]
-                 (ca/process-csr-submission! "foo" csr-with-disallowed-alt-names settings (constantly nil))))))))))
+                 (ca/process-csr-submission! "foo" csr-with-disallowed-alt-names settings (constantly nil))))))))
+    (testing "action correctly reported"
+      (let [keypair (utils/generate-key-pair)
+            subject-name (ks/rand-str :alpha-lower 8)
+            subject (utils/cn subject-name)
+            csr (utils/generate-certificate-request keypair subject)
+            csr-file (ks/temp-file "csr")
+            path-to-csr (.toString csr-file)
+            _ (utils/obj->pem! csr path-to-csr)
+            csr  (io/input-stream path-to-csr)
+            old-fn @common/action-registration-function
+            call-results (atom [])
+            new-fn (fn [value] (swap! call-results conj value))]
+        (reset! common/action-registration-function new-fn)
+        (ca/process-csr-submission! subject-name csr settings (constantly nil))
+        (is (=  [{:type :info
+                  :targets [subject-name]
+                  :meta {:what :csr :action :submit}}]
+                @call-results))
+        (reset! common/action-registration-function old-fn)))))
 
 (deftest cert-signing-extension-test
   (let [issuer-keys  (utils/generate-key-pair 512)
@@ -2259,7 +2278,7 @@
    extensions
    attributes]
   (let [keypair (utils/generate-key-pair)
-        subject-name (ks/rand-str :alpha-digits 8)
+        subject-name (ks/rand-str :alpha-lower 8)
         subject (utils/cn subject-name)
         csr (utils/generate-certificate-request keypair subject extensions attributes)
         csr-path (ca/path-to-cert-request (:csrdir settings) subject-name)]
@@ -2317,7 +2336,7 @@
                     (is (= "0x0003" (first row)))
                     (is (= (str "/" (:subject csr-info)) (nth row 3))))))))))
       (testing "correctly rejects a non-existent csr"
-        (let [random-csr-name (ks/rand-str :alpha-digits 8)]
+        (let [random-csr-name (ks/rand-str :alpha-lower 8)]
           (is (= {:signed     []
                   :no-csr [random-csr-name]
                   :signing-errors []}
@@ -2349,7 +2368,7 @@
             good-csrs (doall (pmap (fn [_i] (generate-csr settings [] [{:oid ca/pp_auth_auto_renew-attribute :value true}]))
                                    count-range))
             _ (println "begin generate random csr names")
-            random-csr-names (doall (pmap (fn [_i] (ks/rand-str :alpha-digits 8)) count-range))
+            random-csr-names (doall (pmap (fn [_i] (ks/rand-str :alpha-lower 8)) count-range))
             _ (println "begin generate alt-name csrs")
             alt-name-ext {:oid      utils/subject-alt-name-oid
                           :value    {:dns-name ["bad-name"]}

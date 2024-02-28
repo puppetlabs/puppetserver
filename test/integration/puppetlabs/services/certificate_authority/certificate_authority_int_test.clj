@@ -11,6 +11,7 @@
     [puppetlabs.kitchensink.file :as ks-file]
     [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
     [puppetlabs.puppetserver.certificate-authority :as ca]
+    [puppetlabs.puppetserver.common :as common]
     [puppetlabs.puppetserver.testutils :as testutils :refer [http-get]]
     [puppetlabs.rbac-client.protocols.activity :as act-proto]
     [puppetlabs.rbac-client.testutils.dummy-rbac-service :refer [dummy-rbac-service]]
@@ -858,7 +859,11 @@
                          :ssl-key (str bootstrap/server-conf-dir "/ca/ca_key.pem")
                          :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
                          :as :text
-                         :headers {"content-type" "text/plain"}}]
+                         :headers {"content-type" "text/plain"}}
+           call-results (atom [])
+           old-fn @common/action-registration-function
+           new-fn (fn [value] (swap! call-results conj value))]
+       (reset! common/action-registration-function new-fn)
        (ssl-utils/obj->pem! csr csr-file)
        (testing "submit a CSR via the API"
          (let [response (http-client/put
@@ -879,7 +884,12 @@
                          request-opts)]
            (is (= 204 (:status response)))
            (is (not (fs/exists? saved-csr)))))
-       (fs/delete csr-file)))))
+       (fs/delete csr-file)
+       (is (= [{:type :info
+               :targets ["test_cert"]
+               :meta {:what :csr :action :submit}}]
+             @call-results))
+       (reset! common/action-registration-function old-fn)))))
 
 (deftest csr-api-puppet-version-test
   (testutils/with-stub-puppet-conf
