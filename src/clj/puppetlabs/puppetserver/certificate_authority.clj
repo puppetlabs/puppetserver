@@ -1802,6 +1802,7 @@
       (validate-duplicate-cert-policy! csr settings)
       (validate-subject! subject (get-csr-subject csr))
       (save-certificate-request! subject csr csrdir)
+      (common/record-action {:type :info :targets [subject] :meta {:what :csr :action :submit}})
       (when (autosign-csr? autosign subject csr-stream ruby-load-path gem-path)
         (ensure-subject-alt-names-allowed! csr allow-subject-alt-names)
         (ensure-no-authorization-extensions! csr allow-authorization-extensions)
