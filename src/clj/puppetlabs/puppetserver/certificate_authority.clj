@@ -2158,30 +2158,32 @@
           serial-count (count serials)]
       (if (zero? serial-count)
         (log/info (i18n/trs "No revoke action needed. The certs are already in the CRL."))
-        (let [new-full-crl (utils/revoke-multiple our-full-crl
-                                                  (utils/pem->private-key cakey)
-                                                  (.getPublicKey (utils/pem->ca-cert cacert cakey))
+        (let [ca-private-key (utils/pem->private-key cakey)
+              ca-public-key (.getPublicKey (utils/pem->ca-cert cacert cakey))
+              new-full-crl (utils/revoke-multiple our-full-crl
+                                                  ca-private-key
+                                                  ca-public-key
                                                   serials)
               new-full-chain (cons new-full-crl (vec rest-of-full-chain))]
-          (write-crls new-full-chain cacrl)))
+          (write-crls new-full-chain cacrl)
 
-      ;; Publish infra-crl if an infra node is getting revoked.
-      (when (and enable-infra-crl (fs/exists? infra-node-serials-path))
-        (with-open [infra-nodes-serial-path-reader (io/reader infra-node-serials-path)]
-          (let [infra-nodes (set (map biginteger (read-infra-nodes infra-nodes-serial-path-reader)))
-                infra-revocations (vec (set/intersection infra-nodes (set serials)))]
-            (when (seq infra-revocations)
-              (let [[our-infra-crl & rest-of-infra-chain] (utils/pem->crls infra-crl-path)
-                    new-infra-revocations (filter-already-revoked-serials infra-revocations our-infra-crl)]
-                (if (empty? new-infra-revocations)
-                  (log/info (i18n/trs "No revoke action needed. The infra certs are already in the infra CRL"))
-                  (let [new-infra-crl (utils/revoke-multiple our-infra-crl
-                                                             (utils/pem->private-key cakey)
-                                                             (.getPublicKey (utils/pem->ca-cert cacert cakey))
-                                                             new-infra-revocations)
-                        full-infra-chain (cons new-infra-crl (vec rest-of-infra-chain))]
-                    (write-crls full-infra-chain infra-crl-path)
-                    (log/info (i18n/trs "Infra node certificate(s) being revoked; publishing updated infra CRL")))))))))
+          ;; Publish infra-crl if an infra node is getting revoked.
+          (when (and enable-infra-crl (fs/exists? infra-node-serials-path))
+            (with-open [infra-nodes-serial-path-reader (io/reader infra-node-serials-path)]
+              (let [infra-nodes (set (map biginteger (read-infra-nodes infra-nodes-serial-path-reader)))
+                    infra-revocations (vec (set/intersection infra-nodes (set serials)))]
+                (when (seq infra-revocations)
+                  (let [[our-infra-crl & rest-of-infra-chain] (utils/pem->crls infra-crl-path)
+                        new-infra-revocations (filter-already-revoked-serials infra-revocations our-infra-crl)]
+                    (if (empty? new-infra-revocations)
+                      (log/info (i18n/trs "No revoke action needed. The infra certs are already in the infra CRL"))
+                      (let [new-infra-crl (utils/revoke-multiple our-infra-crl
+                                                                 ca-private-key
+                                                                 ca-public-key
+                                                                 new-infra-revocations)
+                            full-infra-chain (cons new-infra-crl (vec rest-of-infra-chain))]
+                        (write-crls full-infra-chain infra-crl-path)
+                        (log/info (i18n/trs "Infra node certificate(s) being revoked; publishing updated infra CRL")))))))))))
       (report-activity subjects "revoked"))))
 
 (schema/defn ^:always-validate set-certificate-status!
