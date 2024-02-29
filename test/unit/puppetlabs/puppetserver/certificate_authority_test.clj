@@ -448,7 +448,11 @@
         csr                (-> (:csrdir settings)
                                (ca/path-to-cert-request "test-agent")
                                (utils/pem->csr))
-        expected-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
+        expected-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")
+        old-fn @common/action-registration-function
+        call-results (atom [])
+        new-fn (fn [value] (swap! call-results conj value))]
+    (reset! common/action-registration-function new-fn)
     ;; Fix the value of "now" so we can reliably test the dates
     (time/do-at now
       (ca/autosign-certificate-request! "test-agent" csr settings (constantly nil)))
@@ -469,7 +473,14 @@
           (testing "not-before is 1 day before now"
             (is (= (time/minus now (time/days 1)) not-before)))
           (testing "not-after is 2 years from now"
-            (is (= (time/plus now (time/years 2)) not-after))))))))
+            (is (= (time/plus now (time/years 2)) not-after)))))
+
+      (testing "correctly reports node activity"
+        (is (= [{:type :add,
+                 :targets ["test-agent"],
+                 :meta {:type :certificate}}]
+               @call-results)))
+      (reset! common/action-registration-function old-fn))))
 
 (deftest autosign-without-capub
   (testing "The CA public key file is not necessary to autosign"
@@ -1320,7 +1331,10 @@
         (ca/process-csr-submission! subject-name csr settings (constantly nil))
         (is (=  [{:type :info
                   :targets [subject-name]
-                  :meta {:what :csr :action :submit}}]
+                  :meta {:what :csr :action :submit}}
+                 {:type :add
+                  :targets [subject-name]
+                  :meta {:type :certificate}}]
                 @call-results))
         (reset! common/action-registration-function old-fn)))))
 
@@ -2385,6 +2399,10 @@
             all-csrs (concat good-csrs bad-names unauthorized unapproved-extensions)
             _ (println "add in bad names and shuffle")
             all-names (shuffle (concat (map :subject-name all-csrs) random-csr-names))
+            old-fn @common/action-registration-function
+            call-results (atom [])
+            new-fn (fn [value] (swap! call-results conj value))
+            _ (reset! common/action-registration-function new-fn)
             result (ca/sign-multiple-certificate-signing-requests! all-names settings report-activity)
             signed-set (set (:signed result))
             not-found-set (set (:no-csr result))
@@ -2397,6 +2415,10 @@
         (testing "all the signed entries should be present"
           (is (= good-csrs-set
                  signed-set))
+          (is (= 1 (count @call-results)))
+          (is (= {:type :add :targets good-csrs-set :meta {:type :certificate}}
+                 ;; convert the targets to a set for comparison
+                 (update-in (first @call-results) [:targets] set)))
           (testing "none of the valid csrs should be in the not-signed set"
             (is (empty? (clojure.set/intersection unsigned-set good-csrs-set))))
           (testing "all of the random names should be in the not-found-set"
@@ -2406,7 +2428,8 @@
           (testing "all of the unauthorized names should be in the not-signed"
             (is (= unauthorized-set (clojure.set/intersection unsigned-set unauthorized-set))))
           (testing "all of the unapproved names should be in the not-signed"
-            (is (= unapproved-extensions-set (clojure.set/intersection unsigned-set unapproved-extensions-set)))))))))
+            (is (= unapproved-extensions-set (clojure.set/intersection unsigned-set unapproved-extensions-set)))))
+        (reset! common/action-registration-function old-fn)))))
 
 (def default-permissions
   (into-array FileAttribute [(ks-file/perms->attribute "rw-------")]))
