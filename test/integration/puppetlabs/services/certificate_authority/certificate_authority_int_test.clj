@@ -1193,6 +1193,10 @@
         (let [certname (ks/rand-str :alpha-lower 16)
               certname-no-exist (ks/rand-str :alpha-lower 16)
               certname-with-bad-extension (ks/rand-str :alpha-lower 16)
+              call-results (atom [])
+              old-fn @common/action-registration-function
+              new-fn (fn [value] (swap! call-results conj value))
+              _ (reset! common/action-registration-function new-fn)
               _ (generate-a-csr certname [] [])
               _ (generate-a-csr certname-with-bad-extension [{:oid "1.9.9.9.9.9.0" :value "true" :critical false}] [])
               response (http-client/post
@@ -1207,7 +1211,12 @@
         (is (= {:signed [certname]
                 :no-csr [certname-no-exist]
                 :signing-errors [certname-with-bad-extension]}
-               (json/parse-string (:body response) true)))))
+               (json/parse-string (:body response) true)))
+        (is (= [{:type :add
+                :targets [certname]
+                :meta {:type :certificate}}]
+               @call-results))
+        (reset! common/action-registration-function old-fn)))
       (testing "throws schema violation for invalid certname"
         (let [error-msg "{\"kind\":\"schema-violation\""
               response (http-client/post
@@ -1237,38 +1246,47 @@
         :ssl-key (str bootstrap/server-conf-dir "/ssl/private_keys/localhost.pem")
         :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
         :ssl-crl-path (str bootstrap/server-conf-dir "/ssl/crl.pem")}}
-      (testing "PE-37634 PE-sign-all with no pending certs returns 200 with expected payload"
-        (let [response (http-client/post
-                         "https://localhost:8140/puppet-ca/v1/sign/all"
-                         {:ssl-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
-                          :ssl-key (str bootstrap/server-conf-dir "/ca/ca_key.pem")
-                          :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
-                          :as :text
-                          :headers {"Accept" "application/json"}})]
-          (is (= 200 (:status response)))
-          (is (= {:signed []
-                  :no-csr []
-                  :signing-errors []}
-                 (json/parse-string (:body response) true)))))
-      (testing "returns 200 with valid payload"
-        ;; note- more extensive testing of the behavior is done with the testing in sign-multiple-certificate-signing-requests!-test
-        (let [certname (ks/rand-str :alpha-lower 16)
-              certname-with-bad-extension (ks/rand-str :alpha-lower 16)
-              _ (generate-a-csr certname [] [])
-              _ (generate-a-csr certname-with-bad-extension [{:oid "1.9.9.9.9.9.0" :value "true" :critical false}] [])
-              response (http-client/post
-                      "https://localhost:8140/puppet-ca/v1/sign/all"
-                      {:ssl-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
-                       :ssl-key (str bootstrap/server-conf-dir "/ca/ca_key.pem")
-                       :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
-                       :as :text
-                       :headers {"Accept" "application/json"}})]
-          (is (= 200 (:status response)))
-          (is (= {:signed [certname]
-                  ;; this would represent any files that are removed between when the set is collected, and when they are processed.
-                  :no-csr []
-                  :signing-errors [certname-with-bad-extension]}
-                 (json/parse-string (:body response) true))))))))
+      (let [old-fn @common/action-registration-function
+            call-results (atom [])
+            new-fn (fn [value] (swap! call-results conj value))]
+        (reset! common/action-registration-function new-fn)
+        (testing "PE-37634 PE-sign-all with no pending certs returns 200 with expected payload"
+          (let [response (http-client/post
+                           "https://localhost:8140/puppet-ca/v1/sign/all"
+                           {:ssl-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                            :ssl-key (str bootstrap/server-conf-dir "/ca/ca_key.pem")
+                            :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                            :as :text
+                            :headers {"Accept" "application/json"}})]
+            (is (= 200 (:status response)))
+            (is (= {:signed []
+                    :no-csr []
+                    :signing-errors []}
+                   (json/parse-string (:body response) true)))
+            (is (= [] @call-results))))
+        (testing "returns 200 with valid payload"
+          ;; note- more extensive testing of the behavior is done with the testing in sign-multiple-certificate-signing-requests!-test
+          (let [certname (ks/rand-str :alpha-lower 16)
+                certname-with-bad-extension (ks/rand-str :alpha-lower 16)
+                _ (generate-a-csr certname [] [])
+                _ (generate-a-csr certname-with-bad-extension [{:oid "1.9.9.9.9.9.0" :value "true" :critical false}] [])
+                response (http-client/post
+                        "https://localhost:8140/puppet-ca/v1/sign/all"
+                        {:ssl-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                         :ssl-key (str bootstrap/server-conf-dir "/ca/ca_key.pem")
+                         :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                         :as :text
+                         :headers {"Accept" "application/json"}})]
+            (is (= 200 (:status response)))
+            (is (= {:signed [certname]
+                    ;; this would represent any files that are removed between when the set is collected, and when they are processed.
+                    :no-csr []
+                    :signing-errors [certname-with-bad-extension]}
+                   (json/parse-string (:body response) true)))
+            (is (= [{:type :add
+                     :targets [certname]
+                     :meta {:type :certificate}}] @call-results))))
+        (reset! common/action-registration-function old-fn)))))
 
 (deftest ca-certificate-renew-endpoint-test
   (testing "with the feature enabled"

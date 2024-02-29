@@ -1687,6 +1687,7 @@
                                             (create-agent-extensions
                                              csr
                                              cacert))]
+    (common/record-action {:type :add :targets [subject] :meta {:type :certificate}})
     (write-cert-to-inventory! signed-cert ca-settings)
     (write-cert signed-cert (path-to-cert signeddir subject))
     (delete-certificate-request! ca-settings subject)
@@ -2514,5 +2515,6 @@
                   result))]
           ;; submit the signing activity as one entry for all the hosts.
           (when-not (empty? (:signed results))
+            (common/record-action {:type :add :targets (:signed results) :meta {:type :certificate}})
             (report-activity (:signed results) "signed"))
           results)))))
