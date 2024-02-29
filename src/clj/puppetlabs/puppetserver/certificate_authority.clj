@@ -2152,6 +2152,7 @@
   (common/with-safe-write-lock crl-lock crl-lock-descriptor crl-lock-timeout-seconds
     (let [[our-full-crl & rest-of-full-chain] (utils/pem->crls cacrl)
           serials (filter-already-revoked-serials (->> subjects
+                                                       ; `look-for-serial-numbers` also looks in the inventory and for the file on disk
                                                        (map (partial look-for-serial-numbers settings))
                                                        flatten)
                                                   our-full-crl)
@@ -2183,8 +2184,9 @@
                                                                  new-infra-revocations)
                             full-infra-chain (cons new-infra-crl (vec rest-of-infra-chain))]
                         (write-crls full-infra-chain infra-crl-path)
-                        (log/info (i18n/trs "Infra node certificate(s) being revoked; publishing updated infra CRL")))))))))))
-      (report-activity subjects "revoked"))))
+                        (log/info (i18n/trs "Infra node certificate(s) being revoked; publishing updated infra CRL")))))))))))))
+  (report-activity subjects "revoked")
+  (common/record-action {:type :remove :targets subjects :meta {:type :certificate}}))
 
 (schema/defn ^:always-validate set-certificate-status!
   "Sign or revoke the certificate for the given subject."
