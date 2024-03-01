@@ -184,7 +184,8 @@
         (let [{existing-certs true
                missing-certs false} (group-by
                                      #(certificate-issued? ca-settings %)
-                                     certnames)
+                                     ;; ensure we process a unique set of certnames
+                                     (distinct certnames))
               message (when (seq missing-certs)
                         (format "The following certs do not exist and cannot be revoked: %s"
                                 (vec missing-certs)))

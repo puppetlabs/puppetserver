@@ -168,7 +168,11 @@
 
            (testing "Revoke the cert"
              (logutils/with-test-logging
-               (let [response (http-client/put
+               (let [call-results (atom [])
+                     old-fn @common/action-registration-function
+                     new-fn (fn [value] (swap! call-results conj value))
+                     _ (reset! common/action-registration-function new-fn)
+                     response (http-client/put
                                status-url
                                (merge request-opts
                                       {:body "{\"desired_state\": \"revoked\"}"
@@ -176,7 +180,11 @@
                  (is (= 204 (:status response)))
                  (is (logged? #"Reporting CA event failed with: Foo" :error))
                  (is (logged? #"Payload.*commit" :error))
-                 (is (logged? #"Entity localhost revoked 1 certificate.*" :info)))))))))))
+                 (is (logged? #"Entity localhost revoked 1 certificate.*" :info))
+                 (is (= [{:type :remove,
+                          :targets ["test_cert"],
+                          :meta {:type :certificate}}] @call-results))
+                 (reset! common/action-registration-function old-fn))))))))))
 
 (deftest new-cert-signing-respects-agent-renewal-support-indication
   (testutils/with-config-dirs
@@ -579,7 +587,11 @@
             app
             {:certificate-authority {:enable-infra-crl true}}
             (testing "should update infrastructure CRL"
-              (let [ca-cert' (ssl-utils/pem->ca-cert ca-cert ca-key)
+              (let [call-results (atom [])
+                    old-fn @common/action-registration-function
+                    new-fn (fn [value] (swap! call-results conj value))
+                    _ (reset! common/action-registration-function new-fn)
+                    ca-cert' (ssl-utils/pem->ca-cert ca-cert ca-key)
                     cm-cert (ssl-utils/pem->cert (ca/path-to-cert signed-dir subject))
                     node-cert (ssl-utils/pem->cert (ca/path-to-cert signed-dir node-subject))
                     options {:ssl-cert ca-cert
@@ -607,7 +619,14 @@
                 (testing "Infra CRL should NOT contain a revoked non-compiler's certificate"
                   (let [revoke-response (cert-status-request "revoked" node-subject)]
                     (is (= 204 (:status revoke-response)))
-                    (is (not (ssl-utils/revoked? (ssl-utils/pem->ca-crl infra-crl ca-cert') node-cert)))))))
+                    (is (not (ssl-utils/revoked? (ssl-utils/pem->ca-crl infra-crl ca-cert') node-cert)))))
+                (is (= [{:type :remove,
+                        :targets ["compile-master"],
+                        :meta {:type :certificate}}
+                       {:type :remove,
+                        :targets ["agent-node"],
+                        :meta {:type :certificate}}] @call-results))
+                (reset! common/action-registration-function old-fn)))
 
             (testing "Verify correct CRL is returned depending on enable-infra-crl"
               (let [request (mock/request :get "/v1/certificate_revocation_list/mynode")

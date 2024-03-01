@@ -556,12 +556,20 @@
           revoked? (fn [cert]
                      (-> (:cacrl settings)
                          (utils/pem->crl)
-                         (utils/revoked? cert)))]
+                         (utils/revoked? cert)))
+          old-fn @common/action-registration-function
+          call-results (atom [])
+          new-fn (fn [value] (swap! call-results conj value))]
+      (reset! common/action-registration-function new-fn)
       (is (false? (revoked? cert1)))
       (is (false? (revoked? cert2)))
       (ca/revoke-existing-certs! settings ["localhost" "test_cert"] (constantly nil))
       (is (true? (revoked? cert1)))
-      (is (true? (revoked? cert2))))))
+      (is (true? (revoked? cert2)))
+      (is (= [{:type :remove,
+               :targets ["localhost" "test_cert"],
+               :meta {:type :certificate}}] @call-results))
+      (reset! common/action-registration-function old-fn))))
 
 (defn make-big-integers
   [integers]
