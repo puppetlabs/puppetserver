@@ -9,6 +9,7 @@
     [puppetlabs.http.client.sync :as http-client]
     [puppetlabs.kitchensink.core :as ks]
     [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap-testutils]
+    [puppetlabs.puppetserver.common :as common]
     [puppetlabs.puppetserver.testutils :as testutils]
     [puppetlabs.services.jruby.jruby-metrics-core :as jruby-metrics-core]
     [puppetlabs.services.jruby.jruby-puppet-service :as jruby-service]
@@ -118,7 +119,11 @@
           ;; node endpoint
           (is (= "foo" (get node-response-body "name")))
           (is (= "production" (get node-response-body "environment"))))
-        (let [catalog-response (logutils/with-test-logging
+        (let [old-fn @common/action-registration-function
+              call-results (atom [])
+              new-fn (fn [value] (swap! call-results conj value))
+              _  (reset! common/action-registration-function new-fn)
+              catalog-response (logutils/with-test-logging
                                 (http-get "/puppet/v3/catalog/foo?environment=production"))
               catalog-response-body (-> catalog-response :body json/parse-string)]
           (is (= 200 (:status catalog-response)))
@@ -129,7 +134,14 @@
                                            "Foo"))
 
           (is (= "foo" (get catalog-response-body "name")))
-          (is (= "production" (get catalog-response-body "environment"))))
+          (is (= "production" (get catalog-response-body "environment")))
+          (testing "correctly reports node activity"
+            (is (= [{:type :action,
+                     :targets ["foo"],
+                     :meta
+                     {:type :certificate, :what :compile-catalog, :where :v3}}]
+                   @call-results)))
+          (reset! common/action-registration-function old-fn))
         (is (= 404 (:status (http-get
                              "/puppet/funky/town")))))
 

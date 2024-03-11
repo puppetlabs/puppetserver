@@ -1,19 +1,19 @@
 (ns puppetlabs.services.request-handler.request-handler-core
-  (:import (java.util HashMap)
-           (java.io StringReader)
-           (com.puppetlabs.puppetserver JRubyPuppetResponse))
-  (:require [clojure.tools.logging :as log]
-            [clojure.string :as string]
+  (:require [clojure.string :as string]
+            [clojure.tools.logging :as log]
             [clojure.walk :as walk]
+            [puppetlabs.i18n.core :as i18n]
+            [puppetlabs.puppetserver.common :as ps-common]
+            [puppetlabs.puppetserver.jruby-request :as jruby-request]
+            [puppetlabs.ring-middleware.params :as pl-ring-params]
             [puppetlabs.ring-middleware.utils :as ringutils]
             [puppetlabs.ssl-utils.core :as ssl-utils]
-            [puppetlabs.puppetserver.common :as ps-common]
-            [ring.util.codec :as ring-codec]
             [puppetlabs.trapperkeeper.authorization.ring :as ring-auth]
-            [puppetlabs.ring-middleware.params :as pl-ring-params]
-            [puppetlabs.puppetserver.jruby-request :as jruby-request]
-            [schema.core :as schema]
-            [puppetlabs.i18n.core :as i18n]))
+            [ring.util.codec :as ring-codec]
+            [schema.core :as schema])
+  (:import (com.puppetlabs.puppetserver JRubyPuppetResponse)
+           (java.io StringReader)
+           (java.util HashMap Map)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
@@ -227,7 +227,7 @@
 (defn make-request-mutable
   "Make the request mutable.  This is required by the ruby layer."
   [request]
-  (HashMap. request))
+  (HashMap. ^Map request))
 
 (defn with-code-id
   "Wraps the given request with the current-code-id, if it contains a
@@ -247,14 +247,25 @@
   "Build a request handler fn that processes a request using a JRubyPuppet instance"
   [config current-code-id]
   (fn [request]
-    (->> request
-         wrap-params-for-jruby
-         (with-code-id current-code-id)
-         (as-jruby-request config)
-         walk/stringify-keys
-         make-request-mutable
-         (.handleRequest (:jruby-instance request))
-         response->map)))
+    (let [result (->> request
+                      wrap-params-for-jruby
+                      (with-code-id current-code-id)
+                      (as-jruby-request config)
+                      walk/stringify-keys
+                      make-request-mutable
+                      (.handleRequest (:jruby-instance request))
+                      response->map)
+          status (:status result)]
+      (when (and (some? status) (<= 200 status 299))
+        (let [[_ certname] (re-matches #"^/puppet/v3/catalog/(.*)" (ring-codec/url-decode (:uri request)))]
+          (when certname
+            (ps-common/record-action {:type    :action
+                                      :targets [certname]
+                                      :meta    {:type :certificate
+                                                :what :compile-catalog
+                                                :where :v3}}))))
+      result)))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
