@@ -942,15 +942,21 @@
     (let [request-options (-> request
                               :body
                               slurp
-                              (validated-body CatalogRequestV4))]
-      {:status 200
-       :headers {"Content-Type" "application/json"}
-       :body (json/encode
-              (jruby-protocol/compile-catalog jruby-service
-                                              (:jruby-instance request)
-                                              (assoc request-options
-                                                     "code_id"
-                                                     (current-code-id-fn (get request-options "environment")))))})))
+                              (validated-body CatalogRequestV4))
+          result {:status 200
+                  :headers {"Content-Type" "application/json"}
+                  :body (json/encode
+                         (jruby-protocol/compile-catalog jruby-service
+                                                         (:jruby-instance request)
+                                                         (assoc request-options
+                                                                "code_id"
+                                                                (current-code-id-fn (get request-options "environment")))))}]
+      (ps-common/record-action {:type :action
+                                :targets [(get request-options "certname")]
+                                :meta {:type :certificate
+                                       :what :compile-catalog
+                                       :where :v4}})
+      result)))
 
 (defn parse-project-compile-data
   "Parse data required to compile a catalog inside a project. Data required includes
