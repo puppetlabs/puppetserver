@@ -1,6 +1,7 @@
 (ns puppetlabs.puppetserver.error-handling-int-test
   (:require
     [clojure.test :refer [deftest is testing use-fixtures]]
+    [puppetlabs.puppetserver.common :as ps-common]
     [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
     [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
     [puppetlabs.puppetserver.testutils :as testutils]
@@ -43,12 +44,23 @@
           ;; between the ring handler and the JRuby layer, and called on every
           ;; request) to simply ignore any arguments and just throw an Exception.
           (with-redefs [request-handler/as-jruby-request just-throw-it]
-            (let [response (testutils/http-get "puppet/v3/catalog/localhost?environment=production")]
+            (let [call-results (atom [])
+                  old-fn @ps-common/action-registration-function
+                  new-fn (fn [value] (swap! call-results conj value))
+                  _ (reset! ps-common/action-registration-function new-fn)
+                  response (testutils/http-get "puppet/v3/catalog/localhost?environment=production")]
               (is (= 500 (:status response)))
               (is (= "Internal Server Error: java.lang.Exception: barf"
                      (:body response)))
               (is (re-matches #"text/plain;\s*charset=.*"
-                              (get-in response [:headers "content-type"]))))))
+                              (get-in response [:headers "content-type"])))
+              (is (= [{:type :action,
+                       :targets ["localhost"],
+                       :meta
+                       {:type :certificate, :what :compile-catalog, :where :v3}}]
+                     @call-results))
+              (reset! ps-common/action-registration-function old-fn))))
+
         (testing "the CA API - in particular, one of the endpoints implemented via liberator"
           ;; Yes, this is weird - see comment above.
           (with-redefs [ca/get-cert-or-csr-status throw-npe]

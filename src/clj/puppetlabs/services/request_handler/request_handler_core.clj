@@ -247,24 +247,27 @@
   "Build a request handler fn that processes a request using a JRubyPuppet instance"
   [config current-code-id]
   (fn [request]
-    (let [result (->> request
-                      wrap-params-for-jruby
-                      (with-code-id current-code-id)
-                      (as-jruby-request config)
-                      walk/stringify-keys
-                      make-request-mutable
-                      (.handleRequest (:jruby-instance request))
-                      response->map)
-          status (:status result)]
-      (when (and (some? status) (<= 200 status 299))
-        (let [[_ certname] (re-matches #"^/puppet/v3/catalog/(.*)" (ring-codec/url-decode (:uri request)))]
-          (when certname
-            (ps-common/record-action {:type    :action
-                                      :targets [certname]
-                                      :meta    {:type :certificate
-                                                :what :compile-catalog
-                                                :where :v3}}))))
-      result)))
+    (try
+      (->> request
+           wrap-params-for-jruby
+           (with-code-id current-code-id)
+           (as-jruby-request config)
+           walk/stringify-keys
+           make-request-mutable
+           (.handleRequest (:jruby-instance request))
+           response->map)
+      (finally
+        ;; don't let any exceptions escape
+        (try
+          (let [[_ certname] (re-matches #"^/puppet/v3/catalog/(.*)" (ring-codec/url-decode (:uri request)))]
+            (when certname
+              (ps-common/record-action {:type    :action
+                                        :targets [certname]
+                                        :meta    {:type :certificate
+                                                  :what :compile-catalog
+                                                  :where :v3}})))
+          (catch Throwable e
+            (log/info e (i18n/trs "Failed to report action"))))))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
