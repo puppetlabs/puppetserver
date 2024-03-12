@@ -942,21 +942,26 @@
     (let [request-options (-> request
                               :body
                               slurp
-                              (validated-body CatalogRequestV4))
-          result {:status 200
-                  :headers {"Content-Type" "application/json"}
-                  :body (json/encode
-                         (jruby-protocol/compile-catalog jruby-service
-                                                         (:jruby-instance request)
-                                                         (assoc request-options
-                                                                "code_id"
-                                                                (current-code-id-fn (get request-options "environment")))))}]
-      (ps-common/record-action {:type :action
-                                :targets [(get request-options "certname")]
-                                :meta {:type :certificate
-                                       :what :compile-catalog
-                                       :where :v4}})
-      result)))
+                              (validated-body CatalogRequestV4))]
+      (try
+        {:status  200
+         :headers {"Content-Type" "application/json"}
+         :body    (json/encode
+                    (jruby-protocol/compile-catalog jruby-service
+                                                    (:jruby-instance request)
+                                                    (assoc request-options
+                                                      "code_id"
+                                                      (current-code-id-fn (get request-options "environment")))))}
+        (finally
+          ;; don't let any exceptions escape
+          (try
+            (ps-common/record-action {:type    :action
+                                      :targets [(get request-options "certname")]
+                                      :meta    {:type  :certificate
+                                                :what  :compile-catalog
+                                                :where :v4}})
+            (catch Throwable e
+              (log/info e (i18n/trs "Failed to report action")))))))))
 
 (defn parse-project-compile-data
   "Parse data required to compile a catalog inside a project. Data required includes
