@@ -1,4 +1,4 @@
-{:forge_host=>"forge-aio01-petest.puppetlabs.com",
+{:forge_host=>"forgeapi.puppet.com",
  :is_puppetserver=>true,
  :is_jvm_puppet=>true,
  "service-wait"=>true,
