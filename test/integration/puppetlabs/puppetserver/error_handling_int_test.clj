@@ -16,6 +16,8 @@
 (use-fixtures :once
               (testutils/with-puppet-conf (fs/file test-resources "puppet.conf")))
 
+(use-fixtures :each #(with-test-logging (%)))
+
 ;; Used in the test below.
 (defn just-throw-it
   [& _]

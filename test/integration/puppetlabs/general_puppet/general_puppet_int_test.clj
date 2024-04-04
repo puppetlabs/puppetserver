@@ -26,6 +26,8 @@
               (testutils/with-puppet-conf
                (fs/file test-resources-dir "puppet.conf")))
 
+(use-fixtures :each #(logging/with-test-logging (%)))
+
 (def num-jrubies 1)
 
 (deftest ^:integration test-simple-external-command-execution

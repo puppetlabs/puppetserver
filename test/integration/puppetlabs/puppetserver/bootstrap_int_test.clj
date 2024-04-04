@@ -6,7 +6,9 @@
             [puppetlabs.puppetserver.certificate-authority :as ca]
             [me.raynes.fs :as fs]))
 
-(use-fixtures :each logging/reset-logging-config-after-test)
+(use-fixtures :each
+              logging/reset-logging-config-after-test
+              #(logging/with-test-logging (%)))
 
 (deftest ^:integration test-app-startup
   (testing "Trapperkeeper can be booted successfully using the dev config files."

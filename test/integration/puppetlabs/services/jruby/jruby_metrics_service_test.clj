@@ -27,6 +27,7 @@
            (java.util.concurrent TimeUnit)))
 
 (use-fixtures :once schema-test/validate-schemas)
+(use-fixtures :each #(logging/with-test-logging (%)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Config / constants

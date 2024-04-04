@@ -5,6 +5,7 @@
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.puppetserver.testutils :as testutils :refer
              [ssl-request-options get-catalog]]
+            [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [me.raynes.fs :as fs]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.kitchensink.core :as ks]))
@@ -15,6 +16,8 @@
 (use-fixtures :once
               (testutils/with-puppet-conf
                 (fs/file test-resources-dir "puppet.conf")))
+
+(use-fixtures :each #(logutils/with-test-logging (%)))
 
 (def num-jrubies 2)
 
