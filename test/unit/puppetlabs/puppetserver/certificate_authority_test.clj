@@ -371,22 +371,19 @@
     (testing "stdout is added to master's log at debug level"
       (logutils/with-test-logging
         (ca/autosign-csr? executable "test-agent" (csr-fn) ruby-load-path ruby-gem-path)
-        (is (logged? #"print to stdout" :debug))))
+        (is (logged? #"print to stdout" :debug)
+            "Do you have puppet installed locally in addition to the submodule?")))
 
     (testing "stderr is added to master's log at warn level"
       (logutils/with-test-logging
        (ca/autosign-csr? executable "test-agent" (csr-fn) ruby-load-path ruby-gem-path)
-       (is (logged? #"generated output to stderr: print to stderr" :warn))))
+       (is (logged? #"generated output to stderr: print to stderr" :warn)
+           "Do you have puppet installed locally in addition to the submodule?")))
 
     (testing "non-zero exit-code generates a log entry at warn level"
       (logutils/with-test-logging
        (ca/autosign-csr? executable "foo" (csr-fn) ruby-load-path ruby-gem-path)
        (is (logged? #"rejected certificate 'foo'" :warn))))
-
-    (testing "Ruby load path is configured and contains Puppet"
-      (logutils/with-test-logging
-        (ca/autosign-csr? executable "test-agent" (csr-fn) ruby-load-path ruby-gem-path)
-        (is (logged? #"Ruby load path configured properly"))))
 
     (testing "subject is passed as argument and CSR is provided on stdin"
       (logutils/with-test-logging

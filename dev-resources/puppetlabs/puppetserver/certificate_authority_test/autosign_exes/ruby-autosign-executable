@@ -1,13 +1,6 @@
 #!/usr/bin/env ruby
 
-begin
-  require 'rubygems'
-  require 'puppet'
-  require 'puppet/ssl/certificate_request'
-  STDOUT.puts 'Ruby load path configured properly'
-rescue LoadError
-  STDERR.puts 'Ruby load path not configured'
-end
+require 'puppet'
 
 STDOUT.puts 'print to stdout'
 STDERR.puts 'print to stderr'
