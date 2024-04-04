@@ -10,7 +10,6 @@ set -e
 ROOTDIR="${HOME}/.puppetlabs"
 CONFDIR="${ROOTDIR}/etc/puppet"
 CODEDIR="${ROOTDIR}/etc/code"
-VENDORED_GEMS_HOME="${ROOTDIR}/opt/server/data/puppetserver/vendored-jruby-gems"
 
 gem_list=()
 while read LINE
@@ -27,10 +26,8 @@ do
   gem_list+=("$gem_name:$gem_version")
 done < ./resources/ext/build-scripts/jruby-stdlib-gem-list.txt
 
-echo "Installing vendored gems to '${VENDORED_GEMS_HOME}'"
+echo "Installing vendored gems"
 lein gem install --no-document "${gem_list[@]}"
-
-./dev/install-test-gems.sh
 
 echo "Setting up puppet.conf for dev environment"
 

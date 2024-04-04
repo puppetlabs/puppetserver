@@ -27,8 +27,8 @@
 ;; Constants
 
 (def ruby-load-path ["./ruby/puppet/lib" "./ruby/facter/lib" "./ruby/hiera/lib"])
-(def gem-home "./target/jruby-gem-home")
-(def gem-path "./target/jruby-gem-home:./target/vendored-jruby-gems")
+(def gem-home (str (System/getProperty "user.home") "/.puppetlabs/opt/server/data/puppetserver/jruby-gems"))
+(def gem-path (str gem-home ":" (System/getProperty "user.home") "/.puppetlabs/opt/server/data/puppetserver/vendored-jruby-gems"))
 
 (def conf-dir "./target/server-conf")
 (def code-dir "./target/server-code")
