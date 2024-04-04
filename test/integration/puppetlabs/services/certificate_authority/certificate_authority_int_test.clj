@@ -413,34 +413,35 @@
 
 (deftest ^:integration certificate-with-ca-true-extension-refused
   (testing "Validates that the server rejects a csr for signing that has the v3 CA:TRUE extension"
-    (let [server-conf-dir (str test-resources-dir "/ca_true_test/master/conf")
-          req-dir (str server-conf-dir "/ca/requests")
+    (let [test-conf-dir (str test-resources-dir "/ca_true_test/master/conf")
+          req-dir (str bootstrap/server-conf-dir "/ca/requests")
           key-pair (ssl-utils/generate-key-pair)
           subjectDN (ssl-utils/cn "test_cert_ca_true")
           ca-ext [(ssl-utils/basic-constraints-for-ca)]
           csr (ssl-utils/generate-certificate-request key-pair
                                                       subjectDN
                                                       ca-ext)]
-      (fs/mkdir req-dir)
-      (ssl-utils/obj->pem! csr (str req-dir "/test_cert_ca_true.pem"))
-      (bootstrap/with-puppetserver-running-with-mock-jrubies
-       "JRuby mocking is safe here because all of the requests are to the CA
-       endpoints, which are implemented in Clojure."
-        app
-        {:jruby-puppet {:server-conf-dir server-conf-dir}}
-        (let [response (http-client/put
-                        (str "https://localhost:8140/"
-                             "puppet-ca/v1/certificate_status/test_cert_ca_true")
-                        {:ssl-cert (str server-conf-dir "/ca/ca_crt.pem")
-                         :ssl-key (str server-conf-dir "/ca/ca_key.pem")
-                         :ssl-ca-cert (str server-conf-dir "/ca/ca_crt.pem")
-                         :as :text
-                         :body "{\"desired_state\": \"signed\"}"
-                         :headers {"content-type" "application/json"}})]
-          (is (= 409 (:status response)))
-          (is (.startsWith (:body response) "Found extensions"))
-          (is (.contains (:body response) "2.5.29.19"))
-          (fs/delete-dir req-dir))))))
+      (testutils/with-config-dirs {test-conf-dir bootstrap/server-conf-dir}
+        (fs/mkdir req-dir)
+        (ssl-utils/obj->pem! csr (str req-dir "/test_cert_ca_true.pem"))
+        (bootstrap/with-puppetserver-running-with-mock-jrubies
+         "JRuby mocking is safe here because all of the requests are to the CA
+         endpoints, which are implemented in Clojure."
+          app
+          {:jruby-puppet {:server-conf-dir bootstrap/server-conf-dir}}
+          (let [response (http-client/put
+                          (str "https://localhost:8140/"
+                               "puppet-ca/v1/certificate_status/test_cert_ca_true")
+                          {:ssl-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                           :ssl-key (str bootstrap/server-conf-dir "/ca/ca_key.pem")
+                           :ssl-ca-cert (str bootstrap/server-conf-dir "/ca/ca_crt.pem")
+                           :as :text
+                           :body "{\"desired_state\": \"signed\"}"
+                           :headers {"content-type" "application/json"}})]
+            (is (= 409 (:status response)))
+            (is (.startsWith (:body response) "Found extensions"))
+            (is (.contains (:body response) "2.5.29.19"))
+            (fs/delete-dir req-dir)))))))
 
 (deftest ^:integration double-encoded-request-not-allowed
   (testing "client not able to unintentionally get access to CA endpoint by double-encoding request uri"
