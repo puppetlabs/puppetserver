@@ -439,10 +439,16 @@
     (ca/delete-certificate-request! settings subject))
 
   :exists?
-  (fn [_context]
-    (or
-      (certificate-issued? settings subject)
-      (ca/csr-exists? settings subject)))
+  (fn [context]
+    ;; if we actually want to get the certificate state, we only care if the files
+    ;; really exist, not if they are in the inventory file
+    (if (= :get (get-in context [:request :request-method]))
+      (or
+        (ca/certificate-exists? settings subject)
+        (ca/csr-exists? settings subject))
+      (or
+        (certificate-issued? settings subject)
+        (ca/csr-exists? settings subject))))
 
   :handle-conflict
   (fn [context]
