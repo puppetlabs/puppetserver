@@ -34,6 +34,10 @@ class Puppet::Server::Execution
       exe_options.combine_stdout_stderr = true
     end
 
+    if options[:cwd]
+      exe_options.working_directory = options[:cwd]
+    end
+
     if args && !args.empty?
       result = ShellUtils.executeCommand(binary, args.to_java(:string), exe_options)
     else

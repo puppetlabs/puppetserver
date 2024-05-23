@@ -29,6 +29,13 @@ describe Puppet::Server::Execution do
       expect(result).to match(/hello stderr/)
     end
 
+    it "should set the current working directory" do
+      tmpdir = Dir.tmpdir
+      result = test_execute(File.join(__dir__, "../../../../spec/fixtures/puppet-server-lib/puppet/jvm/execution_spec/echo_cwd.sh"),
+                            {:cwd => tmpdir})
+      expect(result).to match(/cwd is #{Regexp.escape(tmpdir)}/)
+    end
+
     it "should return an instance of ProcessOutput for a command with args" do
       result = test_execute(["echo", "hi"])
       expect(result).to be_a Puppet::Util::Execution::ProcessOutput
