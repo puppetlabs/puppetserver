@@ -26,7 +26,6 @@
   the JRuby load path.  Similarly, this works from the uberjar because this
   directory is placed into the root of the jar structure which is on the
   classpath.
-
   See also:  https://www.javadoc.io/doc/org.jruby/jruby-core/latest/org/jruby/runtime/load/LoadService.html"
 
   "uri:classloader:/puppetserver-lib")
