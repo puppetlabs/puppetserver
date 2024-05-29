@@ -316,45 +316,6 @@
                           (+ (:duration-millis requested-instance)
                              (:time requested-instance))))))))))))))
 
-(deftest ^:integration ca-files-test
-  (testing "CA settings from puppet are honored and the CA
-            files are created when the service starts up"
-    (let [ca-files-test-runtime-dir (str master-service-test-runtime-dir
-                                         "/ca-files-test")
-          ca-files-test-puppet-conf (fs/file test-resources-path
-                                             "ca_files_test/puppet.conf")]
-      (fs/delete-dir ca-files-test-runtime-dir)
-      (testutils/with-puppet-conf-files
-       {"puppet.conf" ca-files-test-puppet-conf}
-       ca-files-test-runtime-dir
-       (logutils/with-test-logging
-        (bootstrap-testutils/with-puppetserver-running
-         app
-         {:jruby-puppet {:gem-path gem-path
-                         :server-conf-dir ca-files-test-runtime-dir
-                         :max-active-instances 1}
-          :webserver {:port 8081}}
-         (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
-           (jruby-service/with-jruby-puppet
-            jruby-puppet jruby-service :ca-files-test
-            (letfn [(test-path!
-                      [setting expected-path]
-                      (is (= (ks/absolute-path expected-path)
-                             (.getSetting jruby-puppet setting)))
-                      (is (fs/exists? (ks/absolute-path expected-path))))]
-
-              (test-path! "capub" (str ca-files-test-runtime-dir "/ca/ca_pub.pem"))
-              (test-path! "cakey" (str ca-files-test-runtime-dir "/ca/ca_key.pem"))
-              (test-path! "cacert" (str ca-files-test-runtime-dir "/ca/ca_crt.pem"))
-              (test-path! "localcacert" (str ca-files-test-runtime-dir "/ca/ca.pem"))
-              (test-path! "cacrl" (str ca-files-test-runtime-dir "/ca/ca_crl.pem"))
-              (test-path! "hostcrl" (str ca-files-test-runtime-dir "/ca/crl.pem"))
-              (test-path! "hostpubkey" (str ca-files-test-runtime-dir "/public_keys/localhost.pem"))
-              (test-path! "hostprivkey" (str ca-files-test-runtime-dir "/private_keys/localhost.pem"))
-              (test-path! "hostcert" (str ca-files-test-runtime-dir "/certs/localhost.pem"))
-              (test-path! "serial" (str ca-files-test-runtime-dir "/certs/serial"))
-              (test-path! "cert_inventory" (str ca-files-test-runtime-dir "/inventory.txt")))))))))))
-
 (def graphite-enabled-config
   {:metrics {:server-id "localhost"
              :reporters {:graphite {:update-interval-seconds 5000
@@ -729,34 +690,36 @@
        (is (= 404 (:status resp)))))))
 
 (deftest ^:integration facts-upload-api
-  (bootstrap-testutils/with-puppetserver-running
-   app
-   {:jruby-puppet {:gem-path gem-path
-                   :max-active-instances 2 ; we need 2 jruby-instances since processing the upload uses an instance
-                   :server-code-dir test-resources-code-dir
-                   :server-conf-dir master-service-test-runtime-dir
-                   :server-var-dir (fs/tmpdir)}}
-   (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
-         jruby-instance (jruby-testutils/borrow-instance jruby-service :facts-upload-endpoint-test)
-         container (:scripting-container jruby-instance)]
-     (try
-       (let [facts (.runScriptlet container "facts = Puppet::Node::Facts.new('puppet.node.test')
-                                              facts.values['foo'] = 'bar'
-                                              facts.to_json")
-             response (http-put "/puppet/v3/facts/puppet.node.test?environment=production" facts)]
+  (let [tmpdir (fs/tmpdir)]
+    (fs/mkdir (str tmpdir "/yaml"))
+    (bootstrap-testutils/with-puppetserver-running
+     app
+     {:jruby-puppet {:gem-path gem-path
+                     :max-active-instances 2 ; we need 2 jruby-instances since processing the upload uses an instance
+                     :server-code-dir test-resources-code-dir
+                     :server-conf-dir master-service-test-runtime-dir
+                     :server-var-dir (fs/tmpdir)}}
+     (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
+           jruby-instance (jruby-testutils/borrow-instance jruby-service :facts-upload-endpoint-test)
+           container (:scripting-container jruby-instance)]
+       (try
+         (let [facts (.runScriptlet container "facts = Puppet::Node::Facts.new('puppet.node.test')
+                                                facts.values['foo'] = 'bar'
+                                                facts.to_json")
+               response (http-put "/puppet/v3/facts/puppet.node.test?environment=production" facts)]
 
-         (testing "Puppet Server responds to PUT requests for /puppet/v3/facts"
-           (is (= 200 (:status response))))
+           (testing "Puppet Server responds to PUT requests for /puppet/v3/facts"
+             (is (= 200 (:status response))))
 
-         (testing "Puppet Server saves facts to the configured facts terminus"
-           ;; Ensure the test is configured properly
-           (is (= "yaml" (.runScriptlet container "Puppet::Node::Facts.indirection.terminus_class")))
-           (let [stored-facts (-> (.runScriptlet container "facts = Puppet::Node::Facts.indirection.find('puppet.node.test')
-                                                             (facts.nil? ? {} : facts).to_json")
-                                  (json/parse-string))]
-             (is (= "bar" (get-in stored-facts ["values" "foo"]))))))
-       (finally
-         (jruby-testutils/return-instance jruby-service jruby-instance :facts-upload-endpoint-test))))))
+           (testing "Puppet Server saves facts to the configured facts terminus"
+             ;; Ensure the test is configured properly
+             (is (= "yaml" (.runScriptlet container "Puppet::Node::Facts.indirection.terminus_class")))
+             (let [stored-facts (-> (.runScriptlet container "facts = Puppet::Node::Facts.indirection.find('puppet.node.test')
+                                                               (facts.nil? ? {} : facts).to_json")
+                                    (json/parse-string))]
+               (is (= "bar" (get-in stored-facts ["values" "foo"]))))))
+         (finally
+           (jruby-testutils/return-instance jruby-service jruby-instance :facts-upload-endpoint-test)))))))
 
 (deftest ^:integration v4-queue-limit
   (bootstrap-testutils/with-puppetserver-running

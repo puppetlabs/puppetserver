@@ -1,3 +1,5 @@
+require 'puppet'
+require 'puppet/util'
 require 'puppet/server'
 require 'java'
 

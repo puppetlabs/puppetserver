@@ -1,3 +1,5 @@
+require 'puppet'
+require 'puppet/util/log'
 require 'puppet/server/log_collector'
 
 module Puppet
