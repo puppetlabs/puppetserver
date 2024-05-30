@@ -19,6 +19,7 @@
             [puppetlabs.comidi :as comidi]))
 
 (use-fixtures :once schema-test/validate-schemas)
+(use-fixtures :each #(logutils/with-test-logging (%)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utilities

@@ -6,6 +6,7 @@
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.puppetserver.testutils :as testutils]
+            [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [cheshire.core :as json]
             [me.raynes.fs :as fs]))
 
@@ -27,6 +28,7 @@
                (fs/file test-resources-dir "puppet.conf")))
 
 (use-fixtures :each
+              #(logutils/with-test-logging (%))
               (fn [f]
                 (purge-env-dir)
                 (try

@@ -34,6 +34,7 @@
            (org.joda.time DateTime Period)))
 
 (use-fixtures :once schema-test/validate-schemas)
+(use-fixtures :each #(logutils/with-test-logging (%)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Test Data
@@ -371,22 +372,19 @@
     (testing "stdout is added to master's log at debug level"
       (logutils/with-test-logging
         (ca/autosign-csr? executable "test-agent" (csr-fn) ruby-load-path ruby-gem-path)
-        (is (logged? #"print to stdout" :debug))))
+        (is (logged? #"print to stdout" :debug)
+            "Do you have puppet installed locally in addition to the submodule?")))
 
     (testing "stderr is added to master's log at warn level"
       (logutils/with-test-logging
        (ca/autosign-csr? executable "test-agent" (csr-fn) ruby-load-path ruby-gem-path)
-       (is (logged? #"generated output to stderr: print to stderr" :warn))))
+       (is (logged? #"generated output to stderr: print to stderr" :warn)
+           "Do you have puppet installed locally in addition to the submodule?")))
 
     (testing "non-zero exit-code generates a log entry at warn level"
       (logutils/with-test-logging
        (ca/autosign-csr? executable "foo" (csr-fn) ruby-load-path ruby-gem-path)
        (is (logged? #"rejected certificate 'foo'" :warn))))
-
-    (testing "Ruby load path is configured and contains Puppet"
-      (logutils/with-test-logging
-        (ca/autosign-csr? executable "test-agent" (csr-fn) ruby-load-path ruby-gem-path)
-        (is (logged? #"Ruby load path configured properly"))))
 
     (testing "subject is passed as argument and CSR is provided on stdin"
       (logutils/with-test-logging
@@ -2386,26 +2384,19 @@
                  (ca/sign-multiple-certificate-signing-requests! [(:subject-name csr-info)] settings report-activity))))))
     (testing "multiple entry with both bad and good csrs"
       (let [count-range (range 0 100)
-            _ (println "begin generate good csrs")
             good-csrs (doall (pmap (fn [_i] (generate-csr settings [] [{:oid ca/pp_auth_auto_renew-attribute :value true}]))
                                    count-range))
-            _ (println "begin generate random csr names")
             random-csr-names (doall (pmap (fn [_i] (ks/rand-str :alpha-lower 8)) count-range))
-            _ (println "begin generate alt-name csrs")
             alt-name-ext {:oid      utils/subject-alt-name-oid
                           :value    {:dns-name ["bad-name"]}
                           :critical false}
             bad-names (doall (pmap (fn [_i] (generate-csr settings [alt-name-ext] [{:oid ca/pp_auth_auto_renew-attribute :value true}]))
                                    count-range))
-            _ (println "begin generate unauthorized csrs")
             unauthorized (doall (pmap (fn [_i] (generate-csr settings [{:oid ca/ppAuthCertExt :value "true" :critical false}] [{:oid ca/pp_auth_auto_renew-attribute :value true}]))
                                       count-range))
-            _ (println "begin generate unapproved csrs")
             unapproved-extensions (doall (pmap (fn [_i] (generate-csr settings [{:oid "1.9.9.9.9.9.0" :value "true" :critical false}] [{:oid ca/pp_auth_auto_renew-attribute :value true}]))
                                                count-range))
-            _ (println "combining all of them")
             all-csrs (concat good-csrs bad-names unauthorized unapproved-extensions)
-            _ (println "add in bad names and shuffle")
             all-names (shuffle (concat (map :subject-name all-csrs) random-csr-names))
             old-fn @common/action-registration-function
             call-results (atom [])

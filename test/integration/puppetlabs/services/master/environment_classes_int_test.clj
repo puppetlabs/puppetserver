@@ -13,7 +13,8 @@
             [cheshire.core :as cheshire]
             [me.raynes.fs :as fs]
             [clojure.tools.logging :as log]
-            [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils])
+            [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
+            [puppetlabs.trapperkeeper.testutils.logging :as logutils])
   (:import (com.puppetlabs.puppetserver JRubyPuppetResponse JRubyPuppet)
            (java.util HashMap)))
 
@@ -34,6 +35,7 @@
                (fs/file test-resources-dir "puppet.conf")))
 
 (use-fixtures :each
+              #(logutils/with-test-logging (%))
               (fn [f]
                 (purge-env-dir)
                 (try

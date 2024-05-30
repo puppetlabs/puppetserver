@@ -15,8 +15,10 @@
   (:import
     (org.jruby.util.cli Options)))
 
-;; Clear changes to JRuby management settings after each test.
-(use-fixtures :each (fn [f] (f) (.unforce Options/MANAGEMENT_ENABLED)))
+(use-fixtures :each
+              #(logutils/with-test-logging (%))
+              ;; Clear changes to JRuby management settings after each test.
+              (fn [f] (f) (.unforce Options/MANAGEMENT_ENABLED)))
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/puppet_admin/puppet_admin_int_test")

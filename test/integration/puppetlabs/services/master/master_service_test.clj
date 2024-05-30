@@ -43,6 +43,9 @@
                   master-service-test-runtime-dir}
                  (f))))
 
+(use-fixtures :each
+              #(logutils/with-test-logging (%)))
+
 (defn http-get
   [url]
   (let [master-service-test-runtime-ssl-dir

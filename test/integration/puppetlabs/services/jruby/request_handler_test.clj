@@ -11,6 +11,7 @@
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.http.client.sync :as http-client]
+            [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.puppetserver.testutils :as testutils :refer [ssl-request-options]]))
 
 (def test-resources-dir
@@ -20,6 +21,8 @@
               schema-test/validate-schemas
               (testutils/with-puppet-conf (fs/file test-resources-dir
                                                          "puppet.conf")))
+
+(use-fixtures :each #(logutils/with-test-logging (%)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tests
