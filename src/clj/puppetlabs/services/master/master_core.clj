@@ -1232,8 +1232,8 @@
   []
   (when-let [meminfo-file-content (meminfo-content)]
     (let [heap-size max-heap-size
-          mem-size (Integer/parseInt (second (re-find #"MemTotal:\s+(\d+)\s+\S+"
-                                                      meminfo-file-content)))
+          mem-size (BigInteger. (second (re-find #"MemTotal:\s+(\d+)\s+\S+"
+                                                 meminfo-file-content)))
           required-mem-size (* heap-size 1.1)]
       (when (< mem-size required-mem-size)
         (throw (Error.
