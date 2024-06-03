@@ -47,7 +47,6 @@
                  [liberator]
                  [org.apache.commons/commons-exec]
                  [io.dropwizard.metrics/metrics-core]
-                 [org.yaml/snakeyaml "2.0"]
 
                  ;; We do not currently use this dependency directly, but
                  ;; we have documentation that shows how users can use it to
