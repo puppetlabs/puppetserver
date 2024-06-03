@@ -330,6 +330,11 @@
     (is (thrown-with-msg? Error re (validate-memory-requirements!)))))
 
 (deftest validate-memory-requirements!-test
+  (testing "when ram is more than 2 TB"
+    (with-redefs [meminfo-content #(str "MemTotal:       2319453408 kB")
+                  max-heap-size 2097152]
+      (is (nil? (validate-memory-requirements!))
+          "fails to parse large ram info")))
   (testing "when /proc/meminfo does not exist"
     (with-redefs [meminfo-content (constantly nil)
                   max-heap-size 2097152]
