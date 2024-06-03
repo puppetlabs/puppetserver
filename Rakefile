@@ -177,7 +177,7 @@ end
 
 namespace :spec do
   task :init do
-    if ! Dir.exists? TEST_GEMS_DIR
+    if ! Dir.exist? TEST_GEMS_DIR
       ## Install bundler
       ## Line 1 launches the JRuby that we depend on via leiningen
       ## Line 2 programmatically runs 'gem install bundler' via the gem command that comes with JRuby
