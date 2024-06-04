@@ -95,7 +95,7 @@ class Puppet::Server::PuppetConfig
       Puppet.push_context(dummy_ssl_context)
     end
 
-    # We have no added support for setting "settings_catalog" to false in the puppet.conf.
+    # We have now added support for setting "settings_catalog" to false in the puppet.conf.
     # We should default to not applying the settings catalog and remove this line in Puppet 9.
     Puppet.settings.use :main, :server, :ssl, :metrics
 
