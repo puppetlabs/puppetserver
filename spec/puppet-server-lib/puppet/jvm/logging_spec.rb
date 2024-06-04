@@ -5,8 +5,12 @@ require 'puppet/server/logging'
 
 describe Puppet::Server::Logging do
   context 'when setting the log level' do
-    before :each do
-      Puppet::Server::PuppetConfig.initialize_puppet(puppet_config: {})
+    it 'flush logging queue' do
+      # The logger will queue any old log messages, creating a logging destination
+      # will force the pending queue to be flushed to this logger. We don't care
+      # about these messages so we discard the logger, but we do not want them to
+      # interfere with the next tests.
+      _, _ = Puppet::Server::Logging.capture_logs('debug') do; end
     end
 
     it 'correctly filters messages' do

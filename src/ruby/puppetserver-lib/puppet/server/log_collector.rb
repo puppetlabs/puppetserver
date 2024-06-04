@@ -1,3 +1,5 @@
+require 'puppet/util/log'
+
 module Puppet
   module Server
     # Log to an array, just for testing.

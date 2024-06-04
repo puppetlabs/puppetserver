@@ -1,6 +1,13 @@
 require 'puppet/server'
 require 'puppet/server/logger'
 require 'puppet/server/http_client'
+require 'puppet/indirector/indirection'
+require 'puppet/file_serving/content'
+require 'puppet/file_serving/metadata'
+require 'puppet/file_bucket/file'
+require 'puppet/node'
+require 'puppet/application_support'
+require 'puppet/ssl/oids'
 
 class Puppet::Server::PuppetConfig
 
@@ -88,6 +95,8 @@ class Puppet::Server::PuppetConfig
       Puppet.push_context(dummy_ssl_context)
     end
 
+    # We have now added support for setting "settings_catalog" to false in the puppet.conf.
+    # We should default to not applying the settings catalog and remove this line in Puppet 9.
     Puppet.settings.use :main, :server, :ssl, :metrics
 
     if Puppet::Indirector::Indirection.method_defined?(:set_global_setting)
