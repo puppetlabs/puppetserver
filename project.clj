@@ -28,7 +28,7 @@
   :license {:name "Apache License, Version 2.0"
               :url "http://www.apache.org/licenses/LICENSE-2.0.html"}
 
-  :min-lein-version "2.9.1"
+  :min-lein-version "2.11.2"
 
   :parent-project {:coords [puppetlabs/clj-parent "7.3.26"]
                    :inherit [:managed-dependencies]}
@@ -176,7 +176,7 @@
                                                [puppetlabs/puppetserver ~ps-version]
                                                [com.puppetlabs/trapperkeeper-webserver-jetty10]
                                                [puppetlabs/trapperkeeper-metrics]]
-                      :plugins [[puppetlabs/lein-ezbake "2.5.5"]]
+                      :plugins [[puppetlabs/lein-ezbake "2.6.1"]]
                       :name "puppetserver"}
              :uberjar {:dependencies [[org.bouncycastle/bcpkix-jdk18on]
                                       [com.puppetlabs/trapperkeeper-webserver-jetty10]]
