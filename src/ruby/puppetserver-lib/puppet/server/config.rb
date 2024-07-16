@@ -19,6 +19,7 @@ java_import java.security.KeyStore
 
 class Puppet::Server::Config
   PUPPET_KEYSTORE_LOCATION = '/opt/puppetlabs/puppet/ssl/puppet-cacerts'
+  PUPPET_FIPS_KEYSTORE_LOCATION = '/opt/puppetlabs/puppet/ssl/puppet-cacerts-fips'
   CERT_REGEX = /.*-----BEGIN CERTIFICATE-----.*/
 
   def self.initialize_puppet_server(puppet_server_config)
@@ -80,10 +81,16 @@ class Puppet::Server::Config
         FileReader.new(Puppet[:localcacert]))
 
     truststore = stores['truststore']
-    if File.exist?(PUPPET_KEYSTORE_LOCATION)
-      associate_entries(truststore, PUPPET_KEYSTORE_LOCATION)
+    if SSLUtils.isFIPS()
+      keystore = PUPPET_FIPS_KEYSTORE_LOCATION
     else
-      Puppet.warning("Could not find Puppet-vendored keystore at '#{PUPPET_KEYSTORE_LOCATION}'")
+      keystore = PUPPET_KEYSTORE_LOCATION
+    end
+
+    if File.exist?(keystore)
+      associate_entries(truststore, keystore)
+    else
+      Puppet.warning("Could not find Puppet-vendored keystore at '#{keystore}'")
     end
 
     if additional_store_location = Puppet[:ssl_trust_store]
