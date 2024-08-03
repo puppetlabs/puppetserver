@@ -108,12 +108,14 @@ host_key = PuppetSpec::SSL.create_private_key
 host_csr = PuppetSpec::SSL.create_csr(host_key, "/CN=localhost")
 host_cert = PuppetSpec::SSL.sign(ca_key, ca_cert, host_csr)
 
-File.open('ca.pem', 'w') do |f|
+http_client_test_dir = "#{__dir__}/puppetlabs/puppetserver/ruby/http_client_test"
+
+File.open("#{http_client_test_dir}/ca.pem", 'w') do |f|
   f.puts(ca_cert)
 end
-File.open('localhost_cert.pem', 'w') do |f|
+File.open("#{http_client_test_dir}/localhost_cert.pem", 'w') do |f|
   f.puts(host_cert)
 end
-File.open('localhost_key.pem', 'w') do |f|
+File.open("#{http_client_test_dir}/localhost_key.pem", 'w') do |f|
   f.puts(host_key)
 end
