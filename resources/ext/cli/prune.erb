@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+
+usage() {
+    echo "Prune contents of report and bucket directories."
+    echo
+    echo "Usage: puppetserver prune <reportdir|bucketdir> [<ttl>]"
+    echo "  bucketdir|reportdir  work on either bucketdir or reportdir"
+    echo "  <ttl>                delete data older than this amount of time (default: 14d)"
+}
+
+prune() {
+    DIR="$1"
+    AGE=${2:-14d}
+    puppet apply --no-report --log_level=warning -e "tidy { \$settings::${DIR}: age=>'${AGE}', recurse=>true, rmdirs=>true }"
+}
+
+case $1 in
+    -h|--help)
+        usage
+        exit 0
+    ;;
+    bucketdir|reportdir)
+        prune "$1" "$2"
+    ;;
+    *)
+        echo "Error: unknown argument."
+        usage
+        exit 1
+    ;;
+esac
