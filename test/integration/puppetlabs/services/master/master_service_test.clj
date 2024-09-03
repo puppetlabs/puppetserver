@@ -724,6 +724,29 @@
          (finally
            (jruby-testutils/return-instance jruby-service jruby-instance :facts-upload-endpoint-test)))))))
 
+(deftest ^:integration rich-data-is-honored
+  (let [tmpdir (fs/tmpdir)]
+    (fs/mkdir (str tmpdir "/yaml"))
+    (bootstrap-testutils/with-puppetserver-running
+     app
+     {:jruby-puppet {:gem-path gem-path
+                     :max-active-instances 1
+                     :server-code-dir test-resources-code-dir
+                     :server-conf-dir master-service-test-runtime-dir
+                     :server-var-dir (fs/tmpdir)}}
+     (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
+           jruby-instance (jruby-testutils/borrow-instance jruby-service :rich-data-test)]
+       (try
+         (let [container (:scripting-container jruby-instance)
+               puppet-instance (:jruby-puppet jruby-instance)
+               catalog-compiler (.runScriptlet container "o = Object.new; o.define_singleton_method(:compile) {|args| Puppet.lookup(:rich_data) }; o")
+               _ (.callMethodWithArgArray container puppet-instance "instance_variable_set" (into-array Object ["@catalog_compiler" catalog-compiler]) Object)
+               rich-data (.callMethodWithArgArray container puppet-instance "compileCatalog" (into-array Object [{}]) Boolean)]
+           (testing "rich_data is true by default"
+             (is (= true rich-data))))
+       (finally
+         (jruby-testutils/return-instance jruby-service jruby-instance :rich-data-test)))))))
+
 (deftest ^:integration v4-queue-limit
   (bootstrap-testutils/with-puppetserver-running
    app
