@@ -1,3 +1,4 @@
+;; We're going to trigger a GH test run here
 (ns puppetlabs.services.master.master-service
   (:require [clojure.tools.logging :as log]
             [puppetlabs.trapperkeeper.core :refer [defservice]]
