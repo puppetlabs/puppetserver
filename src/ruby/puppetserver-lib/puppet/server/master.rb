@@ -97,7 +97,19 @@ class Puppet::Server::Master
   end
 
   def compileCatalog(request_data)
-    Puppet.override(lookup_key_recorder: create_recorder) do
+    Puppet.override(
+      lookup_key_recorder: create_recorder,
+      # rich_data was moved to the context because determining if it should be true, in
+      # some code paths, needs to inspect the global settings, per-environment settings,
+      # and the request's content-type. For the `handleRequest` endpoint this logic is
+      # handled by the indirector. We need to provide some value, as the default in
+      # Puppet's context is, as of Puppet 8.9.0, hardcoded to be false, which will cause
+      # any rich_data in a catalog to fail via this endpoint (but likely not via the
+      # indirected endpoint). So here we set it to the global setting value, as the
+      # per-environment settings logic is fairly complicated to implement and have never
+      # gotten user facing documentation anyways.
+      rich_data: Puppet[:rich_data]
+    ) do
       @catalog_compiler.compile(convert_java_args_to_ruby(request_data))
     end
   end
