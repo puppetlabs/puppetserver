@@ -239,9 +239,9 @@ module Puppet
         @server_facts['serverversion'] = Puppet.version.to_s
 
         # And then add the server name and IP
-        { 'servername' => 'fqdn',
-          'serverip' => 'ipaddress',
-          'serverip6' => 'ipaddress6'
+        { 'servername' => 'networking.fqdn',
+          'serverip' => 'networking.ip',
+          'serverip6' => 'networking.ip6'
         }.each do |var, fact|
           value = Facter.value(fact)
           if value
@@ -250,10 +250,10 @@ module Puppet
         end
 
         if @server_facts['servername'].nil?
-          host = Facter.value(:hostname)
+          host = Facter.value('networking.hostname')
           if host.nil?
             Puppet.warning _("Could not retrieve fact servername")
-          elsif domain = Facter.value(:domain)
+          elsif domain = Facter.value('networking.domain')
             @server_facts['servername'] = [host, domain].join('.')
           else
             @server_facts['servername'] = host

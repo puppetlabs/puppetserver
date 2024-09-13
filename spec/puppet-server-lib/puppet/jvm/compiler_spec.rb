@@ -62,9 +62,9 @@ describe Puppet::Server::Compiler do
 
     it 'the node has pe_serverversion fact set when PE' do
       set_facts({
-        'fqdn'       => "my.server.com",
-        'ipaddress'  => "my.ip.address",
-        'ipaddress6' => nil
+        'networking.fqdn' => "my.server.com",
+        'networking.ip'   => "my.ip.address",
+        'networking.ip6'  => nil
         })
       allow(File).to receive(:readable?).with(pe_version_file).and_return(true)
       allow(File).to receive(:zero?).with(pe_version_file).and_return(false)
