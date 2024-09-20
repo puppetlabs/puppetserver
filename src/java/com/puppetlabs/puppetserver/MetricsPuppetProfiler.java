@@ -5,6 +5,7 @@ import com.codahale.metrics.Timer;
 import org.apache.commons.lang.StringUtils;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,17 +22,21 @@ public class MetricsPuppetProfiler implements PuppetProfiler {
     private final MetricRegistry registry;
     private final Set<String> metric_ids;
 
-    private static final Pattern FUNCTION_PATTERN = Pattern.compile(".*\\.functions\\.([\\w\\d_]+)$");
-    private static final Pattern RESOURCE_PATTERN = Pattern.compile(".*\\.compiler\\.evaluate_resource\\.([\\w\\d_]+\\[([\\w\\d_]+::)*[\\w\\d_]+\\])$");
-    private static final Pattern CATALOG_PATTERN = Pattern.compile(".*\\.compiler\\.(static_compile_postprocessing|static_compile|compile|find_node)$");
-    private static final Pattern INLINING_PATTERN = Pattern.compile(".*\\.compiler\\.static_compile_inlining\\.(.*)$");
-    private static final Pattern PUPPETDB_PATTERN = Pattern.compile(".*\\.puppetdb\\.(resource\\.search|facts\\.encode|command\\.submit\\.replace facts|catalog\\.munge|command\\.submit\\.replace catalog|report\\.convert_to_wire_format_hash|command\\.submit\\.store report|query)$");
-
+    private final Map<String, Timer> function_timers;
+    private final Map<String, Timer> resource_timers;
+    private final Map<String, Timer> catalog_timers;
+    private final Map<String, Timer> inlining_timers;
+    private final Map<String, Timer> puppetdb_timers;
 
     public MetricsPuppetProfiler(String hostname, MetricRegistry registry) {
         this.hostname = hostname;
         this.registry = registry;
         this.metric_ids = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
+        this.function_timers = new ConcurrentHashMap<String, Timer>();
+        this.resource_timers = new ConcurrentHashMap<String, Timer>();
+        this.catalog_timers = new ConcurrentHashMap<String, Timer>();
+        this.inlining_timers = new ConcurrentHashMap<String, Timer>();
+        this.puppetdb_timers = new ConcurrentHashMap<String, Timer>();
     }
 
     @Override
@@ -43,9 +48,12 @@ public class MetricsPuppetProfiler implements PuppetProfiler {
     public void finish(Object context, String message, String[] metric_id) {
         if (shouldTime(metric_id)) {
           Long elapsed = System.currentTimeMillis() - (Long)context;
-            for (Timer t : getTimers(metric_id)) {
+	    Map<String, Timer> metricsByID = getOrCreateTimersByIDs(metric_id);
+            for (Timer t : metricsByID.values()) {
                 t.update(elapsed, TimeUnit.MILLISECONDS);
             }
+
+	    updateMetricsTrackers(metric_id, metricsByID);
         }
     }
 
@@ -54,27 +62,103 @@ public class MetricsPuppetProfiler implements PuppetProfiler {
     }
 
     public Map<String, Timer> getFunctionTimers() {
-        return getTimers(FUNCTION_PATTERN);
+        return this.function_timers;
     }
 
     public Map<String, Timer> getResourceTimers() {
-        return getTimers(RESOURCE_PATTERN);
+        return this.resource_timers;
     }
 
     public Map<String, Timer> getCatalogTimers() {
-        return getTimers(CATALOG_PATTERN);
+        return this.catalog_timers;
     }
 
     public Map<String, Timer> getInliningTimers() {
-        return getTimers(INLINING_PATTERN);
+        return this.inlining_timers;
     }
 
     public Map<String, Timer> getPuppetDBTimers() {
-        return getTimers(PUPPETDB_PATTERN);
+        return this.puppetdb_timers;
     }
 
     @Override
     public void shutdown() {
+    }
+
+    private List<String> sliceOfArrayToList(String[] idSegments, int lengthOfID) {
+        // Callers expect a mutable List returned, but Arrays.asList() returns a
+	// fix length array, which is why we have to create a List and then add to it.
+        List<String> idList = new ArrayList<String>();
+        idList.addAll(Arrays.asList(Arrays.copyOf(idSegments, lengthOfID)));
+
+	return idList;
+    }
+
+    private String safeGet(String[] collection, int i) {
+        try {
+            return collection[i];
+	}  catch (IndexOutOfBoundsException _ex) {
+            return "";
+	}
+    }
+
+    private void updateMetricsTrackers(String[] metricId, Map<String, Timer> metricsByID) {
+	String firstElement = safeGet(metricId, 0);
+	String secondElement = safeGet(metricId, 1);
+
+        if ("functions".equals(firstElement)) {
+            Timer metric = metricsByID.get(getMetricName(sliceOfArrayToList(metricId, 2)));
+            this.function_timers.put(secondElement, metric);
+
+        } else if ("compiler".equals(firstElement)) {
+            String thirdElemet = safeGet(metricId, 2);
+
+            if ("evaluate_resource".equals(secondElement)) {
+                Timer metric = metricsByID.get(getMetricName(sliceOfArrayToList(metricId, 3)));
+                this.resource_timers.put(thirdElemet, metric);
+
+            } else if ("static_compile_inlining".equals(secondElement)) {
+                Timer metric = metricsByID.get(getMetricName(sliceOfArrayToList(metricId, 3)));
+                this.inlining_timers.put(thirdElemet, metric);
+
+            } else {
+                Timer metric = metricsByID.get(getMetricName(sliceOfArrayToList(metricId, 2)));
+                this.catalog_timers.put(secondElement, metric);
+            }
+
+        } else if ("puppetdb".equals(firstElement)) {
+            if ("query".equals(secondElement)) {
+                Timer metric = metricsByID.get(getMetricName(sliceOfArrayToList(metricId, 2)));
+                this.puppetdb_timers.put(secondElement, metric);
+
+	    } else {
+		String thirdElemet = safeGet(metricId, 2);
+
+                if (
+                    ("resource".equals(secondElement) && "search".equals(thirdElemet)) ||
+		    ("facts".equals(secondElement) && "encode".equals(thirdElemet)) ||
+		    ("catalog".equals(secondElement) && "munge".equals(thirdElemet)) ||
+		    ("report".equals(secondElement) && "convert_to_wire_format_hash".equals(thirdElemet))
+		) {
+                    String key = String.join(".", secondElement, thirdElemet);
+                    Timer metric = metricsByID.get(getMetricName(sliceOfArrayToList(metricId, 3)));
+                    this.puppetdb_timers.put(key, metric);
+
+                } else if ("command".equals(secondElement) && "submit".equals(thirdElemet)) {
+                    String fourthElement = safeGet(metricId, 3);
+
+                    if (
+                        "store report".equals(fourthElement) ||
+			"replace facts".equals(fourthElement) ||
+			"replace catalog".equals(fourthElement)
+                    ) {
+                        String key = String.join(".", secondElement, thirdElemet, fourthElement);
+                        Timer metric = metricsByID.get(getMetricName(sliceOfArrayToList(metricId, 4)));
+                        this.puppetdb_timers.put(key, metric);
+		    }
+		}
+	    }
+        }
     }
 
     private boolean shouldTime(String[] metric_id) {
@@ -90,8 +174,8 @@ public class MetricsPuppetProfiler implements PuppetProfiler {
         return true;
     }
 
-    private List<Timer> getTimers(String[] metric_id) {
-        List<Timer> timers = new ArrayList<Timer>();
+    private Map<String, Timer> getOrCreateTimersByIDs(String[] metric_id) {
+        Map<String, Timer> timers = new HashMap<String, Timer>();
         // If this is turns out to be a performance hit, we could cache these in a
         // map or something.
         for (int i = 0; i < metric_id.length; i++) {
@@ -101,7 +185,7 @@ public class MetricsPuppetProfiler implements PuppetProfiler {
             }
             String metric_name = getMetricName(current_id);
             registerMetricName(metric_name);
-            timers.add(registry.timer(metric_name));
+            timers.put(metric_name, registry.timer(metric_name));
         }
         return timers;
     }
@@ -113,16 +197,5 @@ public class MetricsPuppetProfiler implements PuppetProfiler {
 
     private void registerMetricName(String metric_name) {
         this.metric_ids.add(metric_name);
-    }
-
-    private Map<String, Timer> getTimers(Pattern pattern) {
-        Map<String, Timer> rv = new HashMap<>();
-        for (String metric_id : this.metric_ids) {
-            Matcher matcher = pattern.matcher(metric_id);
-            if (matcher.matches()) {
-                rv.put(matcher.group(1), registry.timer(metric_id));
-            }
-        }
-        return rv;
     }
 }
