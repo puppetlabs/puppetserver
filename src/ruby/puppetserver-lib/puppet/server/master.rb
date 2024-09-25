@@ -248,7 +248,7 @@ UTM
   # Each array element is examined, if it is expected to be a map
   # we call back to the convert_java_args_to_ruby method, if it
   # is expected to be an array, we recurse otherwise we do not modify
-  # the value. 
+  # the value.
   def resolve_java_objects_from_list(list)
     list.map do |value|
       if value.kind_of?(Java::ClojureLang::IPersistentMap)
