@@ -50,8 +50,6 @@
                    (constantly nil)
                    true
                    nil
-                   ["./dev-resources/puppetlabs/services/master/master_core_test/builtin_bolt_content"]
-                   "./dev-resources/puppetlabs/services/master/master_core_test/bolt_projects"
                    "test-certname")
       (comidi/routes->handler)
       (wrap-middleware identity puppet-version)))
@@ -447,36 +445,11 @@
                                                               :trusted_facts {:values {}}
                                                               :variables {:values {}}}))))]
           (is (= 200 (:status response)))))
-      (testing "compile endpoint for projects"
+      (testing "compile endpoint fails with no environment"
         (let [response (app (-> {:request-method :post
                                  :uri "/v3/compile"
                                  :content-type "application/json"}
                                 (ring-mock/body (json/encode {:certname "foo"
-                                                              :versioned_project "fake_project"
-                                                              :code_ast "{\"__pcore_something\": \"Foo\"}"
-                                                              :facts {:values {}}
-                                                              :trusted_facts {:values {}}
-                                                              :variables {:values {}}
-                                                              :options {:compile_for_plan true}}))))]
-          (is (= 200 (:status response)))))
-      (testing "compile endpoint fails with no environment or versioned_project"
-        (let [response (app (-> {:request-method :post
-                                 :uri "/v3/compile"
-                                 :content-type "application/json"}
-                                (ring-mock/body (json/encode {:certname "foo"
-                                                              :code_ast "{\"__pcore_something\": \"Foo\"}"
-                                                              :facts {:values {}}
-                                                              :trusted_facts {:values {}}
-                                                              :variables {:values {}}
-                                                              :options {:compile_for_plan true}}))))]
-          (is (= 400 (:status response)))))
-      (testing "compile endpoint fails with both environment and versioned_project"
-        (let [response (app (-> {:request-method :post
-                                 :uri "/v3/compile"
-                                 :content-type "application/json"}
-                                (ring-mock/body (json/encode {:certname "foo"
-                                                              :environment "production"
-                                                              :versioned_project "fake_project"
                                                               :code_ast "{\"__pcore_something\": \"Foo\"}"
                                                               :facts {:values {}}
                                                               :trusted_facts {:values {}}
