@@ -41,7 +41,7 @@ teardown do
   on(master, "rm -rf #{git_repo_parentdir}", :accept_all_exit_codes => true)
   on(master, "rm -rf #{git_local_repo}", :accept_all_exit_codes => true)
   on(master, 'rm -rf /home/git/.ssh/authorized_keys', :accept_all_exit_codes => true)
- 
+
   #remove code_* scripts.
   on(master, 'rm -rf /opt/puppetlabs/server/apps/puppetserver/code-id-command_script.sh')
   on(master, 'rm -rf /opt/puppetlabs/server/apps/puppetserver/code_content_script.sh')
@@ -59,7 +59,7 @@ step 'SETUP: Generate a new ssh key for the root user account to use with the gi
   gittest_key=on(master, "awk '{print $2}' /root/.ssh/gittest_rsa.pub").stdout.chomp
 
 step 'SETUP: Install and configure git server' do
-  on(master, 'puppet module install puppetlabs-git') 
+  on(master, 'puppet module install puppetlabs-git')
   git_config=<<-GIT
     user { 'git':
       ensure => present,
@@ -124,7 +124,7 @@ step 'SETUP: Install and configure r10k, and perform the initial commit' do
   on master, "puppet config set server #{fqdn}"
   # For puppet 7 with ruby 2.7 we need to pin back to a ruby 2 compatable gem
   on master, '/opt/puppetlabs/puppet/bin/gem install faraday -v 2.8.1'
-  on master, '/opt/puppetlabs/puppet/bin/gem install r10k'
+  on master, '/opt/puppetlabs/puppet/bin/gem install r10k --no-document'
   on master, "cd #{git_local_repo} && git checkout -b production"
   r10k_yaml=<<-R10K
 # The location to use for storing cached Git repos
@@ -186,13 +186,13 @@ PP
   create_remote_file(master, "#{git_local_repo}/site/profile/manifests/base.pp", base_pp)
   on master, "cd #{git_local_repo} && git add ."
   on master, "cd #{git_local_repo} && git commit -m 'commit to setup r10k example'"
-  on master, "cd #{git_local_repo} && git push origin production"  
+  on master, "cd #{git_local_repo} && git push origin production"
   on master, "/opt/puppetlabs/puppet/bin/r10k deploy environment -p"
 end
 
 step 'SETUP: Install the code-id-command script' do
   code_id_command_script=<<-CIC
-  #!/usr/bin/env sh  
+  #!/usr/bin/env sh
   /opt/puppetlabs/puppet/bin/r10k deploy display -p --detail $1 | grep signature | grep -oE '[0-9a-f]{40}'
   CIC
   create_remote_file(master, '/opt/puppetlabs/server/apps/puppetserver/code-id-command_script.sh', code_id_command_script)
@@ -201,7 +201,7 @@ step 'SETUP: Install the code-id-command script' do
 end
 
 step 'SETUP: Configure the code-id script' do
-  on master, 'puppet module install puppetlabs-hocon' 
+  on master, 'puppet module install puppetlabs-hocon'
   create_remote_file(master, '/tmp/config_code_id_command_script.pp', cicsetting() )
   on master, 'puppet apply /tmp/config_code_id_command_script.pp'
   reload_server
