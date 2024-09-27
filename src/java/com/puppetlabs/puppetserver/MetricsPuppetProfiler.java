@@ -136,9 +136,11 @@ public class MetricsPuppetProfiler implements PuppetProfiler {
 
                 if (
                     ("resource".equals(secondElement) && "search".equals(thirdElemet)) ||
-		    ("facts".equals(secondElement) && "encode".equals(thirdElemet)) ||
-		    ("catalog".equals(secondElement) && "munge".equals(thirdElemet)) ||
-		    ("report".equals(secondElement) && "convert_to_wire_format_hash".equals(thirdElemet))
+		    ("payload".equals(secondElement) && "format".equals(thirdElemet)) ||
+		    // Set.of would be preferrable but 7.x still support Java 8, which does not have Set.of
+		    ("facts".equals(secondElement) && Arrays.asList("save", "find", "search", "encode").contains(thirdElemet)) ||
+		    ("catalog".equals(secondElement) && Arrays.asList("save", "munge").contains(thirdElemet)) ||
+		    ("report".equals(secondElement) && Arrays.asList("convert_to_wire_format_hash", "process").contains(thirdElemet))
 		) {
                     String key = String.join(".", secondElement, thirdElemet);
                     Timer metric = metricsByID.get(getMetricName(sliceOfArrayToList(metricId, 3)));
