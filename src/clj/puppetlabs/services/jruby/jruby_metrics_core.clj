@@ -269,7 +269,7 @@
     (do
       (.update wait-timer
         (- (System/currentTimeMillis) (:time ta))
-        (TimeUnit/MILLISECONDS))
+        TimeUnit/MILLISECONDS)
       (swap! requested-instances dissoc requested-event))
     (log/warn (trs "Unable to find request event for borrowed JRuby instance: {0}" event))))
 
@@ -281,8 +281,8 @@
     (if-let [ta (get @borrowed-instances worker-id)]
       (let [elapsed-time (- (System/currentTimeMillis) (:time ta))
             per-reason-timer (timer-for-borrow-reason metrics ta)]
-        (.update borrow-timer elapsed-time (TimeUnit/MILLISECONDS))
-        (.update per-reason-timer elapsed-time (TimeUnit/MILLISECONDS))
+        (.update borrow-timer elapsed-time TimeUnit/MILLISECONDS)
+        (.update per-reason-timer elapsed-time TimeUnit/MILLISECONDS)
         (MDC/put "jruby.borrow-time" (Long/toString elapsed-time))
         (swap! borrowed-instances dissoc worker-id))
       (log/warn (trs "JRuby instance ''{0}'' returned, but no record of when it was borrowed!" worker-id)))))
@@ -314,7 +314,7 @@
     (do
       (.update lock-wait-timer
                (- (System/currentTimeMillis) (:time lock-request))
-               (TimeUnit/MILLISECONDS))
+               TimeUnit/MILLISECONDS)
       (swap! lock-requests assoc
              lock-request-id
              {:state :acquired
@@ -330,7 +330,7 @@
     (do
       (.update lock-held-timer
                (- (System/currentTimeMillis) (:time lock-request))
-               (TimeUnit/MILLISECONDS))
+               TimeUnit/MILLISECONDS)
       (swap! lock-requests dissoc lock-request-id))
     (log/warn (trs "Lock request ''{0}'' released, but no record of when it was acquired!"
                    lock-request-id)))
