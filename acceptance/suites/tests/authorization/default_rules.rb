@@ -16,14 +16,15 @@ step 'Turn on new auth support' do
                    {'jruby-puppet' => {'use-legacy-auth-conf' => false}})
 end
 
-def curl_authenticated(path)
+def curl_authenticated(path, &block)
   curl = 'curl '
   curl += '--cert $(puppet config print hostcert) '
   curl += '--key $(puppet config print hostprivkey) '
   curl += '--cacert $(puppet config print localcacert) '
   curl += "--write-out '\\nSTATUSCODE=%{http_code}\\n' "
   curl += "https://#{master}:8140#{path}"
-  on(master, curl)
+  result = on(master, curl)
+  block.call(result.stdout)
 end
 
 def curl_unauthenticated(path)
@@ -33,12 +34,12 @@ def curl_unauthenticated(path)
   on(master, curl)
 end
 
-def assert_allowed(expected_statuscode = 200)
-  assert_no_match(/Forbidden request/, stdout)
+def assert_allowed(stdout, expected_statuscode = 200)
+  refute_match(/Forbidden request/, stdout)
   assert_match(/STATUSCODE=#{expected_statuscode}/, stdout)
 end
 
-def assert_denied(expected_stdout)
+def assert_denied(stdout, expected_stdout)
   assert_match(/Forbidden request/, stdout)
   assert_match(expected_stdout, stdout)
   assert_match(/STATUSCODE=403/, stdout)
@@ -55,115 +56,139 @@ with_puppet_running_on(master, {}) do
   masterfqdn = on(master, '/opt/puppetlabs/bin/facter fqdn').stdout.chomp
 
   step 'environments endpoint' do
-    curl_authenticated('/puppet/v3/environments')
-    assert_allowed
+    curl_authenticated('/puppet/v3/environments') do |stdout|
+      assert_allowed(stdout)
+    end
 
-    curl_unauthenticated('/puppet/v3/environments')
-    assert_denied(/\/puppet\/v3\/environments \(method :get\)/)
+    curl_unauthenticated('/puppet/v3/environments') do |stdout|
+      assert_denied(stdout, /\/puppet\/v3\/environments \(method :get\)/)
+    end
   end
 
   step 'catalog endpoint' do
-    curl_authenticated("/puppet/v3/catalog/#{masterfqdn}?environment=production")
-    assert_allowed
+    curl_authenticated("/puppet/v3/catalog/#{masterfqdn}?environment=production") do |stdout|
+      assert_allowed(stdout)
+    end
 
-    curl_authenticated('/puppet/v3/catalog/notme?environment=production')
-    assert_denied(/\/puppet\/v3\/catalog\/notme \(method :get\)/)
+    curl_authenticated('/puppet/v3/catalog/notme?environment=production') do |stdout|
+      assert_denied(stdout, /\/puppet\/v3\/catalog\/notme \(method :get\)/)
+    end
 
-    curl_unauthenticated("/puppet/v3/catalog/#{masterfqdn}?environment=production")
-    assert_denied(/\/puppet\/v3\/catalog\/#{masterfqdn} \(method :get\)/)
+    curl_unauthenticated("/puppet/v3/catalog/#{masterfqdn}?environment=production") do |stdout|
+      assert_denied(stdout, /\/puppet\/v3\/catalog\/#{masterfqdn} \(method :get\)/)
+    end
   end
 
   step 'node endpoint' do
-    curl_authenticated("/puppet/v3/node/#{masterfqdn}?environment=production")
-    assert_allowed
+    curl_authenticated("/puppet/v3/node/#{masterfqdn}?environment=production") do |stdout|
+      assert_allowed(stdout)
+    end
 
-    curl_authenticated('/puppet/v3/node/notme?environment=production')
-    assert_denied(/\/puppet\/v3\/node\/notme \(method :get\)/)
+    curl_authenticated('/puppet/v3/node/notme?environment=production') do |stdout|
+      assert_denied(stdout, /\/puppet\/v3\/node\/notme \(method :get\)/)
+    end
 
-    curl_unauthenticated("/puppet/v3/node/#{masterfqdn}?environment=production")
-    assert_denied(/\/puppet\/v3\/node\/#{masterfqdn} \(method :get\)/)
+    curl_unauthenticated("/puppet/v3/node/#{masterfqdn}?environment=production") do |stdout|
+      assert_denied(stdout, /\/puppet\/v3\/node\/#{masterfqdn} \(method :get\)/)
+    end
   end
 
   step 'report endpoint' do
-    curl_authenticated(report_query(masterfqdn))
-    assert_allowed
+    curl_authenticated(report_query(masterfqdn)) do |stdout|
+      assert_allowed(stdout)
+    end
 
     # In PE, the master (specifically the orchestrator)
     # is allowed to make report submissions on behalf of
     # other nodes
-    curl_authenticated(report_query('notme'))
-    if master.is_pe?
-      assert_allowed
-    else
-      assert_denied(/\/puppet\/v3\/report\/notme \(method :put\)/)
+    curl_authenticated(report_query('notme')) do |stdout|
+      if master.is_pe?
+        assert_allowed(stdout)
+      else
+        assert_denied(stdout, /\/puppet\/v3\/report\/notme \(method :put\)/)
+      end
     end
 
-    curl_unauthenticated(report_query(masterfqdn))
-    assert_denied(/\/puppet\/v3\/report\/#{masterfqdn} \(method :put\)/)
+    curl_unauthenticated(report_query(masterfqdn)) do |stdout|
+      assert_denied(stdout, /\/puppet\/v3\/report\/#{masterfqdn} \(method :put\)/)
+    end
   end
 
   step 'file_metadata endpoint' do
     # We'd actually need to install a module in order to get back a 200,
     # but we know that a 404 means we got past authorization
-    curl_authenticated('/puppet/v3/file_metadata/modules/foo?environment=production')
-    assert_allowed(404)
+    curl_authenticated('/puppet/v3/file_metadata/modules/foo?environment=production') do |stdout|
+      assert_allowed(stdout, 404)
+    end
 
-    curl_unauthenticated('/puppet/v3/file_metadata/modules/foo?environment=production')
-    assert_denied(/\/puppet\/v3\/file_metadata\/modules\/foo \(method :get\)/)
+    curl_unauthenticated('/puppet/v3/file_metadata/modules/foo?environment=production') do |stdout|
+      assert_denied(stdout, /\/puppet\/v3\/file_metadata\/modules\/foo \(method :get\)/)
+    end
   end
 
   step 'file_content endpoint' do
     # We'd actually need to install a module in order to get back a 200,
     # but we know that a 404 means we got past authorization
-    curl_authenticated('/puppet/v3/file_content/modules/foo?environment=production')
-    assert_allowed(404)
+    curl_authenticated('/puppet/v3/file_content/modules/foo?environment=production') do |stdout|
+      assert_allowed(stdout, 404)
+    end
 
-    curl_unauthenticated('/puppet/v3/file_content/modules/foo?environment=production')
-    assert_denied(/\/puppet\/v3\/file_content\/modules\/foo \(method :get\)/)
+    curl_unauthenticated('/puppet/v3/file_content/modules/foo?environment=production') do |stdout|
+      assert_denied(stdout, /\/puppet\/v3\/file_content\/modules\/foo \(method :get\)/)
+    end
   end
 
   step 'file_bucket_file endpoint' do
     # We'd actually need to store a file in the filebucket in order to get
     # back a 200, but we know that a 500 means we got past authorization
-    curl_authenticated('/puppet/v3/file_bucket_file/md5/123?environment=production')
-    assert_allowed(500)
+    curl_authenticated('/puppet/v3/file_bucket_file/md5/123?environment=production') do |stdout|
+      assert_allowed(stdout, 500)
+    end
 
-    curl_unauthenticated('/puppet/v3/file_bucket_file/md5/123?environment=production')
-    assert_denied(/\/puppet\/v3\/file_bucket_file\/md5\/123 \(method :get\)/)
+    curl_unauthenticated('/puppet/v3/file_bucket_file/md5/123?environment=production') do |stdout|
+      assert_denied(stdout, /\/puppet\/v3\/file_bucket_file\/md5\/123 \(method :get\)/)
+    end
   end
 
   step 'status service endpoint' do
-    curl_unauthenticated('/status/v1/services')
-    assert_allowed
+    curl_unauthenticated('/status/v1/services') do |stdout|
+      assert_allowed(stdout)
+    end
   end
 
   step 'static file content endpoint' do
     # We'd actually need to perform a commit and use its code-id in order to
     # get back a 200, but we know that a 400 means we got past authorization
-    curl_authenticated('/puppet/v3/static_file_content/foo/bar?environment=production')
-    assert_allowed(400)
+    curl_authenticated('/puppet/v3/static_file_content/foo/bar?environment=production') do |stdout|
+      assert_allowed(stdout, 400)
+    end
 
-    curl_unauthenticated('/puppet/v3/static_file_content/foo/bar?environment=production')
-    assert_denied(/\/puppet\/v3\/static_file_content\/foo\/bar \(method :get\)/)
+    curl_unauthenticated('/puppet/v3/static_file_content/foo/bar?environment=production') do |stdout|
+      assert_denied(stdout, /\/puppet\/v3\/static_file_content\/foo\/bar \(method :get\)/)
+    end
   end
 
   step 'certificate_revocation_list endpoint' do
-    curl_authenticated('/puppet-ca/v1/certificate_revocation_list/ca?environment=production')
-    assert_allowed
+    curl_authenticated('/puppet-ca/v1/certificate_revocation_list/ca?environment=production') do |stdout|
+      assert_allowed(stdout)
+    end
 
-    curl_unauthenticated('/puppet-ca/v1/certificate_revocation_list/ca?environment=production')
-    assert_allowed
+    curl_unauthenticated('/puppet-ca/v1/certificate_revocation_list/ca?environment=production') do |stdout|
+      assert_allowed(stdout)
+    end
   end
 
   step 'certificate endpoint' do
-    curl_unauthenticated('/puppet-ca/v1/certificate/ca?environment=production')
-    assert_allowed
+    curl_unauthenticated('/puppet-ca/v1/certificate/ca?environment=production') do |stdout|
+      assert_allowed(stdout)
+    end
   end
 
   step 'certificate_request endpoint' do
     # We'd actually need to store a CSR file on the server in order to get
     # back a 200, but we know that a 404 means we got past authorization
-    curl_unauthenticated('/puppet-ca/v1/certificate_request/foo?environment=production')
-    assert_allowed(404)
+    curl_unauthenticated('/puppet-ca/v1/certificate_request/foo?environment=production') do |stdout|
+      assert_allowed(stdout, 404)
+    end
   end
 end

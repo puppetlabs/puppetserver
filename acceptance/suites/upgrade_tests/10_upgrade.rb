@@ -32,8 +32,8 @@ step "Upgrade Puppet agents" do
 end
 
 step "Check that the master has Puppetserver 5.x installed" do
-  on(master, "puppetserver --version") do
-    assert_match(/\Apuppetserver version: 5\./i, stdout, "puppetserver --version does not start with major version 5.")
+  on(master, "puppetserver --version") do |result|
+    assert_match(/\Apuppetserver version: 5\./i, result.stdout, "puppetserver --version does not start with major version 5.")
   end
 end
 
