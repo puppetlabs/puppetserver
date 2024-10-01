@@ -5,8 +5,8 @@ test_name "Puppetserver subcommand consolidated ENV handling tests."
 proxy_env_vars = "HTTP_PROXY=foo http_proxy=foo HTTPS_PROXY=foo https_proxy=foo NO_PROXY=foo no_proxy=foo"
 
 step "ruby: Check that PATH, HOME, GEM_HOME JARS_REQUIRE and JARS_NO_REQUIRE are present"
-on(master, "puppetserver ruby -rjson -e 'puts JSON.pretty_generate(ENV.to_hash)'") do
-  env = JSON.parse(stdout)
+on(master, "puppetserver ruby -rjson -e 'puts JSON.pretty_generate(ENV.to_hash)'") do |result|
+  env = JSON.parse(result.stdout)
   assert(env['PATH'], "PATH missing")
   assert(env['HOME'], "HOME missing")
   assert(env['GEM_HOME'], "GEM_HOME missing")
@@ -15,8 +15,8 @@ on(master, "puppetserver ruby -rjson -e 'puts JSON.pretty_generate(ENV.to_hash)'
 end
 
 step "ruby: Check that proxy env-variables are present"
-on(master, "#{proxy_env_vars} puppetserver ruby -rjson -e 'puts JSON.pretty_generate(ENV.to_hash)'") do
-  env = JSON.parse(stdout)
+on(master, "#{proxy_env_vars} puppetserver ruby -rjson -e 'puts JSON.pretty_generate(ENV.to_hash)'") do |result|
+  env = JSON.parse(result.stdout)
   assert_equal(env['HTTP_PROXY'], "foo",
                "HTTP_PROXY is missing or has wrong value: '#{env['HTTP_PROXY']}'")
   assert_equal(env['http_proxy'], "foo",
@@ -32,20 +32,20 @@ on(master, "#{proxy_env_vars} puppetserver ruby -rjson -e 'puts JSON.pretty_gene
 end
 
 step "irb: Check that PATH, HOME, GEM_HOME JARS_REQUIRE and JARS_NO_REQUIRE are present"
-on(master, "echo 'puts JSON.pretty_generate(ENV.to_hash)' | puppetserver irb -f -rjson") do
-  assert_match(/\bPATH\b/, stdout, "PATH missing")
-  assert_match(/\bHOME\b/, stdout, "HOME missing")
-  assert_match(/\bGEM_HOME\b/, stdout, "GEM_HOME missing")
-  assert_match(/\bJARS_REQUIRE\b/, stdout, "JARS_REQUIRE missing")
-  assert_match(/\bJARS_NO_REQUIRE\b/, stdout, "JARS_NO_REQUIRE missing")
+on(master, "echo 'puts JSON.pretty_generate(ENV.to_hash)' | puppetserver irb -f -rjson") do |result|
+  assert_match(/\bPATH\b/, result.stdout, "PATH missing")
+  assert_match(/\bHOME\b/, result.stdout, "HOME missing")
+  assert_match(/\bGEM_HOME\b/, result.stdout, "GEM_HOME missing")
+  assert_match(/\bJARS_REQUIRE\b/, result.stdout, "JARS_REQUIRE missing")
+  assert_match(/\bJARS_NO_REQUIRE\b/, result.stdout, "JARS_NO_REQUIRE missing")
 end
 
 step "irb: Check that proxy env-variables are present"
-on(master, "echo 'puts JSON.pretty_generate(ENV.to_hash)' | #{proxy_env_vars} puppetserver irb -f -rjson") do
-  assert_match(/\bHTTP_PROXY\b\W\W\s\W\bfoo\b/, stdout, "HTTP_PROXY missing or has wrong value")
-  assert_match(/\bhttp_proxy\b\W\W\s\W\bfoo\b/, stdout, "http_proxy missing or has wrong value")
-  assert_match(/\bHTTPS_PROXY\b\W\W\s\W\bfoo\b/, stdout, "HTTPS_PROXY missing or has wrong value")
-  assert_match(/\bhttps_proxy\b\W\W\s\W\bfoo\b/, stdout, "https_proxy missing or has wrong value")
-  assert_match(/\bNO_PROXY\b\W\W\s\W\bfoo\b/, stdout, "NO_PROXY missing or has wrong value")
-  assert_match(/\bno_proxy\b\W\W\s\W\bfoo\b/, stdout, "no_proxy missing or has wrong value")
+on(master, "echo 'puts JSON.pretty_generate(ENV.to_hash)' | #{proxy_env_vars} puppetserver irb -f -rjson") do |result|
+  assert_match(/\bHTTP_PROXY\b\W\W\s\W\bfoo\b/, result.stdout, "HTTP_PROXY missing or has wrong value")
+  assert_match(/\bhttp_proxy\b\W\W\s\W\bfoo\b/, result.stdout, "http_proxy missing or has wrong value")
+  assert_match(/\bHTTPS_PROXY\b\W\W\s\W\bfoo\b/, result.stdout, "HTTPS_PROXY missing or has wrong value")
+  assert_match(/\bhttps_proxy\b\W\W\s\W\bfoo\b/, result.stdout, "https_proxy missing or has wrong value")
+  assert_match(/\bNO_PROXY\b\W\W\s\W\bfoo\b/, result.stdout, "NO_PROXY missing or has wrong value")
+  assert_match(/\bno_proxy\b\W\W\s\W\bfoo\b/, result.stdout, "no_proxy missing or has wrong value")
 end
