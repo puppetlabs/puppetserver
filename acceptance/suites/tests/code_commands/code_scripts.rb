@@ -122,7 +122,7 @@ end
 
 step 'SETUP: Install and configure r10k, and perform the initial commit' do
   on master, "puppet config set server #{fqdn}"
-  on master, '/opt/puppetlabs/puppet/bin/gem install r10k'
+  on master, '/opt/puppetlabs/puppet/bin/gem install r10k --no-document'
   on master, "cd #{git_local_repo} && git checkout -b production"
   r10k_yaml=<<-R10K
 # The location to use for storing cached Git repos
