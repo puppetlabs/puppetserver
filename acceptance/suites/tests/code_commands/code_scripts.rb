@@ -109,7 +109,7 @@ end
 
 step 'SETUP: Initialize the local git repository' do
   on master, "chown git #{git_local_repo}"
-  on master, "git config --global --add safe.directory #{git_local_repo}"
+  on master, "git config --system --add safe.directory '*'"
   on master, "cd #{git_local_repo} && git config --global user.name 'TestUser'"
   on master, "cd #{git_local_repo} && git config --global user.email 'you@example.com'"
   on master, "cd #{git_local_repo} && git init"

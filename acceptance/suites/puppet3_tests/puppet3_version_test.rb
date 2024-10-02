@@ -4,13 +4,13 @@ test_name "Testing Master/Agent backwards compatibility"
 legacy_agents = agents.reject { |agent| agent == master }
 
 step "Check that legacy agents have Puppet 3.x installed"
-on(legacy_agents, puppet("--version")) do
-  assert(stdout.start_with? "3.", "puppet --version does not start with major version 3.")
+on(legacy_agents, puppet("--version")) do |result|
+  assert(result.stdout.start_with? "3.", "puppet --version does not start with major version 3.")
 end
 
 step "Check that Puppet Server has Puppet 6.x installed"
-on(master, puppet("--version")) do
-  assert_match(/\A6/, stdout, "puppet --version does not start with major version 6.x")
+on(master, puppet("--version")) do |result|
+  assert_match(/\A6/, result.stdout, "puppet --version does not start with major version 6.x")
 end
 
 step "Check that the agent on the master runs against the master"

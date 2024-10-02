@@ -63,13 +63,14 @@ module PuppetServerExtensions
   def puppetdb_supported_platforms()
     [
       /debian-11/,
-      /debian-10/,
-      /el-7/,
+      /debian-12/,
       /el-8/,
+      /el-9/,
       /sles-12/,
       /sles-15/,
-      /ubuntu-18.04/,
-      /ubuntu-20.04/
+      /ubuntu-20.04/,
+      /ubuntu-22.04/,
+      /ubuntu-24.04/
     ]
   end
 
@@ -231,8 +232,7 @@ module PuppetServerExtensions
   def get_defaults_var(host, varname)
     defaults_file = get_defaults_file
 
-    on(host, "source #{defaults_file}; echo -n $#{varname}")
-    stdout
+    on(host, "source #{defaults_file}; echo -n $#{varname}").stdout
   end
 
   # If we are getting the certificate for the first time, store it in the

@@ -120,26 +120,26 @@ step "Start the Puppet master service..."
 with_puppet_running_on(master, master_opts) do
   # Now, try and run the agent on the master against itself.
   step "Successfully run the puppet agent on the master"
-  on master, puppet_agent("#{agent_cmd_prefix} --test"), :acceptable_exit_codes => (0..255) do
-    assert_no_match /Creating a new SSL key/, stdout
-    assert_no_match /\Wfailed\W/i, stderr
-    assert_no_match /\Wfailed\W/i, stdout
-    assert_no_match /\Werror\W/i, stderr
-    assert_no_match /\Werror\W/i, stdout
+  on master, puppet_agent("#{agent_cmd_prefix} --test"), :acceptable_exit_codes => (0..255) do |result|
+    refute_match /Creating a new SSL key/, result.stdout
+    refute_match /\Wfailed\W/i, result.stderr
+    refute_match /\Wfailed\W/i, result.stdout
+    refute_match /\Werror\W/i, result.stderr
+    refute_match /\Werror\W/i, result.stdout
     # Assert the exit code so we get a "Failed test" instead of an "Errored test"
-    assert exit_code == 0
+    assert result.exit_code == 0
   end
 
   step "Master accepts client cert with email address in subject"
   on master, "cp #{testdir}/etc/agent/puppet.conf{,.no_email}"
   on master, "cp #{testdir}/etc/agent/puppet.conf{.email,}"
-  on master, puppet_agent("#{agent_cmd_prefix} --test"), :acceptable_exit_codes => (0..255) do
-    assert_no_match /\Wfailed\W/i, stdout
-    assert_no_match /\Wfailed\W/i, stderr
-    assert_no_match /\Werror\W/i, stdout
-    assert_no_match /\Werror\W/i, stderr
+  on master, puppet_agent("#{agent_cmd_prefix} --test"), :acceptable_exit_codes => (0..255) do |result|
+    refute_match /\Wfailed\W/i, result.stdout
+    refute_match /\Wfailed\W/i, result.stderr
+    refute_match /\Werror\W/i, result.stdout
+    refute_match /\Werror\W/i, result.stderr
     # Assert the exit code so we get a "Failed test" instead of an "Errored test"
-    assert exit_code == 0
+    assert result.exit_code == 0
   end
 
   step "Agent refuses to connect to revoked master"
@@ -147,9 +147,9 @@ with_puppet_running_on(master, master_opts) do
   on master, "cp #{testdir}/etc/agent/puppet.conf{.crl,}"
 
   revoke_opts = "--hostcrl #{testdir}/ca_master.crl"
-  on master, puppet_agent("#{agent_cmd_prefix} #{revoke_opts} --test"), :acceptable_exit_codes => (0..255) do
-    assert_match /certificate revoked.*?example.org/, stderr
-    assert exit_code == 1
+  on master, puppet_agent("#{agent_cmd_prefix} #{revoke_opts} --test"), :acceptable_exit_codes => (0..255) do |result|
+    assert_match /certificate revoked.*?example.org/, result.stderr
+    assert result.exit_code == 1
   end
 end
 

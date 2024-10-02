@@ -1,9 +1,5 @@
 test_name "Puppetserver 'foreground' subcommand tests."
 
-if (master['platform'] =~ /el-5/)
-  skip_test("RHEL5 is not supported by this test case. See SERVER-653")
-end
-
 cli = "puppetserver"
 service = options['puppetservice']
 
@@ -25,7 +21,7 @@ on(master, puppet("resource service #{service} ensure=stopped"))
 
 step "Run #{cli} with foreground subcommand, wait for #{timout_length}"
 on(master, timeout_cmd, :acceptable_exit_codes => [124]) do |result|
-  assert_no_match(/error:/i, result.stderr, "Unexpected error running puppetserver!")
+  refute_match(/error:/i, result.stderr, "Unexpected error running puppetserver!")
 
   step "Check that #{cli} ran successfully and shutdown triggered"
   expected_messages.each do |message, explanation|

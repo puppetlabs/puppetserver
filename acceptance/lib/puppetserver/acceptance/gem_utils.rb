@@ -7,8 +7,8 @@ def get_gem_list(host, gem_list_command)
   #
   gem_list_regex = Regexp.new('(?<package>[\w-]*) (?<version>.*)')
   array = []
-  on(host, "#{gem_list_command}") do
-    split_output = stdout.split
+  on(host, "#{gem_list_command}") do |result|
+    split_output = result.stdout.split
     split_output.each do |line|
       match = gem_list_regex.match(line)
       if match

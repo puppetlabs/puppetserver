@@ -101,8 +101,8 @@ EOM
     # ISO 8601 timestamp, with milliseconds and time zone. Local time is used
     # instead of UTC as both PuppetDB and Puppet Server log in local time.
     run_timestamp = Time.iso8601(on(master, 'date +"%Y-%m-%dT%H:%M:%S.%3N%:z"').stdout.chomp)
-    on(master, puppet_agent("--test"), :acceptable_exit_codes => [0,2]) do
-      assert_match(/Notice: #{random_string}/, stdout,
+    on(master, puppet_agent("--test"), :acceptable_exit_codes => [0,2]) do |result|
+      assert_match(/Notice: #{random_string}/, result.stdout,
                   'Puppet run collects exported Notify')
     end
   end
@@ -116,15 +116,26 @@ EOM
     # name passed to Puppet::Util::Profiler.profile over in the Ruby
     # terminus code of the PuppetDB project without realizing that is a
     # breaking change to metrics critical for measuring compiler performance.
-    %w[
-      facts_encode command_submit_replace_facts
-      catalog_munge command_submit_replace_catalog
-      report_convert_to_wire_format_hash command_submit_store_report
-      resource_search query
+    [
+      "query",
+      "resource_search",
+      "facts_find",
+      "catalog_save",
+      "facts_save",
+      "command_submit_replace_catalog",
+      "command_submit_replace_facts",
+      "report_process",
+      "command_submit_store_report",
+      "payload_format",
+      "facts_encode",
+      "catalog_munge",
+      "report_convert_to_wire_format_hash"
     ].each do |metric_name|
-      metric_data = pdb_metrics.find({}) {|m| m['metric'] == metric_name }
+      metric_data = pdb_metrics.find {|m| m['metric'] == metric_name } || {}
 
-      assert_operator(metric_data.fetch('count', 0), :>, 0,
+      metric_count = metric_data.fetch('count', 0)
+      logger.debug("PuppetDB metrics #{metric_name} recorded #{metric_count} times")
+      assert_operator(metric_count, :>, 0,
                       "PuppetDB metrics recorded for: #{metric_name}")
     end
   end
