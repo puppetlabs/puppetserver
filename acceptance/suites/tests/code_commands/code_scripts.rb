@@ -36,11 +36,9 @@ teardown do
   on master, 'puppet apply /tmp/config_code_id_command_script_disable.pp'
   reload_server
 
-  on(master, 'rm -rf /root/.ssh/gittest_rsa*', :accept_all_exit_codes => true)
   on(master, 'puppet resource user git ensure=absent')
   on(master, "rm -rf #{git_repo_parentdir}", :accept_all_exit_codes => true)
   on(master, "rm -rf #{git_local_repo}", :accept_all_exit_codes => true)
-  on(master, 'rm -rf /home/git/.ssh/authorized_keys', :accept_all_exit_codes => true)
  
   #remove code_* scripts.
   on(master, 'rm -rf /opt/puppetlabs/server/apps/puppetserver/code-id-command_script.sh')
@@ -52,11 +50,6 @@ teardown do
   on(master, 'rm -rf /etc/puppetlabs/code')
   on(master, 'puppet resource file /etc/puppetlabs/code ensure=directory')
 end
-
-step 'SETUP: Generate a new ssh key for the root user account to use with the git server'
-  on(master, 'rm -f /root/.ssh/gittest_rsa')
-  on(master, 'ssh-keygen -t rsa -V +1d -f /root/.ssh/gittest_rsa -N ""')
-  gittest_key=on(master, "awk '{print $2}' /root/.ssh/gittest_rsa.pub").stdout.chomp
 
 step 'SETUP: Install and configure git server' do
   on(master, 'puppet module install puppetlabs-git') 
@@ -77,30 +70,11 @@ step 'SETUP: Install and configure git server' do
       require => User['git'],
       }
 
-    ssh_authorized_key { 'root@#{hostname}' :
-      user => 'git',
-      ensure => present,
-      type => 'ssh-rsa',
-      key => '#{gittest_key}',
-      require => File['/home/git'],
-      }
-
     class { 'git': }
     GIT
   create_remote_file(master, '/tmp/git_setup.pp', git_config)
   on master, puppet_apply('/tmp/git_setup.pp')
 end
-
-step 'SETUP: Write out ssh config...' do
-  ssh_config=<<-SSHCONFIG
-  Host #{hostname} #{fqdn}
-    User git
-    IdentityFile ~/.ssh/gittest_rsa
-    IdentitiesOnly yes
-    StrictHostKeyChecking no
-  SSHCONFIG
-  create_remote_file(master, '/root/.ssh/config', ssh_config)
- end
 
 step 'SETUP: Initialize the git control repository' do
   on master, "chown git #{git_repo_parentdir}"
@@ -116,13 +90,13 @@ step 'SETUP: Initialize the local git repository' do
   on master, "cd #{git_local_repo} && touch .gitignore"
   on master, "cd #{git_local_repo} && git add ."
   on master, "cd #{git_local_repo} && git commit -m 'initial commit'"
-  on master, "cd #{git_local_repo} && git remote add origin git@#{fqdn}:#{git_repo}"
+  on master, "cd #{git_local_repo} && git remote add origin file://#{git_repo}"
   on master, "cd #{git_local_repo} && git push origin master"
 end
 
 step 'SETUP: Install and configure r10k, and perform the initial commit' do
   on master, "puppet config set server #{fqdn}"
-  on master, '/opt/puppetlabs/puppet/bin/gem install r10k'
+  on master, '/opt/puppetlabs/puppet/bin/gem install r10k --no-document'
   on master, "cd #{git_local_repo} && git checkout -b production"
   r10k_yaml=<<-R10K
 # The location to use for storing cached Git repos
@@ -133,7 +107,7 @@ step 'SETUP: Install and configure r10k, and perform the initial commit' do
   # This will clone the git repository and instantiate an environment per
   # branch in /etc/puppetlabs/code/environments
   :my-org:
-    remote: git@#{fqdn}:#{git_repo}
+    remote: file://#{git_repo}
     basedir: '/etc/puppetlabs/code/environments'
 R10K
   on master, 'mkdir -p /etc/puppetlabs/r10k'
