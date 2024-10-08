@@ -43,8 +43,8 @@ gems.each do |gem_name, gem_version|
   on(master, "#{gem_install} #{gem_name} -v #{gem_version}")
 
   step "Check that test gem is present."
-  on(master, "#{gem_list}") do
-    assert(/^#{gem_name}/.match(stdout), "#{gem_name} was not found after installation.")
+  on(master, "#{gem_list}") do |result|
+    assert(/^#{gem_name}/.match(result.stdout), "#{gem_name} was not found after installation.")
   end
 
   if gem_name == 'excon'
@@ -56,8 +56,8 @@ gems.each do |gem_name, gem_version|
       end
       on(master, "su #{runuser} -s /bin/bash -c "\
         "'/opt/puppetlabs/bin/puppetserver ruby "\
-        "-rexcon -e \"puts Excon::VERSION\"'") do
-        assert_equal(gems['excon'], stdout.strip,
+        "-rexcon -e \"puts Excon::VERSION\"'") do |result|
+        assert_equal(gems['excon'], result.stdout.strip,
                      "Unexpected output for excon version")
       end
     end
@@ -67,8 +67,8 @@ gems.each do |gem_name, gem_version|
   on(master, "#{gem_uninstall} #{gem_name}")
 
   step "Check that test gem is no longer present."
-  on(master, "#{gem_list}") do
-    assert_no_match(/^#{gem_name}/, stdout, "#{gem_name} was found after uninstallation.")
+  on(master, "#{gem_list}") do |result|
+    refute_match(/^#{gem_name}/, result.stdout, "#{gem_name} was found after uninstallation.")
   end
 end
 
@@ -88,14 +88,14 @@ step "Verify that gem env operates"
 on(master, "#{cli} gem env", :acceptable_exit_codes => [0])
 
 step "Verify that Java cli args passed through to gem command"
-on(master, "JAVA_ARGS_CLI=-Djruby.cli.version=true #{cli} gem help") do
-  assert_match(/jruby \d\.\d\.\d.*$/, stdout,
+on(master, "JAVA_ARGS_CLI=-Djruby.cli.version=true #{cli} gem help") do |result|
+  assert_match(/jruby \d\.\d\.\d.*$/, result.stdout,
                'jruby version not included in gem command output')
 end
 
 step "(SERVER-1759) Verify that installing a non-existent gem produces a non-zero exit return value"
 
 gem_name = 'if-this-gem-exists-then-someone-has-a-cruel-sense-of-humor'
-on(master, "#{cli} gem install #{gem_name}", :acceptable_exit_codes => [2]) do
-  assert_match(/Could not find a valid gem/, stderr)
+on(master, "#{cli} gem install #{gem_name}", :acceptable_exit_codes => [2]) do |result|
+  assert_match(/Could not find a valid gem/, result.stderr)
 end
