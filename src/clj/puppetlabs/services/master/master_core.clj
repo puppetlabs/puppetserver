@@ -18,7 +18,6 @@
             [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.ring-middleware.core :as middleware]
             [puppetlabs.ring-middleware.utils :as middleware-utils]
-            [puppetlabs.services.master.file-serving :as file-serving]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [puppetlabs.trapperkeeper.services.status.status-core :as status-core]
             [ring.middleware.params :as ring]
@@ -963,55 +962,26 @@
             (catch Throwable e
               (log/info e (i18n/trs "Failed to report action")))))))))
 
-(defn parse-project-compile-data
-  "Parse data required to compile a catalog inside a project. Data required includes
-   * Root path to project
-   * modulepath
-   * hiera config
-   * project_name"
-  [request-options
-   versioned-project
-   bolt-projects-dir]
-  (let [project-root (file-serving/get-project-root bolt-projects-dir versioned-project)
-        project-config (file-serving/read-bolt-project-config project-root)]
-    (assoc request-options "project_root" project-root
-                           "modulepath" (map #(str project-root "/" %) (file-serving/get-project-modulepath project-config))
-                           "hiera_config" (str project-root "/" (get project-config :hiera-config "hiera.yaml"))
-                           "project_name" (:name project-config))))
-
 (schema/defn ^:always-validate compile-fn :- IFn
   [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
    current-code-id-fn :- IFn
-   boltlib-path :- (schema/maybe [schema/Str])
-   bolt-projects-dir :- (schema/maybe schema/Str)]
+   boltlib-path :- (schema/maybe [schema/Str])]
   (fn [request]
     (let [request-options (-> request
                               :body
                               slurp
                               (validated-body CompileRequest))
-          versioned-project (get request-options "versioned_project")
           environment (get request-options "environment")]
-      ;; Check to ensure environment/versioned_project are mutually exlusive and
-      ;; at least one of them is set.
-      (cond
-        (and versioned-project environment)
-        {:status 400
-         :headers {"Content-Type" "text/plain"}
-         :body (i18n/tru "A compile request cannot specify both `environment` and `versioned_project` parameters.")}
-        
-        (and (nil? versioned-project) (nil? environment))
+      ;; Check to ensure environment is set.
+
+      (if (nil? environment)
         {:status 400
          :headers {"Content-Type" "text/plain"}
          :body (i18n/tru "A compile request must include an `environment` or `versioned_project` parameter.")}
         
-        :else
-        (let [compile-options (if versioned-project
-                              ;; we need to parse some data from the project config for project compiles
-                                (parse-project-compile-data request-options versioned-project bolt-projects-dir)
-                              ;; environment compiles only need to set the code ID
-                                (assoc request-options
+        (let [compile-options  (assoc request-options
                                        "code_id"
-                                       (current-code-id-fn environment)))]
+                                       (current-code-id-fn environment))]
           {:status 200
            :headers {"Content-Type" "application/json"}
            :body (json/encode
@@ -1035,9 +1005,8 @@
   [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
    wrap-with-jruby-queue-limit :- IFn
    current-code-id-fn :- IFn
-   boltlib-path :- (schema/maybe [schema/Str])
-   bolt-projects-dir :- (schema/maybe schema/Str)]
-  (-> (compile-fn jruby-service current-code-id-fn boltlib-path bolt-projects-dir)
+   boltlib-path :- (schema/maybe [schema/Str])]
+  (-> (compile-fn jruby-service current-code-id-fn boltlib-path)
       (jruby-request/wrap-with-jruby-instance jruby-service)
       wrap-with-jruby-queue-limit
       jruby-request/wrap-with-error-handling))
@@ -1061,17 +1030,14 @@
   v3-ruby-routes :- bidi-schema/RoutePair
   "v3 route tree for the ruby side of the master service."
   [request-handler :- IFn
-   bolt-builtin-content-dir :- (schema/maybe [schema/Str])
-   bolt-projects-dir :- (schema/maybe schema/Str)
    certname :- schema/Str]
   (comidi/routes
    (comidi/GET ["/node/" [#".*" :rest]] request
                (request-handler request))
    (comidi/GET ["/file_content/" [#".*" :rest]] request
-               ;; Not strictly ruby routes anymore because of this
-               (file-serving/file-content-handler bolt-builtin-content-dir bolt-projects-dir request-handler (ring/params-request request)))
+               (request-handler request))
    (comidi/GET ["/file_metadatas/" [#".*" :rest]] request
-               (file-serving/file-metadatas-handler bolt-builtin-content-dir bolt-projects-dir request-handler (ring/params-request request)))
+               (request-handler request))
    (comidi/GET ["/file_metadata/" [#".*" :rest]] request
                (request-handler request))
    (comidi/GET ["/file_bucket_file/" [#".*" :rest]] request
@@ -1101,8 +1067,7 @@
    current-code-id-fn :- IFn
    cache-enabled :- schema/Bool
    wrap-with-jruby-queue-limit :- IFn
-   boltlib-path :- (schema/maybe [schema/Str])
-   bolt-projects-dir :- (schema/maybe schema/Str)]
+   boltlib-path :- (schema/maybe [schema/Str])]
   (let [class-handler (create-cacheable-info-handler-with-middleware
                         (fn [jruby env]
                           (some-> jruby-service
@@ -1137,8 +1102,7 @@
                           jruby-service
                           wrap-with-jruby-queue-limit
                           current-code-id-fn
-                          boltlib-path
-                          bolt-projects-dir)]
+                          boltlib-path)]
     (comidi/routes
       (comidi/POST "/compile" request
                    (compile-handler' request))
@@ -1190,19 +1154,16 @@
    environment-class-cache-enabled :- schema/Bool
    wrap-with-jruby-queue-limit :- IFn
    boltlib-path :- (schema/maybe [schema/Str])
-   bolt-builtin-content-dir :- (schema/maybe [schema/Str])
-   bolt-projects-dir :- (schema/maybe schema/Str)
    certname :- schema/Str]
   (comidi/context "/v3"
-                  (v3-ruby-routes ruby-request-handler bolt-builtin-content-dir bolt-projects-dir certname)
+                  (v3-ruby-routes ruby-request-handler certname)
                   (comidi/wrap-routes
                    (v3-clojure-routes jruby-service
                                       get-code-content-fn
                                       current-code-id-fn
                                       environment-class-cache-enabled
                                       wrap-with-jruby-queue-limit
-                                      boltlib-path
-                                      bolt-projects-dir)
+                                      boltlib-path)
                    clojure-request-wrapper)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1305,8 +1266,6 @@
    current-code-id-fn :- IFn
    environment-class-cache-enabled :- schema/Bool
    boltlib-path :- (schema/maybe [schema/Str])
-   bolt-builtin-content-dir :- (schema/maybe [schema/Str])
-   bolt-projects-dir :- (schema/maybe schema/Str)
    certname :- schema/Str]
   (comidi/routes
    (v3-routes ruby-request-handler
@@ -1317,8 +1276,6 @@
               environment-class-cache-enabled
               wrap-with-jruby-queue-limit
               boltlib-path
-              bolt-builtin-content-dir
-              bolt-projects-dir
               certname)
    (v4-routes clojure-request-wrapper
               jruby-service
@@ -1381,8 +1338,6 @@
    wrap-with-jruby-queue-limit :- IFn
    environment-class-cache-enabled :- schema/Bool
    boltlib-path :- (schema/maybe [schema/Str])
-   bolt-builtin-content-dir :- (schema/maybe [schema/Str])
-   bolt-projects-dir :- (schema/maybe schema/Str)
    certname :- schema/Str]
   (let [ruby-request-handler (wrap-middleware handle-request
                                               wrap-with-authorization-check
@@ -1400,8 +1355,6 @@
                  current-code-id
                  environment-class-cache-enabled
                  boltlib-path
-                 bolt-builtin-content-dir
-                 bolt-projects-dir
                  certname)))
 
 (def MasterStatusV1
