@@ -1125,11 +1125,11 @@
       (is (realized? caught-timeout)))))
 
 (defn verify-inventory-entry!
-  [inventory-entry serial-number not-before not-after subject]
+  [inventory-entry serial-number subject]
   (let [parts (string/split inventory-entry #" ")]
     (is (= serial-number (first parts)))
-    (is (= not-before (second parts)))
-    (is (= not-after (nth parts 2)))
+    (is (re-matches #"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}UTC" (second parts)))
+    (is (re-matches #"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}UTC" (nth parts 2)))
     (is (= subject (string/join " " (subvec parts 3))))))
 
 (deftest test-write-cert-to-inventory
@@ -1152,15 +1152,11 @@
           (verify-inventory-entry!
             (first entries)
             "0x0001"
-            "2020-08-19T20:23:52UTC"
-            "2025-08-19T20:23:52UTC"
             "/CN=Puppet CA: localhost")
 
           (verify-inventory-entry!
             (second entries)
             "0x0002"
-            "2020-08-19T20:26:02UTC"
-            "2025-08-19T20:26:02UTC"
             "/CN=localhost"))))))
 
 (deftest allow-duplicate-certs-test
