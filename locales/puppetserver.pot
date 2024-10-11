@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: 0e5d1199ab28f06a8b0f9e90bc57c70be09942e3\n"
+"X-Git-Ref: 6efb46b8c2a4a58988e2ed260a1243495df48272\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -830,38 +830,6 @@ msgid ""
 "handle requests"
 msgstr ""
 
-#: src/clj/puppetlabs/services/master/file_serving.clj
-msgid "Could not find file_content for path: {0}"
-msgstr ""
-
-#: src/clj/puppetlabs/services/master/file_serving.clj
-msgid "Unsupported mount: {0}"
-msgstr ""
-
-#: src/clj/puppetlabs/services/master/file_serving.clj
-msgid ""
-"A file_content request cannot specify both `environment` and "
-"`versioned_project` query parameters."
-msgstr ""
-
-#: src/clj/puppetlabs/services/master/file_serving.clj
-msgid ""
-"A file_content request must include an `environment` or `versioned_project` "
-"query parameter."
-msgstr ""
-
-#: src/clj/puppetlabs/services/master/file_serving.clj
-msgid ""
-"A file_metadatas request cannot specify both `environment` and "
-"`versioned_project` query parameters."
-msgstr ""
-
-#: src/clj/puppetlabs/services/master/file_serving.clj
-msgid ""
-"A file_metadatas request must include an `environment` or "
-"`versioned_project` query parameter."
-msgstr ""
-
 #: src/clj/puppetlabs/services/master/master_core.clj
 msgid "Object cannot be coerced to a keyword: {0}"
 msgstr ""
@@ -905,12 +873,6 @@ msgstr ""
 #: src/clj/puppetlabs/services/master/master_core.clj
 #: src/clj/puppetlabs/services/request_handler/request_handler_core.clj
 msgid "Failed to report action"
-msgstr ""
-
-#: src/clj/puppetlabs/services/master/master_core.clj
-msgid ""
-"A compile request cannot specify both `environment` and `versioned_project` "
-"parameters."
 msgstr ""
 
 #: src/clj/puppetlabs/services/master/master_core.clj
