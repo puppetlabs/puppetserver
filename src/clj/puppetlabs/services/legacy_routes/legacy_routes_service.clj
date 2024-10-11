@@ -44,8 +44,6 @@
                                                                  (constantly nil)
                                                                  false
                                                                  nil
-                                                                 nil
-                                                                 nil
                                                                  (get-in config [:puppetserver :certname])))
           master-route-handler (comidi/routes->handler master-routes)
           master-mount (master-core/get-master-mount
