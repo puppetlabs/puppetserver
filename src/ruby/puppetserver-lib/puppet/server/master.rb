@@ -290,7 +290,7 @@ UTM
         when env.manifest == Puppet::Node::Environment::NO_MANIFEST
           []
         when File.directory?(env.manifest)
-          Dir.glob(File.join(env.manifest, '**/*.pp'))
+          Dir.glob(File.join(env.manifest, '**{,/*/}*.pp'))
         when File.exist?(env.manifest)
           [env.manifest]
         else
