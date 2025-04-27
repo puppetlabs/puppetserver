@@ -2,11 +2,6 @@
 
 set -e
 
-# TODO: Ultimately it'd be nice to not hard-code these paths, because it is
-# not guaranteed to match up with the paths in puppetserver.conf or used by the
-# REPL.  That said, it doesn't seem like a great ROI to sort it out right now
-# because it will probably require introducing a new setting for the vendored gem
-# dir into puppetserver.conf.
 if [ -z "${ROOTDIR:-}" ]
 then
   ROOTDIR="${HOME}/.puppetlabs"
@@ -45,10 +40,6 @@ echo "Installing vendored gems"
 lein gem install --no-document "${gem_list[@]}"
 
 echo "Setting up puppet.conf for dev environment"
-
-# TODO: current implementation will simply overwrite puppet.conf.  Might be better
-# to add some checks at the beginning of this script, and abort the whole script
-# if it already exists.
 
 if [ -z "${MASTERHOST}" ]; then
     echo "    No value specified for environment variable 'MASTERHOST'; using 'localhost' for puppet certname."
