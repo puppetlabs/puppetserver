@@ -7,9 +7,24 @@ set -e
 # REPL.  That said, it doesn't seem like a great ROI to sort it out right now
 # because it will probably require introducing a new setting for the vendored gem
 # dir into puppetserver.conf.
-ROOTDIR="${HOME}/.puppetlabs"
-CONFDIR="${ROOTDIR}/etc/puppet"
-CODEDIR="${ROOTDIR}/etc/code"
+if [ -z "${ROOTDIR:-}" ]
+then
+  ROOTDIR="${HOME}/.puppetlabs"
+fi
+if [ -z "${CONFDIR:-}" ]
+then
+  CONFDIR="${ROOTDIR}/etc/puppet"
+fi
+if [ -z "${CODEDIR:-}" ]
+then
+  CODEDIR="${ROOTDIR}/etc/code"
+fi
+
+if ! [ -e "${CONFDIR}/puppet.conf" ] && [ -z "${FORCE:-}" ]
+then
+  echo "ERROR: ${CONFDIR}/puppet.conf already exists. Please run with FORCE=1 to overwrite" >&2
+  exit 1
+fi
 
 gem_list=()
 while read LINE
